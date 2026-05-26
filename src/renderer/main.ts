@@ -7,6 +7,7 @@ import './plugins/builtin/explorer'
 import './plugins/builtin/search'
 import './plugins/builtin/git'
 import './plugins/builtin/extensions'
+import './plugins/builtin/account'
 
 const app = createApp(App)
 const pinia = createPinia()

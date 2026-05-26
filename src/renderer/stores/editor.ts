@@ -74,4 +74,5 @@ export const useEditorStore = defineStore('editor', () => {
     markModified,
     saveTab
   }
-})
+}
+)

@@ -1,0 +1,434 @@
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+import { UserCircle, LogOut, PenLine, ShieldCheck, Flame } from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth'
+import { API_BASE_URL } from '@/api/http'
+
+const authStore = useAuthStore()
+
+const mode = ref<'login' | 'register'>('login')
+const email = ref('')
+const password = ref('')
+const confirmPassword = ref('')
+const verifyCode = ref('')
+const verifyMessage = ref('')
+const cooldown = ref(0)
+const timerRef = ref<number | null>(null)
+
+const nickname = ref('')
+const bio = ref('')
+const oldPassword = ref('')
+const newPassword = ref('')
+const selectedAvatarName = ref('')
+const avatarPreviewUrl = ref('')
+
+const chsiName = ref('')
+const chsiStudentId = ref('')
+const chsiProofFile = ref<File | null>(null)
+const chsiProofFileName = ref('')
+const chsiProofPreviewUrl = ref('')
+
+const chsiStatusText = computed(() => {
+  const status = authStore.chsiVerification?.status
+  if (status === 'PENDING') return '待审核'
+  if (status === 'APPROVED') return '已认证'
+  if (status === 'REJECTED') return '审核未通过'
+  return '未提交'
+})
+
+const heatDays = ref(30)
+
+const heatMap = computed(() => {
+  const today = new Date()
+  const source = new Map(authStore.activity.map(item => [item.date, item.count]))
+  const points = [] as { date: string; count: number }[]
+
+  for (let i = heatDays.value - 1; i >= 0; i -= 1) {
+    const d = new Date(today)
+    d.setDate(d.getDate() - i)
+    const key = d.toISOString().slice(0, 10)
+    points.push({ date: key, count: source.get(key) || 0 })
+  }
+  return points
+})
+
+const avatarUrl = computed(() => {
+  const avatar = authStore.user?.avatar || ''
+  if (!avatar) return ''
+  if (avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('data:')) {
+    return avatar
+  }
+  if (avatar.startsWith('/')) {
+    return `${API_BASE_URL}${avatar}`
+  }
+  return `${API_BASE_URL}/${avatar}`
+})
+
+const heatIntensity = (count: number) => {
+  if (count <= 0) return 'bg-gray-700'
+  if (count <= 2) return 'bg-emerald-700'
+  if (count <= 4) return 'bg-emerald-500'
+  return 'bg-emerald-300'
+}
+
+const switchMode = (target: 'login' | 'register') => {
+  mode.value = target
+  verifyMessage.value = ''
+}
+
+const readAuth = async () => {
+  if (authStore.token) {
+    await authStore.fetchCurrentUser()
+    await authStore.fetchChsiVerificationStatus()
+    await authStore.fetchActivity(heatDays.value)
+    if (authStore.user) {
+      nickname.value = authStore.user.nickname || ''
+      bio.value = authStore.user.bio || ''
+    }
+    avatarPreviewUrl.value = ''
+  }
+}
+
+const doSendCode = async () => {
+  if (!email.value) {
+    verifyMessage.value = '请输入邮箱'
+    return
+  }
+  if (cooldown.value > 0) {
+    return
+  }
+  const res = await authStore.sendVerifyCode(email.value)
+  verifyMessage.value = res.code === 200 ? '验证码已发送' : res.message
+  if (res.code === 200) {
+    cooldown.value = 60
+    timerRef.value = window.setInterval(() => {
+      cooldown.value = Math.max(0, cooldown.value - 1)
+      if (cooldown.value <= 0 && timerRef.value !== null) {
+        window.clearInterval(timerRef.value)
+      }
+    }, 1000)
+  }
+}
+
+const doLogin = async () => {
+  verifyMessage.value = ''
+  const res = await authStore.login({ email: email.value, password: password.value })
+  if (res.code === 200) {
+    await readAuth()
+  } else {
+    verifyMessage.value = res.message
+  }
+}
+
+const doRegister = async () => {
+  verifyMessage.value = ''
+  const res = await authStore.register({
+    email: email.value,
+    password: password.value,
+    confirmPassword: confirmPassword.value,
+    verifyCode: verifyCode.value
+  })
+  if (res.code === 200) {
+    await readAuth()
+  } else {
+    verifyMessage.value = res.message
+  }
+}
+
+const doUpdateProfile = async () => {
+  await authStore.updateProfile({
+    nickname: nickname.value,
+    bio: bio.value
+  })
+}
+
+const doChangePassword = async () => {
+  const res = await authStore.changePassword({
+    oldPassword: oldPassword.value,
+    newPassword: newPassword.value
+  })
+  if (res.code === 200) {
+    oldPassword.value = ''
+    newPassword.value = ''
+    verifyMessage.value = '密码已更新'
+  } else {
+    verifyMessage.value = res.message
+  }
+}
+
+const doVerifyChsi = async () => {
+  if (!chsiProofFile.value) {
+    verifyMessage.value = '请先上传截图'
+    return
+  }
+  const res = await authStore.submitChsi({
+    realName: chsiName.value,
+    studentId: chsiStudentId.value,
+    proofImage: chsiProofFile.value
+  })
+  if (res.code === 200) {
+    verifyMessage.value = '学信网认证材料已提交，等待管理员审核'
+    chsiProofFile.value = null
+    chsiProofFileName.value = ''
+    if (chsiProofPreviewUrl.value) {
+      URL.revokeObjectURL(chsiProofPreviewUrl.value)
+    }
+    chsiProofPreviewUrl.value = ''
+  } else {
+    verifyMessage.value = res.message
+  }
+}
+
+const onChsiProofUpload = (evt: Event) => {
+  const input = evt.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) {
+    verifyMessage.value = '未选择任何文件'
+    chsiProofFile.value = null
+    chsiProofFileName.value = ''
+    return
+  }
+  if (!file.type.startsWith('image/')) {
+    verifyMessage.value = '请上传图片文件'
+    return
+  }
+  if (file.size <= 0) {
+    verifyMessage.value = '文件内容为空'
+    return
+  }
+  chsiProofFile.value = file
+  chsiProofFileName.value = file.name
+  if (chsiProofPreviewUrl.value) {
+    URL.revokeObjectURL(chsiProofPreviewUrl.value)
+  }
+  chsiProofPreviewUrl.value = URL.createObjectURL(file)
+}
+
+const doLogout = async () => {
+  await authStore.logout()
+}
+
+const onAvatarUpload = async (evt: Event) => {
+  const input = evt.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) {
+    verifyMessage.value = '未选择任何文件'
+    return
+  }
+  if (!file.type.startsWith('image/')) {
+    verifyMessage.value = '请上传图片文件'
+    return
+  }
+  if (file.size <= 0) {
+    verifyMessage.value = '文件内容为空'
+    return
+  }
+
+  selectedAvatarName.value = file.name
+  if (avatarPreviewUrl.value) {
+    URL.revokeObjectURL(avatarPreviewUrl.value)
+  }
+  avatarPreviewUrl.value = URL.createObjectURL(file)
+  try {
+    const res = await authStore.uploadAvatar(file)
+    if (res.code === 200) {
+      verifyMessage.value = '头像已更新'
+      avatarPreviewUrl.value = ''
+    } else {
+      verifyMessage.value = res.message
+    }
+  } catch (e: unknown) {
+    verifyMessage.value = e instanceof Error ? e.message : '上传失败'
+  }
+}
+
+const onHeatDaysChange = async (days: number) => {
+  heatDays.value = days
+  await authStore.fetchActivity(days)
+}
+
+onMounted(readAuth)
+watch(() => authStore.message, (next) => {
+  if (next) {
+    verifyMessage.value = next
+  }
+})
+</script>
+
+<template>
+  <div class="h-full p-4 space-y-4 overflow-auto text-sm text-vscode-text">
+    <div class="flex items-center justify-between">
+      <h2 class="text-base font-semibold">账户与个人设置</h2>
+      <button
+        v-if="authStore.isAuthenticated"
+        class="px-2 py-1 border border-vscode-border rounded text-vscode-warning hover:border-vscode-warning"
+        @click="doLogout"
+      >
+        <span class="inline-flex items-center gap-1"><LogOut class="w-4 h-4"/> 退出</span>
+      </button>
+    </div>
+
+    <div v-if="authStore.message" class="rounded bg-vscode-active px-3 py-2 text-vscode-warning">{{ authStore.message }}</div>
+
+    <template v-if="!authStore.isAuthenticated">
+      <div class="flex gap-2">
+        <button
+          class="px-3 py-1 rounded"
+          :class="mode === 'login' ? 'bg-vscode-selected' : 'bg-vscode-active'"
+          @click="switchMode('login')"
+        >登录</button>
+        <button
+          class="px-3 py-1 rounded"
+          :class="mode === 'register' ? 'bg-vscode-selected' : 'bg-vscode-active'"
+          @click="switchMode('register')"
+        >注册</button>
+      </div>
+
+      <div class="grid gap-3">
+        <label class="grid gap-1">
+          <span>邮箱</span>
+          <input v-model="email" class="bg-vscode-active border border-vscode-border px-2 py-1 rounded" />
+        </label>
+        <label class="grid gap-1">
+          <span>密码</span>
+          <input v-model="password" type="password" class="bg-vscode-active border border-vscode-border px-2 py-1 rounded" />
+        </label>
+        <label v-if="mode === 'register'" class="grid gap-1">
+          <span>确认密码</span>
+          <input v-model="confirmPassword" type="password" class="bg-vscode-active border border-vscode-border px-2 py-1 rounded" />
+        </label>
+        <label v-if="mode === 'register'" class="grid gap-1">
+          <span>验证码</span>
+          <div class="flex gap-2">
+            <input v-model="verifyCode" class="flex-1 bg-vscode-active border border-vscode-border px-2 py-1 rounded" />
+            <button
+              class="px-2 py-1 border border-vscode-border rounded"
+              @click="doSendCode"
+              :disabled="cooldown > 0"
+            >
+              {{ cooldown > 0 ? cooldown + 's' : '发送验证码' }}
+            </button>
+          </div>
+        </label>
+
+        <button
+          class="self-start px-3 py-1 bg-vscode-selected rounded"
+          @click="mode === 'login' ? doLogin() : doRegister()"
+        >
+          {{ mode === 'login' ? '登录' : '注册' }}
+        </button>
+      </div>
+    </template>
+
+    <template v-else>
+      <section class="border border-vscode-border rounded p-3 space-y-2">
+        <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">个人信息</h3>
+        <div class="flex items-center gap-2">
+          <img
+            v-if="avatarPreviewUrl || avatarUrl"
+            :src="avatarPreviewUrl || avatarUrl"
+            class="w-12 h-12 rounded-full object-cover border border-vscode-border"
+          />
+          <div v-else class="w-12 h-12 rounded-full bg-vscode-active border border-vscode-border flex items-center justify-center">
+            <UserCircle class="w-8 h-8 text-vscode-icon" />
+          </div>
+          <div class="text-xs">
+            <p>邮箱：{{ authStore.user?.email }}</p>
+            <p>昵称：{{ authStore.user?.nickname }}</p>
+            <p>认证：{{ authStore.user?.chsiVerified ? '已认证' : '未认证' }}</p>
+          </div>
+        </div>
+
+        <label class="grid gap-1">
+          <span>头像</span>
+          <input type="file" accept="image/*" @change="onAvatarUpload" />
+          <span v-if="selectedAvatarName" class="text-xs text-vscode-text-secondary">已选择：{{ selectedAvatarName }}</span>
+        </label>
+        <label class="grid gap-1">
+          <span>昵称</span>
+          <input v-model="nickname" class="bg-vscode-active border border-vscode-border px-2 py-1 rounded" />
+        </label>
+        <label class="grid gap-1">
+          <span>简介</span>
+          <textarea v-model="bio" rows="3" class="bg-vscode-active border border-vscode-border px-2 py-1 rounded" />
+        </label>
+        <button class="px-2 py-1 bg-vscode-selected rounded" @click="doUpdateProfile">
+          <span class="inline-flex gap-1 items-center"><PenLine class="w-4 h-4"/> 保存资料</span>
+        </button>
+      </section>
+
+      <section class="border border-vscode-border rounded p-3 space-y-2">
+        <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">安全设置</h3>
+        <label class="grid gap-1">
+          <span>旧密码</span>
+          <input v-model="oldPassword" type="password" class="bg-vscode-active border border-vscode-border px-2 py-1 rounded" />
+        </label>
+        <label class="grid gap-1">
+          <span>新密码</span>
+          <input v-model="newPassword" type="password" class="bg-vscode-active border border-vscode-border px-2 py-1 rounded" />
+        </label>
+        <button class="px-2 py-1 border border-vscode-border rounded" @click="doChangePassword">
+          修改密码
+        </button>
+      </section>
+
+      <section class="border border-vscode-border rounded p-3 space-y-2">
+        <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">学信网认证</h3>
+        <div class="inline-flex items-center gap-1 text-vscode-warning text-xs">
+          <ShieldCheck class="w-4 h-4" />
+          <span>当前状态：{{ chsiStatusText }}</span>
+        </div>
+        <div v-if="authStore.chsiVerification?.rejectReason" class="text-xs text-vscode-warning">
+          未通过原因：{{ authStore.chsiVerification.rejectReason }}
+        </div>
+        <div v-if="authStore.chsiVerification?.submittedAt" class="text-xs text-vscode-text-secondary">
+          最近提交：{{ authStore.chsiVerification.submittedAt }}
+        </div>
+        <label class="grid gap-1">
+          <span>真实姓名</span>
+          <input v-model="chsiName" class="bg-vscode-active border border-vscode-border px-2 py-1 rounded" />
+        </label>
+        <label class="grid gap-1">
+          <span>学号</span>
+          <input v-model="chsiStudentId" class="bg-vscode-active border border-vscode-border px-2 py-1 rounded" />
+        </label>
+        <label class="grid gap-1">
+          <span>学信网截图（含姓名与学号）</span>
+          <div class="flex items-center gap-2">
+            <input type="file" accept="image/*" @change="onChsiProofUpload" />
+          </div>
+          <span v-if="chsiProofFileName" class="text-xs text-vscode-text-secondary">已选择：{{ chsiProofFileName }}</span>
+          <img
+            v-if="chsiProofPreviewUrl"
+            :src="chsiProofPreviewUrl"
+            class="w-24 h-24 rounded border border-vscode-border object-cover"
+            alt="chsi-proof-preview"
+          />
+        </label>
+        <button class="px-2 py-1 border border-vscode-border rounded" @click="doVerifyChsi">
+          提交认证
+        </button>
+      </section>
+
+      <section class="border border-vscode-border rounded p-3 space-y-2">
+        <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">Activity 热力图</h3>
+        <div class="flex items-center gap-2 text-xs">
+          <button class="px-2 py-1 border border-vscode-border rounded" @click="onHeatDaysChange(14)">14天</button>
+          <button class="px-2 py-1 border border-vscode-border rounded" @click="onHeatDaysChange(30)">30天</button>
+          <button class="px-2 py-1 border border-vscode-border rounded" @click="onHeatDaysChange(90)">90天</button>
+        </div>
+        <div class="grid grid-cols-10 gap-1">
+          <div
+            v-for="point in heatMap"
+            :key="point.date"
+            :title="`${point.date} (${point.count})`"
+            :class="[heatIntensity(point.count), 'h-4 rounded-sm']"
+          ></div>
+        </div>
+      </section>
+      <p class="text-xs text-vscode-text-secondary"><Flame class="w-4 h-4 inline" /> 活跃度基于近期发帖/评论/offer/简历记录</p>
+    </template>
+
+    <p v-if="verifyMessage" class="text-xs text-vscode-warning">{{ verifyMessage }}</p>
+  </div>
+</template>

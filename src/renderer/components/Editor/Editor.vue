@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch } from 'vue'
 import { X } from 'lucide-vue-next'
 import { useEditorStore } from '@/stores/editor'
 

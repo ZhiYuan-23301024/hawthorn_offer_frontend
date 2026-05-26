@@ -30,6 +30,23 @@ export const useEditorStore = defineStore('editor', () => {
     activeTabId.value = newTab.id
   }
 
+  function openComponentTab(tabId: string, title: string, component: any, componentProps?: Record<string, unknown>) {
+    const existingTab = tabs.value.find(tab => tab.id === tabId)
+    if (existingTab) {
+      activeTabId.value = existingTab.id
+      return
+    }
+
+    const newTab: EditorTab = {
+      id: tabId,
+      title,
+      component,
+      componentProps
+    }
+    tabs.value.push(newTab)
+    activeTabId.value = newTab.id
+  }
+
   function setActiveTab(tabId: string) {
     activeTabId.value = tabId
   }
@@ -68,6 +85,7 @@ export const useEditorStore = defineStore('editor', () => {
     activeTab,
     modifiedTabs,
     openFile,
+    openComponentTab,
     setActiveTab,
     closeTab,
     updateContent,

@@ -1,34 +1,116 @@
 <script setup lang="ts">
-import { computed, markRaw } from 'vue'
+import { computed, markRaw, ref, watch } from 'vue'
+import { FilePlus, UserCircle, Search, LogOut, User } from 'lucide-vue-next'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { useEditorStore } from '@/stores/editor'
+import ExplorerPanel from '@/plugins/builtin/components/ExplorerPanel.vue'
 import { pluginManager } from '@/plugins/pluginManager'
 
 const workspaceStore = useWorkspaceStore()
+const editorStore = useEditorStore()
+
+const accountFeatures = [
+  { id: 'profile', label: '个人信息', icon: User },
+  { id: 'avatar', label: '修改头像', icon: FilePlus },
+  { id: 'password', label: '修改密码', icon: LogOut },
+  { id: 'chsi', label: '学信网认证', icon: UserCircle },
+  { id: 'activity', label: 'Activity热力图', icon: Search }
+]
+const activeAccountIndex = ref(0)
+
+const currentPlugin = computed(() => pluginManager.getPlugin(workspaceStore.activePanel))
+
+const showExplorer = computed(() => workspaceStore.activePanel === 'explorer')
+
+const directoryTitle = computed(() => {
+  if (currentPlugin.value?.id === 'account') {
+    return '账户与设置'
+  }
+  if (currentPlugin.value?.name) {
+    return currentPlugin.value.name
+  }
+  return '工作区'
+})
 
 const currentComponent = computed(() => {
-  const plugin = pluginManager.getPlugin(workspaceStore.activePanel)
-  if (plugin) {
-    return markRaw(plugin.component)
-  }
-  return null
+  const plugin = currentPlugin.value
+  return plugin ? markRaw(plugin.component) : null
 })
 
-const currentPlugin = computed(() => {
-  return pluginManager.getPlugin(workspaceStore.activePanel)
-})
+watch(
+  () => editorStore.activeTab?.id,
+  (activeTabId) => {
+    if (!activeTabId || !activeTabId.startsWith('account:')) {
+      return
+    }
+    const section = activeTabId.replace('account:', '')
+    const idx = accountFeatures.findIndex(item => item.id === section)
+    if (idx >= 0) {
+      activeAccountIndex.value = idx
+    }
+  },
+  { immediate: true }
+)
+
+function handleAccountFeatureSelect(featureId: string) {
+  if (!currentPlugin.value) {
+    return
+  }
+  const index = accountFeatures.findIndex(item => item.id === featureId)
+  if (index >= 0) {
+    activeAccountIndex.value = index
+  }
+  editorStore.openComponentTab(
+    `account:${featureId}`,
+    `${directoryTitle.value}/${accountFeatures.find(item => item.id === featureId)?.label || '详情'}`,
+    currentPlugin.value.component,
+    { activeSection: featureId }
+  )
+}
+
 </script>
 
 <template>
   <aside class="w-64 bg-vscode-bg border-r border-vscode-border flex flex-col">
-    <div v-if="currentPlugin" class="p-2 border-b border-vscode-border">
+    <div class="p-2 border-b border-vscode-border">
       <div class="flex items-center justify-between">
         <span class="text-xs font-semibold text-vscode-text-secondary uppercase tracking-wider">
-          {{ currentPlugin.name }}
+          {{ directoryTitle }}
         </span>
       </div>
     </div>
+
     <div class="flex-1 overflow-hidden">
-      <component v-if="currentComponent" :is="currentComponent" />
+      <ExplorerPanel v-if="showExplorer" />
+
+      <div v-else-if="currentPlugin?.id === 'account'" class="p-2">
+        <div class="text-xs font-medium text-vscode-text-secondary mb-2">功能目录</div>
+        <div
+          class="max-h-64 overflow-y-auto pr-1"
+          tabindex="0"
+          role="list"
+          aria-label="个人设置目录"
+        >
+          <div
+          v-for="feature in accountFeatures"
+          :key="feature.id"
+          class="flex items-center px-2 py-1.5 rounded cursor-pointer transition-colors"
+          :class="feature.id === accountFeatures[activeAccountIndex]?.id ? 'bg-vscode-selected/60' : 'hover:bg-vscode-selected/20'"
+          role="button"
+          @click="handleAccountFeatureSelect(feature.id)"
+        >
+          <component :is="feature.icon" class="w-4 h-4 mr-2 text-vscode-icon" />
+          <span class="text-sm text-vscode-text">{{ feature.label }}</span>
+          <span class="ml-auto text-xs text-vscode-text-secondary">{{ feature.id === accountFeatures[activeAccountIndex]?.id ? '正在查看' : '' }}</span>
+        </div>
+        </div>
+      </div>
+
+      <component v-else-if="currentComponent" :is="currentComponent" />
+
+      <div v-else class="h-full p-4 text-vscode-text-secondary text-sm">
+        <p>选择左侧功能查看对应内容</p>
+      </div>
     </div>
   </aside>
 </template>

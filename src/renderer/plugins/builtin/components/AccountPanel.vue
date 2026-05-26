@@ -6,6 +6,12 @@ import { API_BASE_URL } from '@/api/http'
 
 const authStore = useAuthStore()
 
+const props = withDefaults(defineProps<{
+  activeSection?: 'all' | 'profile' | 'avatar' | 'password' | 'chsi' | 'activity'
+}>(), {
+  activeSection: 'all'
+})
+
 const mode = ref<'login' | 'register'>('login')
 const email = ref('')
 const password = ref('')
@@ -51,6 +57,12 @@ const heatMap = computed(() => {
   }
   return points
 })
+
+const activeSection = computed(() => props.activeSection || 'all')
+
+const showSection = (section: 'profile' | 'avatar' | 'password' | 'chsi' | 'activity') => {
+  return activeSection.value === 'all' || activeSection.value === section
+}
 
 const avatarUrl = computed(() => {
   const avatar = authStore.user?.avatar || ''
@@ -321,7 +333,7 @@ watch(() => authStore.message, (next) => {
     </template>
 
     <template v-else>
-      <section class="border border-vscode-border rounded p-3 space-y-2">
+      <section v-if="showSection('profile')" class="border border-vscode-border rounded p-3 space-y-2">
         <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">个人信息</h3>
         <div class="flex items-center gap-2">
           <img
@@ -340,11 +352,6 @@ watch(() => authStore.message, (next) => {
         </div>
 
         <label class="grid gap-1">
-          <span>头像</span>
-          <input type="file" accept="image/*" @change="onAvatarUpload" />
-          <span v-if="selectedAvatarName" class="text-xs text-vscode-text-secondary">已选择：{{ selectedAvatarName }}</span>
-        </label>
-        <label class="grid gap-1">
           <span>昵称</span>
           <input v-model="nickname" class="bg-vscode-active border border-vscode-border px-2 py-1 rounded" />
         </label>
@@ -357,7 +364,16 @@ watch(() => authStore.message, (next) => {
         </button>
       </section>
 
-      <section class="border border-vscode-border rounded p-3 space-y-2">
+      <section v-if="showSection('avatar')" class="border border-vscode-border rounded p-3 space-y-2">
+        <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">头像</h3>
+        <label class="grid gap-1">
+          <span>头像</span>
+          <input type="file" accept="image/*" @change="onAvatarUpload" />
+          <span v-if="selectedAvatarName" class="text-xs text-vscode-text-secondary">已选择：{{ selectedAvatarName }}</span>
+        </label>
+      </section>
+
+      <section v-if="showSection('password')" class="border border-vscode-border rounded p-3 space-y-2">
         <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">安全设置</h3>
         <label class="grid gap-1">
           <span>旧密码</span>
@@ -372,7 +388,7 @@ watch(() => authStore.message, (next) => {
         </button>
       </section>
 
-      <section class="border border-vscode-border rounded p-3 space-y-2">
+      <section v-if="showSection('chsi')" class="border border-vscode-border rounded p-3 space-y-2">
         <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">学信网认证</h3>
         <div class="inline-flex items-center gap-1 text-vscode-warning text-xs">
           <ShieldCheck class="w-4 h-4" />
@@ -410,7 +426,7 @@ watch(() => authStore.message, (next) => {
         </button>
       </section>
 
-      <section class="border border-vscode-border rounded p-3 space-y-2">
+      <section v-if="showSection('activity')" class="border border-vscode-border rounded p-3 space-y-2">
         <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">Activity 热力图</h3>
         <div class="flex items-center gap-2 text-xs">
           <button class="px-2 py-1 border border-vscode-border rounded" @click="onHeatDaysChange(14)">14天</button>

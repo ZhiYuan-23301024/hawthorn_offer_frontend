@@ -6,14 +6,78 @@ import { useEditorStore } from '@/stores/editor'
 const editorStore = useEditorStore()
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const content = ref('')
+let lastEditorWheel = 0
+
+const accountSections = [
+  { id: 'profile', label: '个人信息' },
+  { id: 'avatar', label: '修改头像' },
+  { id: 'password', label: '修改密码' },
+  { id: 'chsi', label: '学信网认证' },
+  { id: 'activity', label: 'Activity热力图' }
+] as const
+
+type AccountSectionId = (typeof accountSections)[number]['id']
 
 watch(() => editorStore.activeTab, (newTab) => {
   if (newTab) {
-    content.value = newTab.content
+    content.value = newTab.content || ''
   } else {
     content.value = ''
   }
 }, { immediate: true })
+
+function getCurrentSectionIndex(tabId: string | undefined): number {
+  if (!tabId) return -1
+  return accountSections.findIndex(item => item.id === tabId)
+}
+
+function getAccountSectionLabel(sectionId: AccountSectionId) {
+  const match = accountSections.find(item => item.id === sectionId)
+  return match ? match.label : '设置详情'
+}
+
+function switchAccountSection(currentSection: AccountSectionId, delta: number) {
+  const currentIndex = accountSections.findIndex(item => item.id === currentSection)
+  if (currentIndex < 0) return
+  const nextIndex = (currentIndex + delta + accountSections.length) % accountSections.length
+  const target = accountSections[nextIndex]
+
+  if (!editorStore.activeTab || !editorStore.activeTab.component || !editorStore.activeTab.componentProps) {
+    return
+  }
+  editorStore.openComponentTab(
+    `account:${target.id}`,
+    `账户与设置/${getAccountSectionLabel(target.id)}`,
+    editorStore.activeTab.component,
+    { activeSection: target.id }
+  )
+}
+
+function handleEditorWheel(event: WheelEvent) {
+  const activeTab = editorStore.activeTab
+  const currentSection = activeTab?.componentProps?.activeSection
+
+  if (typeof currentSection !== 'string') {
+    return
+  }
+  const index = getCurrentSectionIndex(currentSection)
+  if (index < 0) {
+    return
+  }
+
+  const now = Date.now()
+  if (now - lastEditorWheel < 280) {
+    return
+  }
+  lastEditorWheel = now
+
+  const direction = event.deltaY > 0 ? 1 : -1
+  if (direction === 0) {
+    return
+  }
+  event.preventDefault()
+  switchAccountSection(currentSection as AccountSectionId, direction)
+}
 
 function handleContentChange() {
   if (editorStore.activeTabId && textareaRef.value) {
@@ -61,8 +125,15 @@ function isModified(tabId: string) {
       </div>
     </div>
     <div class="flex-1 overflow-hidden">
-      <div v-if="editorStore.activeTab" class="h-full p-4">
+      <div v-if="editorStore.activeTab" class="h-full p-4" @wheel="handleEditorWheel">
+        <component
+          v-if="editorStore.activeTab.component"
+          :is="editorStore.activeTab.component"
+          v-bind="editorStore.activeTab.componentProps || {}"
+          class="h-full"
+        />
         <textarea
+          v-else
           ref="textareaRef"
           v-model="content"
           @input="handleContentChange"

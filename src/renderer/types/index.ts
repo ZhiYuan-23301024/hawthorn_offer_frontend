@@ -26,9 +26,11 @@ export interface TreeNode {
 export interface EditorTab {
   id: string
   title: string
-  path: string
-  content: string
-  language: string
+  path?: string
+  content?: string
+  language?: string
+  component?: any
+  componentProps?: Record<string, unknown>
 }
 
 export interface WorkspacePanel {

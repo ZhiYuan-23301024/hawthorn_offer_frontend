@@ -13,12 +13,11 @@
     "skipLibCheck": true,
     "noEmit": true,
     "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
     "paths": {
       "@/*": ["src/renderer/*"]
     },
     "types": ["node"]
   },
-  "include": ["src/renderer/**/*.ts", "src/renderer/**/*.d.ts", "src/renderer/**/*.tsx", "src/renderer/**/*.vue"],
+  "include": ["src/renderer/**/*.ts", "src/renderer/**/*.d.ts", "src/renderer/**/*.tsx", "src/renderer/**/*.vue", "src/main/**/*.ts", "src/main/**/*.js"],
   "exclude": ["node_modules", "dist"]
 }

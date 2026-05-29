@@ -14,13 +14,14 @@
   "dependencies": {
     "electron": "^42.2.0",
     "lucide-vue-next": "^0.290.0",
+    "mammoth": "^1.12.0",
     "pinia": "^2.1.0",
     "vue": "^3.4.0",
     "vue-router": "^4.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "@vitejs/plugin-vue": "^5.0.0",
+    "@vitejs/plugin-vue": "^6.0.7",
     "autoprefixer": "^10.4.0",
     "electron-builder": "^26.8.1",
     "eslint": "^8.0.0",

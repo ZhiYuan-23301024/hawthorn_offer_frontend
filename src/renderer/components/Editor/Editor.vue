@@ -71,10 +71,7 @@ function handleEditorWheel(event: WheelEvent) {
   }
   lastEditorWheel = now
 
-  const direction = event.deltaY > 0 ? 1 : -1
-  if (direction === 0) {
-    return
-  }
+  const direction: -1 | 1 = event.deltaY > 0 ? 1 : -1
   event.preventDefault()
   switchAccountSection(currentSection as AccountSectionId, direction)
 }

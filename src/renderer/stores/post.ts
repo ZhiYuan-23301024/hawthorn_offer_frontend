@@ -1,0 +1,254 @@
+import { defineStore } from 'pinia'
+import { ref, computed, watch } from 'vue'
+import type { PostListVO, ResumeListVO, ResumeDetail, PostDetail, CommentVO } from '@/api/post'
+import * as postApi from '@/api/post'
+import { useAuthStore } from '@/stores/auth'
+
+export type PostTab = 'resume' | 'regular'
+
+const LIKED_IDS_KEY = 'hawthorn_post_liked_ids'
+
+function loadLikedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(LIKED_IDS_KEY)
+    if (raw) {
+      return new Set(JSON.parse(raw))
+    }
+  } catch { /* ignore */ }
+  return new Set()
+}
+
+function saveLikedIds(ids: Set<string>) {
+  try {
+    localStorage.setItem(LIKED_IDS_KEY, JSON.stringify([...ids]))
+  } catch { /* ignore */ }
+}
+
+export const usePostStore = defineStore('post', () => {
+  const activeTab = ref<PostTab>('resume')
+  const resumeKeyword = ref('')
+  const regularKeyword = ref('')
+  const keyword = computed(() => activeTab.value === 'resume' ? resumeKeyword.value : regularKeyword.value)
+  const sort = ref('hot')
+  const loading = ref(false)
+
+  const resumeList = ref<ResumeListVO[]>([])
+  const resumeTotal = ref(0)
+  const resumePage = ref(1)
+
+  const postList = ref<PostListVO[]>([])
+  const postTotal = ref(0)
+  const postPage = ref(1)
+
+  const selectedId = ref<string | null>(null)
+  const selectedType = ref<PostTab | null>(null)
+  const currentDetail = ref<ResumeDetail | PostDetail | null>(null)
+  const comments = ref<CommentVO[]>([])
+  const loadingDetail = ref(false)
+
+  const myResumeId = ref<string | null>(null)
+
+  const likedIds = ref<Set<string>>(loadLikedIds())
+
+  watch(likedIds, (val) => {
+    saveLikedIds(val)
+  }, { deep: false })
+
+  async function fetchResumeList(page = 1, kw?: string) {
+    loading.value = true
+    try {
+      const kwParam = kw !== undefined ? kw : keyword.value
+      const res = await postApi.getResumeList(page, 10, kwParam || undefined)
+      if (res.code === 200) {
+        resumeList.value = (res.data.items || []).map(item => ({
+          ...item,
+          likeCount: item.likeCount || 0,
+          commentCount: item.commentCount || 0
+        }))
+        resumeTotal.value = res.data.total
+        resumePage.value = page
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchPostList(page = 1, kw?: string, s?: string) {
+    loading.value = true
+    try {
+      const kwParam = kw !== undefined ? kw : keyword.value
+      const sParam = s !== undefined ? s : sort.value
+      const res = await postApi.getPostList(page, 10, kwParam || undefined, sParam)
+      if (res.code === 200) {
+        postList.value = (res.data.items || []).map(item => ({
+          ...item,
+          likeCount: item.likeCount || 0,
+          commentCount: item.commentCount || 0
+        }))
+        postTotal.value = res.data.total
+        postPage.value = page
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function selectPost(id: string, type: PostTab) {
+    selectedId.value = id
+    selectedType.value = type
+    loadingDetail.value = true
+    try {
+      if (type === 'resume') {
+        const res = await postApi.getResumeDetail(id)
+        if (res.code === 200) {
+          currentDetail.value = res.data
+        }
+      } else {
+        const res = await postApi.getPostDetail(id)
+        if (res.code === 200) {
+          currentDetail.value = res.data
+        }
+      }
+      await fetchComments(id, type)
+    } finally {
+      loadingDetail.value = false
+    }
+  }
+
+  async function fetchComments(targetId: string, type: PostTab) {
+    const targetType = type === 'resume' ? 'resume' : 'post'
+    const res = await postApi.getComments(targetType, targetId)
+    if (res.code === 200) {
+      comments.value = res.data || []
+    }
+  }
+
+  async function toggleLike(id: string, type: PostTab) {
+    // Only regular posts support likes
+    if (type !== 'regular') return
+    const isLiked = likedIds.value.has(id)
+    try {
+      if (isLiked) {
+        await postApi.unlikePost(id)
+      } else {
+        await postApi.likePost(id)
+      }
+
+      const newSet = new Set(likedIds.value)
+      if (isLiked) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      likedIds.value = newSet
+
+      const item = postList.value.find((p: PostListVO) => p.id === id)
+      if (item) {
+        const currentCount = item.likeCount || 0
+        item.likeCount = currentCount + (isLiked ? -1 : 1)
+      }
+
+      if (currentDetail.value && selectedId.value === id) {
+        const detail = currentDetail.value as { likeCount?: number }
+        const currentCount = detail.likeCount || 0
+        detail.likeCount = currentCount + (isLiked ? -1 : 1)
+      }
+    } catch {
+      // API call failed, don't update local state
+    }
+  }
+
+  async function addComment(content: string, parentId?: string) {
+    if (!selectedId.value || !selectedType.value) return
+    const targetType = selectedType.value === 'resume' ? 'resume' : 'post'
+    const res = await postApi.createComment({
+      targetId: selectedId.value,
+      targetType,
+      content,
+      parentId
+    })
+    if (res.code !== 200) return
+
+    // Optimistic insert: build local CommentVO instead of re-fetching the whole tree
+    const authStore = useAuthStore()
+    const me = authStore.user as Record<string, unknown> | null
+    const newComment: CommentVO = {
+      id: res.data.commentId,
+      userId: (me?.id as string) || '',
+      nickname: (me?.nickname as string) || '我',
+      avatarUrl: (me?.avatar as string) || null,
+      content,
+      targetId: selectedId.value,
+      parentId: parentId || null,
+      likeCount: 0,
+      createdAt: new Date().toISOString(),
+      children: []
+    }
+
+    if (!parentId) {
+      // Root comment: prepend to list
+      comments.value = [newComment, ...comments.value]
+    } else {
+      // Reply: find parent and append to children
+      const findAndAppend = (list: CommentVO[]): boolean => {
+        for (const c of list) {
+          if (c.id === parentId) {
+            c.children = [...c.children, newComment]
+            return true
+          }
+          if (c.children.length > 0 && findAndAppend(c.children)) return true
+        }
+        return false
+      }
+      findAndAppend(comments.value)
+    }
+  }
+
+  function setTab(tab: PostTab) {
+    activeTab.value = tab
+    selectedId.value = null
+    selectedType.value = null
+    currentDetail.value = null
+    comments.value = []
+  }
+
+  function setKeyword(kw: string) {
+    if (activeTab.value === 'resume') {
+      resumeKeyword.value = kw
+    } else {
+      regularKeyword.value = kw
+    }
+  }
+
+  function setSort(s: string) {
+    sort.value = s
+  }
+
+  async function checkMyResume() {
+    try {
+      const res = await postApi.getMyResume()
+      if (res.code === 200 && res.data) {
+        myResumeId.value = res.data.id
+      } else {
+        myResumeId.value = null
+      }
+    } catch {
+      myResumeId.value = null
+    }
+  }
+
+  function clearMyResumeId() {
+    myResumeId.value = null
+  }
+
+  return {
+    activeTab, resumeKeyword, regularKeyword, keyword, sort, loading,
+    resumeList, resumeTotal, resumePage,
+    postList, postTotal, postPage,
+    selectedId, selectedType, currentDetail, comments, loadingDetail,
+    likedIds,
+    fetchResumeList, fetchPostList, selectPost, toggleLike, addComment,
+    setTab, setKeyword, setSort, fetchComments,
+    myResumeId, checkMyResume, clearMyResumeId
+  }
+})

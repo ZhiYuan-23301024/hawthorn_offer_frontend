@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, markRaw } from 'vue'
 import type { EditorTab } from '@/types'
 
 export const useEditorStore = defineStore('editor', () => {
@@ -40,7 +40,7 @@ export const useEditorStore = defineStore('editor', () => {
     const newTab: EditorTab = {
       id: tabId,
       title,
-      component,
+      component: markRaw(component),
       componentProps
     }
     tabs.value.push(newTab)

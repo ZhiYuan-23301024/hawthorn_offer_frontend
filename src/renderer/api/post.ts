@@ -1,4 +1,4 @@
-import { apiGet, apiPost, type ApiResponse } from './http'
+import { apiGet, apiPost, apiPut, apiDelete, type ApiResponse } from './http'
 import { useAuthStore } from '@/stores/auth'
 
 function getToken(): string | undefined {
@@ -21,14 +21,13 @@ export interface PostListVO {
   updatedAt: string
 }
 
-export interface ResumeListVO {
+export interface ResumePostListVO {
   id: string
   userId: string
   resumeName: string
   authorName: string
   authorAvatar: string
   authorAvatarUrl: string | null
-  likeCount: number
   commentCount: number
   createdAt: string
   updatedAt: string
@@ -41,7 +40,7 @@ export interface PageResponse<T> {
   size: number
 }
 
-export interface ResumeDetail {
+export interface ResumePostDetail {
   id: string
   userId: string
   resumeName: string
@@ -85,11 +84,35 @@ export interface CommentCreateData {
   parentId?: string
 }
 
-export function getResumeList(page = 1, size = 10, keyword?: string) {
+// ===== 简历帖 API =====
+
+export function getResumePostList(page = 1, size = 10, keyword?: string) {
   const params = new URLSearchParams({ page: String(page), size: String(size) })
   if (keyword) params.append('keyword', keyword)
-  return apiGet<ApiResponse<PageResponse<ResumeListVO>>>(`/api/resumes?${params}`, getToken())
+  return apiGet<ApiResponse<PageResponse<ResumePostListVO>>>(`/api/posts/resumes?${params}`, getToken())
 }
+
+export function getResumePostDetail(id: string) {
+  return apiGet<ApiResponse<ResumePostDetail>>(`/api/posts/resumes/${id}`, getToken())
+}
+
+export function getMyResumePost() {
+  return apiGet<ApiResponse<ResumePostDetail>>('/api/posts/resumes/me', getToken())
+}
+
+export function createResumePost(resumeName: string, content: string) {
+  return apiPost<ApiResponse<{ resumeId: string }>>('/api/posts/resumes', { resumeName, content }, getToken())
+}
+
+export function updateResumePost(id: string, resumeName: string, content: string) {
+  return apiPut<ApiResponse<ResumePostDetail>>(`/api/posts/resumes/${id}`, { resumeName, content }, getToken())
+}
+
+export function deleteResumePost(id: string) {
+  return apiDelete<ApiResponse<void>>(`/api/posts/resumes/${id}`, getToken())
+}
+
+// ===== 常规帖 API =====
 
 export function getPostList(page = 1, size = 10, keyword?: string, sort = 'latest') {
   const params = new URLSearchParams({ page: String(page), size: String(size), sort })
@@ -97,31 +120,8 @@ export function getPostList(page = 1, size = 10, keyword?: string, sort = 'lates
   return apiGet<ApiResponse<PageResponse<PostListVO>>>(`/api/posts?${params}`, getToken())
 }
 
-export function getResumeDetail(id: string) {
-  return apiGet<ApiResponse<ResumeDetail>>(`/api/resumes/${id}`, getToken())
-}
-
-export function getMyResume() {
-  return apiGet<ApiResponse<ResumeDetail>>('/api/resumes/me', getToken())
-}
-
 export function getPostDetail(id: string) {
   return apiGet<ApiResponse<PostDetail>>(`/api/posts/${id}`, getToken())
-}
-
-export function createResume(resumeName: string, content: string) {
-  return apiPost<ApiResponse<{ resumeId: string }>>('/api/resumes', { resumeName, content }, getToken())
-}
-
-export function updateResume(id: string, resumeName: string, content: string) {
-  const token = getToken()
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) headers.Authorization = `Bearer ${token}`
-  return fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/resumes/${id}`, {
-    method: 'PUT',
-    headers,
-    body: JSON.stringify({ resumeName, content })
-  }).then(r => r.json()) as Promise<ApiResponse<ResumeDetail>>
 }
 
 export function createPost(title: string, content: string, isAnonymous: boolean) {
@@ -129,22 +129,7 @@ export function createPost(title: string, content: string, isAnonymous: boolean)
 }
 
 export function updatePost(id: string, title: string, content: string) {
-  const token = getToken()
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) headers.Authorization = `Bearer ${token}`
-  return fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/posts/${id}`, {
-    method: 'PUT',
-    headers,
-    body: JSON.stringify({ title, content })
-  }).then(r => r.json()) as Promise<ApiResponse<PostDetail>>
-}
-
-export function likeResume(id: string) {
-  return apiPost<ApiResponse<void>>(`/api/resumes/${id}/like`, {}, getToken())
-}
-
-export function unlikeResume(id: string) {
-  return apiPost<ApiResponse<void>>(`/api/resumes/${id}/unlike`, {}, getToken())
+  return apiPut<ApiResponse<PostDetail>>(`/api/posts/${id}`, { title, content }, getToken())
 }
 
 export function likePost(id: string) {
@@ -154,6 +139,12 @@ export function likePost(id: string) {
 export function unlikePost(id: string) {
   return apiPost<ApiResponse<void>>(`/api/posts/${id}/unlike`, {}, getToken())
 }
+
+export function deletePost(id: string) {
+  return apiDelete<ApiResponse<void>>(`/api/posts/${id}`, getToken())
+}
+
+// ===== 评论 API =====
 
 export function getComments(targetType: string, targetId: string) {
   return apiGet<ApiResponse<CommentVO[]>>(
@@ -172,24 +163,4 @@ export function likeComment(id: string) {
 
 export function unlikeComment(id: string) {
   return apiPost<ApiResponse<void>>(`/api/comments/${id}/unlike`, {}, getToken())
-}
-
-export function deleteResume(id: string) {
-  const token = getToken()
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) headers.Authorization = `Bearer ${token}`
-  return fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/resumes/${id}`, {
-    method: 'DELETE',
-    headers
-  }).then(r => r.json()) as Promise<ApiResponse<void>>
-}
-
-export function deletePost(id: string) {
-  const token = getToken()
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) headers.Authorization = `Bearer ${token}`
-  return fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/posts/${id}`, {
-    method: 'DELETE',
-    headers
-  }).then(r => r.json()) as Promise<ApiResponse<void>>
 }

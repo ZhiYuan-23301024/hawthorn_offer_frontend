@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import type { PostListVO, ResumeListVO, ResumeDetail, PostDetail, CommentVO } from '@/api/post'
+import type { PostListVO, ResumePostListVO, ResumePostDetail, PostDetail, CommentVO } from '@/api/post'
 import * as postApi from '@/api/post'
-import { useAuthStore } from '@/stores/auth'
 
 export type PostTab = 'resume' | 'regular'
 
@@ -32,9 +31,9 @@ export const usePostStore = defineStore('post', () => {
   const sort = ref('hot')
   const loading = ref(false)
 
-  const resumeList = ref<ResumeListVO[]>([])
-  const resumeTotal = ref(0)
-  const resumePage = ref(1)
+  const resumePostList = ref<ResumePostListVO[]>([])
+  const resumePostTotal = ref(0)
+  const resumePostPage = ref(1)
 
   const postList = ref<PostListVO[]>([])
   const postTotal = ref(0)
@@ -42,7 +41,7 @@ export const usePostStore = defineStore('post', () => {
 
   const selectedId = ref<string | null>(null)
   const selectedType = ref<PostTab | null>(null)
-  const currentDetail = ref<ResumeDetail | PostDetail | null>(null)
+  const currentDetail = ref<ResumePostDetail | PostDetail | null>(null)
   const comments = ref<CommentVO[]>([])
   const loadingDetail = ref(false)
 
@@ -54,19 +53,18 @@ export const usePostStore = defineStore('post', () => {
     saveLikedIds(val)
   }, { deep: false })
 
-  async function fetchResumeList(page = 1, kw?: string) {
+  async function fetchResumePostList(page = 1, kw?: string) {
     loading.value = true
     try {
       const kwParam = kw !== undefined ? kw : keyword.value
-      const res = await postApi.getResumeList(page, 10, kwParam || undefined)
+      const res = await postApi.getResumePostList(page, 10, kwParam || undefined)
       if (res.code === 200) {
-        resumeList.value = (res.data.items || []).map(item => ({
+        resumePostList.value = (res.data.items || []).map(item => ({
           ...item,
-          likeCount: item.likeCount || 0,
           commentCount: item.commentCount || 0
         }))
-        resumeTotal.value = res.data.total
-        resumePage.value = page
+        resumePostTotal.value = res.data.total
+        resumePostPage.value = page
       }
     } finally {
       loading.value = false
@@ -99,7 +97,7 @@ export const usePostStore = defineStore('post', () => {
     loadingDetail.value = true
     try {
       if (type === 'resume') {
-        const res = await postApi.getResumeDetail(id)
+        const res = await postApi.getResumePostDetail(id)
         if (res.code === 200) {
           currentDetail.value = res.data
         }
@@ -116,7 +114,7 @@ export const usePostStore = defineStore('post', () => {
   }
 
   async function fetchComments(targetId: string, type: PostTab) {
-    const targetType = type === 'resume' ? 'resume' : 'post'
+    const targetType = 'post'
     const res = await postApi.getComments(targetType, targetId)
     if (res.code === 200) {
       comments.value = res.data || []
@@ -158,52 +156,6 @@ export const usePostStore = defineStore('post', () => {
     }
   }
 
-  async function addComment(content: string, parentId?: string) {
-    if (!selectedId.value || !selectedType.value) return
-    const targetType = selectedType.value === 'resume' ? 'resume' : 'post'
-    const res = await postApi.createComment({
-      targetId: selectedId.value,
-      targetType,
-      content,
-      parentId
-    })
-    if (res.code !== 200) return
-
-    // Optimistic insert: build local CommentVO instead of re-fetching the whole tree
-    const authStore = useAuthStore()
-    const me = authStore.user as Record<string, unknown> | null
-    const newComment: CommentVO = {
-      id: res.data.commentId,
-      userId: (me?.id as string) || '',
-      nickname: (me?.nickname as string) || '我',
-      avatarUrl: (me?.avatar as string) || null,
-      content,
-      targetId: selectedId.value,
-      parentId: parentId || null,
-      likeCount: 0,
-      createdAt: new Date().toISOString(),
-      children: []
-    }
-
-    if (!parentId) {
-      // Root comment: prepend to list
-      comments.value = [newComment, ...comments.value]
-    } else {
-      // Reply: find parent and append to children
-      const findAndAppend = (list: CommentVO[]): boolean => {
-        for (const c of list) {
-          if (c.id === parentId) {
-            c.children = [...c.children, newComment]
-            return true
-          }
-          if (c.children.length > 0 && findAndAppend(c.children)) return true
-        }
-        return false
-      }
-      findAndAppend(comments.value)
-    }
-  }
-
   function setTab(tab: PostTab) {
     activeTab.value = tab
     selectedId.value = null
@@ -224,9 +176,9 @@ export const usePostStore = defineStore('post', () => {
     sort.value = s
   }
 
-  async function checkMyResume() {
+  async function checkMyResumePost() {
     try {
-      const res = await postApi.getMyResume()
+      const res = await postApi.getMyResumePost()
       if (res.code === 200 && res.data) {
         myResumeId.value = res.data.id
       } else {
@@ -243,12 +195,12 @@ export const usePostStore = defineStore('post', () => {
 
   return {
     activeTab, resumeKeyword, regularKeyword, keyword, sort, loading,
-    resumeList, resumeTotal, resumePage,
+    resumePostList, resumePostTotal, resumePostPage,
     postList, postTotal, postPage,
     selectedId, selectedType, currentDetail, comments, loadingDetail,
     likedIds,
-    fetchResumeList, fetchPostList, selectPost, toggleLike, addComment,
+    fetchResumePostList, fetchPostList, selectPost, toggleLike,
     setTab, setKeyword, setSort, fetchComments,
-    myResumeId, checkMyResume, clearMyResumeId
+    myResumeId, checkMyResumePost, clearMyResumeId
   }
 })

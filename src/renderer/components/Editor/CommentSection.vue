@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { API_BASE_URL } from '@/api/http'
 import * as postApi from '@/api/post'
 import type { CommentVO } from '@/api/post'
+import { formatTimeAgo, avatarUrl, avatarColor } from '@/utils/format'
 
 const props = defineProps<{
   targetId: string
@@ -71,40 +72,9 @@ const sortedComments = computed(() => {
   return list
 })
 
-function formatTimeAgo(dateStr: string): string {
-  const now = Date.now()
-  const date = new Date(dateStr).getTime()
-  const diff = now - date
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return '刚刚'
-  if (minutes < 60) return `${minutes}分钟前`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}小时前`
-  const days = Math.floor(hours / 24)
-  if (days < 30) return `${days}天前`
-  const months = Math.floor(days / 30)
-  if (months < 12) return `${months}个月前`
-  return `${Math.floor(months / 12)}年前`
-}
-
-function userColor(userId: string): string {
-  let hash = 0
-  for (let i = 0; i < userId.length; i++) {
-    hash = userId.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  const h = Math.abs(hash) % 360
-  return `hsl(${h}, 45%, 40%)`
-}
-
-function fullUrl(url: string | null): string | undefined {
-  if (!url) return undefined
-  if (url.startsWith('http')) return url
-  return API_BASE_URL + url
-}
-
 async function handleSendComment() {
   if (!newComment.value.trim()) return
-  const targetType = props.targetType === 'resume' ? 'resume' : 'post'
+  const targetType = 'post'
   await postApi.createComment({
     targetId: props.targetId,
     targetType,
@@ -118,7 +88,7 @@ async function handleSendComment() {
 
 async function handleSendReply() {
   if (!replyContent.value.trim() || !replyToId.value) return
-  const targetType = props.targetType === 'resume' ? 'resume' : 'post'
+  const targetType = 'post'
   const parentId = replyToId.value
   await postApi.createComment({
     targetId: props.targetId,
@@ -256,9 +226,9 @@ defineExpose({ cancelReply })
           <div
             class="rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 mt-0.5 overflow-hidden"
             :class="entry.depth > 0 ? 'w-6 h-6' : 'w-8 h-8'"
-            :style="entry.comment.avatarUrl ? {} : { backgroundColor: userColor(entry.comment.userId) }"
+            :style="entry.comment.avatarUrl ? {} : { backgroundColor: avatarColor(entry.comment.userId) }"
           >
-            <img v-if="fullUrl(entry.comment.avatarUrl)" :src="fullUrl(entry.comment.avatarUrl)" class="w-full h-full object-cover" />
+            <img v-if="avatarUrl(entry.comment.avatarUrl)" :src="avatarUrl(entry.comment.avatarUrl)" class="w-full h-full object-cover" />
             <span v-else>{{ entry.comment.nickname?.charAt(0) || '?' }}</span>
           </div>
 

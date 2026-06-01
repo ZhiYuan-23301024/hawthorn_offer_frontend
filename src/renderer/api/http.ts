@@ -46,6 +46,9 @@ export const apiPut = <T>(path: string, body?: unknown, token?: string): Promise
     token
   )
 
+export const apiDelete = <T>(path: string, token?: string): Promise<T> =>
+  request<T>(path, { method: 'DELETE' }, token)
+
 export const apiUpload = <T>(path: string, body: FormData, token?: string): Promise<T> => {
   const headers: Record<string, string> = {}
   if (token) {

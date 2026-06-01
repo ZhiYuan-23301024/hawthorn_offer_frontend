@@ -1,37 +1,15 @@
 <script setup lang="ts">
-import { API_BASE_URL } from '@/api/http'
-import type { ResumeListVO } from '@/api/post'
+import type { ResumePostListVO } from '@/api/post'
+import { avatarUrl, formatTimeAgo } from '@/utils/format'
 
 defineProps<{
-  resume: ResumeListVO
+  resume: ResumePostListVO
   isSelected: boolean
 }>()
-
-function avatarUrl(url: string | null): string | undefined {
-  if (!url) return undefined
-  if (url.startsWith('http')) return url
-  return API_BASE_URL + url
-}
 
 const emit = defineEmits<{
   select: [id: string]
 }>()
-
-function formatTimeAgo(dateStr: string): string {
-  const now = Date.now()
-  const date = new Date(dateStr).getTime()
-  const diff = now - date
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return '刚刚'
-  if (minutes < 60) return `${minutes}分钟前`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}小时前`
-  const days = Math.floor(hours / 24)
-  if (days < 30) return `${days}天前`
-  const months = Math.floor(days / 30)
-  if (months < 12) return `${months}个月前`
-  return `${Math.floor(months / 12)}年前`
-}
 </script>
 
 <template>

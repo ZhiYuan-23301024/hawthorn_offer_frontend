@@ -51,19 +51,19 @@ async function handleSubmit() {
   try {
     if (props.postType === 'resume') {
       if (isEditing) {
-        const res = await postApi.updateResume(props.editPostId!, resumeName.value.trim(), content.value.trim())
+        const res = await postApi.updateResumePost(props.editPostId!, resumeName.value.trim(), content.value.trim())
         if (res.code === 200) {
-          await postStore.fetchResumeList(1)
+          await postStore.fetchResumePostList(1)
           await postStore.selectPost(props.editPostId!, 'resume')
           editorStore.closeTab(`post:editor:${props.editPostId}`)
         } else {
           error.value = res.message || '保存失败'
         }
       } else {
-        const res = await postApi.createResume(resumeName.value.trim(), content.value.trim())
+        const res = await postApi.createResumePost(resumeName.value.trim(), content.value.trim())
         if (res.code === 200) {
           const newId = res.data.resumeId
-          await postStore.fetchResumeList(1)
+          await postStore.fetchResumePostList(1)
           editorStore.openComponentTab(`post:resume:${newId}`, resumeName.value.trim(), PostDetail, {
             postId: newId,
             postType: 'resume'

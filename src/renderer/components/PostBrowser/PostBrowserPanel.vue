@@ -26,7 +26,7 @@ function onSearchInput() {
   searchTimer = setTimeout(() => {
     postStore.setKeyword(searchInput.value)
     if (postStore.activeTab === 'resume') {
-      postStore.fetchResumeList(1, searchInput.value)
+      postStore.fetchResumePostList(1, searchInput.value)
     } else {
       postStore.fetchPostList(1, searchInput.value)
     }
@@ -38,7 +38,7 @@ function onTabChange(tab: 'resume' | 'regular') {
   searchInput.value = postStore.keyword
   const kw = postStore.keyword || undefined
   if (tab === 'resume') {
-    postStore.fetchResumeList(1, kw)
+    postStore.fetchResumePostList(1, kw)
   } else {
     postStore.fetchPostList(1, kw, postStore.sort)
   }
@@ -91,18 +91,18 @@ function onSortChange(sort: string) {
 }
 
 const currentList = computed(() => {
-  return postStore.activeTab === 'resume' ? postStore.resumeList : postStore.postList
+  return postStore.activeTab === 'resume' ? postStore.resumePostList : postStore.postList
 })
 
 const isLoading = computed(() => postStore.loading)
 
 onMounted(() => {
   searchInput.value = postStore.keyword
-  postStore.fetchResumeList()
+  postStore.fetchResumePostList()
   checkMyResume()
 })
 
-watch(() => postStore.resumeList.length, () => {
+watch(() => postStore.resumePostList.length, () => {
   checkMyResume()
 })
 </script>
@@ -178,7 +178,7 @@ watch(() => postStore.resumeList.length, () => {
       <!-- Resume cards -->
       <template v-else-if="postStore.activeTab === 'resume'">
         <ResumePostCard
-          v-for="resume in postStore.resumeList"
+          v-for="resume in postStore.resumePostList"
           :key="resume.id"
           :resume="resume"
           :is-selected="postStore.selectedId === resume.id"

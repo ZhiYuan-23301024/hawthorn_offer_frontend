@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Heart, MessageSquare } from 'lucide-vue-next'
-import { API_BASE_URL } from '@/api/http'
 import type { PostListVO } from '@/api/post'
+import { avatarUrl, avatarColor, formatTimeAgo } from '@/utils/format'
 
 defineProps<{
   post: PostListVO
@@ -9,41 +9,10 @@ defineProps<{
   isLiked: boolean
 }>()
 
-function avatarUrl(url: string | null): string | undefined {
-  if (!url) return undefined
-  if (url.startsWith('http')) return url
-  return API_BASE_URL + url
-}
-
-function avatarColor(userId: string): string {
-  let hash = 0
-  for (let i = 0; i < userId.length; i++) {
-    hash = userId.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  const h = Math.abs(hash) % 360
-  return `hsl(${h}, 45%, 35%)`
-}
-
 const emit = defineEmits<{
   select: [id: string]
   like: [id: string]
 }>()
-
-function formatTimeAgo(dateStr: string): string {
-  const now = Date.now()
-  const date = new Date(dateStr).getTime()
-  const diff = now - date
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return '刚刚'
-  if (minutes < 60) return `${minutes}分钟前`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}小时前`
-  const days = Math.floor(hours / 24)
-  if (days < 30) return `${days}天前`
-  const months = Math.floor(days / 30)
-  if (months < 12) return `${months}个月前`
-  return `${Math.floor(months / 12)}年前`
-}
 </script>
 
 <template>

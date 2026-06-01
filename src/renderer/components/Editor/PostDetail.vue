@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { onMounted, computed, ref } from 'vue'
 import { Heart, Edit3, Trash2 } from 'lucide-vue-next'
-import { API_BASE_URL } from '@/api/http'
 import { usePostStore } from '@/stores/post'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorStore } from '@/stores/editor'
 import { useWorkspaceStore } from '@/stores/workspace'
 import * as postApi from '@/api/post'
-import type { ResumeDetail, PostDetail, PostListVO } from '@/api/post'
+import type { ResumePostDetail, PostDetail, PostListVO } from '@/api/post'
+import { avatarUrl, avatarColor } from '@/utils/format'
 import CommentSection from './CommentSection.vue'
 import PostEditor from './PostEditor.vue'
 
@@ -29,8 +29,8 @@ function onPostContentClick() {
 const detail = computed(() => postStore.currentDetail)
 
 // Type-narrowed helpers — eliminate inline `as` casts in template
-const resumeData = computed<ResumeDetail | null>(() =>
-  props.postType === 'resume' ? (detail.value as ResumeDetail | null) : null
+const resumeData = computed<ResumePostDetail | null>(() =>
+  props.postType === 'resume' ? (detail.value as ResumePostDetail | null) : null
 )
 const postData = computed<PostDetail | null>(() =>
   props.postType === 'regular' ? (detail.value as PostDetail | null) : null
@@ -79,9 +79,9 @@ async function handleDelete() {
   if (!confirm(message)) return
   try {
     if (props.postType === 'resume') {
-      await postApi.deleteResume(props.postId)
+      await postApi.deleteResumePost(props.postId)
       postStore.clearMyResumeId()
-      postStore.fetchResumeList(1)
+      postStore.fetchResumePostList(1)
     } else {
       await postApi.deletePost(props.postId)
       postStore.fetchPostList(1)
@@ -98,21 +98,6 @@ async function handleDelete() {
 
 function handleLike() {
   postStore.toggleLike(props.postId, props.postType)
-}
-
-function avatarColor(userId: string): string {
-  let hash = 0
-  for (let i = 0; i < userId.length; i++) {
-    hash = userId.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  const h = Math.abs(hash) % 360
-  return `hsl(${h}, 45%, 35%)`
-}
-
-function fullUrl(url: string | null | undefined): string | undefined {
-  if (!url) return undefined
-  if (url.startsWith('http')) return url
-  return API_BASE_URL + url
 }
 
 function formatTime(dateStr: string): string {
@@ -141,7 +126,7 @@ onMounted(async () => {
         >
           <img
             v-if="authorAvatarUrl"
-            :src="fullUrl(authorAvatarUrl)"
+            :src="avatarUrl(authorAvatarUrl)"
             class="w-full h-full object-cover"
           />
           <span v-else>{{ authorAvatar || authorName?.charAt(0) || '?' }}</span>
@@ -179,7 +164,7 @@ onMounted(async () => {
         >
           <img
             v-if="postListItem?.authorAvatarUrl"
-            :src="fullUrl(postListItem.authorAvatarUrl)"
+            :src="avatarUrl(postListItem.authorAvatarUrl)"
             class="w-full h-full object-cover"
           />
           <span v-else>{{ postListItem?.authorAvatar || '?' }}</span>

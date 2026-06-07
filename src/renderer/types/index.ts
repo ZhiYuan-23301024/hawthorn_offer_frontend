@@ -37,3 +37,5 @@ export interface WorkspacePanel {
   id: string
   title: string
 }
+
+export * from './checkin'

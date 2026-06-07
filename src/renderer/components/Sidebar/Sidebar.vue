@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FolderOpen, Search, GitBranch, Puzzle, UserCircle, MessageSquare } from 'lucide-vue-next'
+import { FolderOpen, Search, GitBranch, Puzzle, UserCircle, MessageSquare, CalendarCheck } from 'lucide-vue-next'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useWorkspaceStore } from '@/stores/workspace'
 
@@ -12,6 +12,7 @@ const iconComponents: Record<string, any> = {
   'git-branch': GitBranch,
   'puzzle': Puzzle,
   'user-circle': UserCircle,
+  'calendar-check': CalendarCheck,
   'message-square': MessageSquare
 }
 

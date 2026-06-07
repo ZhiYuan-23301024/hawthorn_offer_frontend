@@ -9,11 +9,16 @@ import './plugins/builtin/git'
 import './plugins/builtin/extensions'
 import './plugins/builtin/postBrowser'
 import './plugins/builtin/account'
+import './plugins/builtin/checkin'
 
 const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
+
+// 初始化任务插件加载器
+import { taskPluginLoader } from './taskPlugins/TaskPluginLoader'
+taskPluginLoader.initialize(null, pinia)
 
 // Restore user session on app start
 import { useAuthStore } from '@/stores/auth'

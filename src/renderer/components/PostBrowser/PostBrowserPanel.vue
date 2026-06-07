@@ -46,9 +46,10 @@ function onTabChange(tab: 'resume' | 'regular') {
 
 function onSelectPost(id: string, type: 'resume' | 'regular') {
   postStore.selectPost(id, type)
+  // 从列表数据中获取标题（同步，无需等 API 返回）
   const title = type === 'resume'
-    ? (postStore.currentDetail as { resumeName?: string })?.resumeName || '简历详情'
-    : (postStore.currentDetail as { title?: string })?.title || '帖子详情'
+    ? postStore.resumePostList.find(p => p.id === id)?.resumeName || '简历详情'
+    : postStore.postList.find(p => p.id === id)?.title || '帖子详情'
   editorStore.openComponentTab(`post:${type}:${id}`, title, PostDetail, {
     postId: id,
     postType: type

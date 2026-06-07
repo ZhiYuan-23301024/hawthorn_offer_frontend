@@ -6,6 +6,31 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 let mainWindow: BrowserWindow | null = null
 
+function setupConsoleRedirect() {
+  const originalLog = console.log
+  const originalWarn = console.warn
+  const originalError = console.error
+  const originalInfo = console.info
+
+  const prefix = '[Electron]'
+
+  console.log = (...args: unknown[]) => {
+    originalLog.apply(console, [`${prefix}`, ...args])
+  }
+
+  console.warn = (...args: unknown[]) => {
+    originalWarn.apply(console, [`${prefix} [WARN]`, ...args])
+  }
+
+  console.error = (...args: unknown[]) => {
+    originalError.apply(console, [`${prefix} [ERROR]`, ...args])
+  }
+
+  console.info = (...args: unknown[]) => {
+    originalInfo.apply(console, [`${prefix} [INFO]`, ...args])
+  }
+}
+
 async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -19,6 +44,28 @@ async function createWindow() {
       preload: join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true
+    }
+  })
+
+  mainWindow.webContents.on('console-message', (event) => {
+    const params = event as unknown as { level: string; message: string; line: number; sourceId: string }
+    const { level, message, line, sourceId } = params
+    const source = sourceId ? ` (${sourceId}:${line})` : ''
+    switch (level) {
+      case 'info':
+        console.log(`[Renderer] LOG: ${message}${source}`)
+        break
+      case 'warning':
+        console.warn(`[Renderer] WARN: ${message}${source}`)
+        break
+      case 'error':
+        console.error(`[Renderer] ERROR: ${message}${source}`)
+        break
+      case 'debug':
+        console.log(`[Renderer] DEBUG: ${message}${source}`)
+        break
+      default:
+        console.log(`[Renderer] LOG: ${message}${source}`)
     }
   })
 
@@ -46,6 +93,8 @@ ipcMain.handle('file:save', async (_, path: string, content: string) => {
   await fs.promises.writeFile(path, content, 'utf-8')
   return true
 })
+
+setupConsoleRedirect()
 
 app.whenReady().then(createWindow)
 

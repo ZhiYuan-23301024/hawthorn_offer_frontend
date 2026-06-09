@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue'
-import { Heart, ChevronDown, ChevronUp, CornerDownRight, Send, Trash2, Maximize2, Minimize2 } from 'lucide-vue-next'
+import { Heart, ChevronDown, ChevronUp, Send, Trash2, Maximize2, Minimize2 } from 'lucide-vue-next'
 import { usePostStore } from '@/stores/post'
 import { useAuthStore } from '@/stores/auth'
-import { API_BASE_URL } from '@/api/http'
 import * as postApi from '@/api/post'
 import type { CommentVO } from '@/api/post'
 import { formatTimeAgo, avatarUrl, avatarColor } from '@/utils/format'
+import { useRequireAuth } from '@/composables/useRequireAuth'
 
 const props = defineProps<{
   targetId: string
@@ -62,6 +62,19 @@ watch(() => postStore.selectedId, () => {
   newComment.value = ''
 })
 
+// Sync comment liked IDs from backend data (handles login/logout user switch)
+watch(() => postStore.comments, (comments) => {
+  const ids = new Set<string>()
+  function collect( list: CommentVO[]) {
+    for (const c of list) {
+      if (c.isLiked) ids.add(c.id)
+      if (c.children?.length) collect(c.children)
+    }
+  }
+  collect(comments || [])
+  commentLikedIds.value = ids
+}, { deep: true, immediate: true })
+
 const sortedComments = computed(() => {
   const list = [...postStore.comments]
   if (sortMode.value === 'hot') {
@@ -73,6 +86,7 @@ const sortedComments = computed(() => {
 })
 
 async function handleSendComment() {
+  if (!useRequireAuth()) return
   if (!newComment.value.trim()) return
   const targetType = 'post'
   await postApi.createComment({
@@ -83,10 +97,14 @@ async function handleSendComment() {
   newComment.value = ''
   commentExpanded.value = false
   nextTick(() => autoResize(commentTextarea.value))
+  // 更新帖子列表中的评论数
+  const listItem = postStore.postList.find(p => p.id === props.targetId)
+  if (listItem) listItem.commentCount += 1
   await postStore.fetchComments(props.targetId, props.targetType)
 }
 
 async function handleSendReply() {
+  if (!useRequireAuth()) return
   if (!replyContent.value.trim() || !replyToId.value) return
   const targetType = 'post'
   const parentId = replyToId.value
@@ -101,6 +119,9 @@ async function handleSendReply() {
   replyToName.value = ''
   replyExpanded.value = false
   nextTick(() => autoResize(replyTextarea.value))
+  // 更新帖子列表中的评论数
+  const listItem = postStore.postList.find(p => p.id === props.targetId)
+  if (listItem) listItem.commentCount += 1
   // Auto-expand the parent comment so the new reply is visible
   const next = new Set(expandedReplies.value)
   next.add(parentId)
@@ -109,6 +130,7 @@ async function handleSendReply() {
 }
 
 function onCommentClick(commentId: string, nickname: string) {
+  if (!useRequireAuth()) return
   replyToId.value = commentId
   replyToName.value = nickname
   replyContent.value = ''
@@ -132,6 +154,7 @@ function toggleReplies(commentId: string) {
 }
 
 async function handleLikeComment(comment: CommentVO) {
+  if (!useRequireAuth()) return
   const isLiked = commentLikedIds.value.has(comment.id)
   try {
     if (isLiked) {
@@ -139,13 +162,15 @@ async function handleLikeComment(comment: CommentVO) {
     } else {
       await postApi.likeComment(comment.id)
     }
+    // 乐观更新本地状态：同时更新 isLiked（供 watcher 同步）和 likeCount
+    comment.isLiked = !isLiked
+    comment.likeCount += isLiked ? -1 : 1
+    if (comment.likeCount < 0) comment.likeCount = 0
     const next = new Set(commentLikedIds.value)
     if (isLiked) {
       next.delete(comment.id)
-      comment.likeCount = Math.max(0, comment.likeCount - 1)
     } else {
       next.add(comment.id)
-      comment.likeCount += 1
     }
     commentLikedIds.value = next
   } catch { /* ignore */ }
@@ -154,11 +179,7 @@ async function handleLikeComment(comment: CommentVO) {
 async function handleDeleteComment(commentId: string) {
   if (!confirm('确定要删除这条评论吗？')) return
   try {
-    const token = authStore.token || undefined
-    const resp = await fetch(`${API_BASE_URL}/api/comments/${commentId}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
-    }).then(r => r.json())
+    const resp = await postApi.deleteComment(commentId)
     if (resp.code === 200) {
       await postStore.fetchComments(props.targetId, props.targetType)
     }

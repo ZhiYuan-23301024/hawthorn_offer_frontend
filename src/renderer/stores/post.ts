@@ -85,6 +85,8 @@ export const usePostStore = defineStore('post', () => {
         }))
         postTotal.value = res.data.total
         postPage.value = page
+        // 从服务端同步点赞状态（处理跨标签页/跨设备同步）
+        syncLikedIdsFromList(res.data.items || [])
       }
     } finally {
       loading.value = false
@@ -105,6 +107,14 @@ export const usePostStore = defineStore('post', () => {
         const res = await postApi.getPostDetail(id)
         if (res.code === 200) {
           currentDetail.value = res.data
+          // 从服务端同步点赞状态
+          const newLiked = new Set(likedIds.value)
+          if (res.data.isLiked) {
+            newLiked.add(id)
+          } else {
+            newLiked.delete(id)
+          }
+          likedIds.value = newLiked
         }
       }
       await fetchComments(id, type)
@@ -144,12 +154,14 @@ export const usePostStore = defineStore('post', () => {
       if (item) {
         const currentCount = item.likeCount || 0
         item.likeCount = currentCount + (isLiked ? -1 : 1)
+        item.isLiked = !isLiked
       }
 
       if (currentDetail.value && selectedId.value === id) {
-        const detail = currentDetail.value as { likeCount?: number }
+        const detail = currentDetail.value as { likeCount?: number; isLiked?: boolean }
         const currentCount = detail.likeCount || 0
         detail.likeCount = currentCount + (isLiked ? -1 : 1)
+        detail.isLiked = !isLiked
       }
     } catch {
       // API call failed, don't update local state
@@ -193,6 +205,25 @@ export const usePostStore = defineStore('post', () => {
     myResumeId.value = null
   }
 
+  function syncLikedIdsFromList(list: { id: string; isLiked?: boolean }[]) {
+    const next = new Set(likedIds.value)
+    for (const item of list) {
+      if (item.isLiked) {
+        next.add(item.id)
+      } else {
+        next.delete(item.id)
+      }
+    }
+    likedIds.value = next
+  }
+
+  function clearLikedIds() {
+    likedIds.value = new Set()
+    try {
+      localStorage.removeItem(LIKED_IDS_KEY)
+    } catch { /* ignore */ }
+  }
+
   return {
     activeTab, resumeKeyword, regularKeyword, keyword, sort, loading,
     resumePostList, resumePostTotal, resumePostPage,
@@ -201,6 +232,6 @@ export const usePostStore = defineStore('post', () => {
     likedIds,
     fetchResumePostList, fetchPostList, selectPost, toggleLike,
     setTab, setKeyword, setSort, fetchComments,
-    myResumeId, checkMyResumePost, clearMyResumeId
+    myResumeId, checkMyResumePost, clearMyResumeId, clearLikedIds
   }
 })

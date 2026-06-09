@@ -14,6 +14,7 @@ export interface PostListVO {
   isAnonymous: boolean
   commentCount: number
   likeCount: number
+  isLiked: boolean
   authorName: string
   authorAvatar: string
   authorAvatarUrl: string | null
@@ -60,6 +61,7 @@ export interface PostDetail {
   isAnonymous: boolean
   commentCount: number
   likeCount: number
+  isLiked: boolean
   createdAt: string
   updatedAt: string
 }
@@ -73,6 +75,7 @@ export interface CommentVO {
   targetId: string
   parentId: string | null
   likeCount: number
+  isLiked: boolean
   createdAt: string
   children: CommentVO[]
 }
@@ -163,4 +166,8 @@ export function likeComment(id: string) {
 
 export function unlikeComment(id: string) {
   return apiPost<ApiResponse<void>>(`/api/comments/${id}/unlike`, {}, getToken())
+}
+
+export function deleteComment(id: string) {
+  return apiDelete<ApiResponse<void>>(`/api/comments/${id}`, getToken())
 }

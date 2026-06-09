@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { Search } from 'lucide-vue-next'
 import { usePostStore } from '@/stores/post'
 import { useEditorStore } from '@/stores/editor'
 import { useAuthStore } from '@/stores/auth'
+import { useRequireAuth } from '@/composables/useRequireAuth'
 import ResumePostCard from './ResumePostCard.vue'
 import RegularPostCard from './RegularPostCard.vue'
 import PostDetail from '@/components/Editor/PostDetail.vue'
@@ -57,6 +58,7 @@ function onSelectPost(id: string, type: 'resume' | 'regular') {
 }
 
 function onLike(id: string) {
+  if (!useRequireAuth()) return
   const type = postStore.activeTab === 'resume' ? 'resume' : 'regular'
   postStore.toggleLike(id, type)
 }
@@ -70,6 +72,7 @@ async function checkMyResume() {
 }
 
 function handlePublish() {
+  if (!useRequireAuth()) return
   const type = postStore.activeTab
   if (type === 'resume' && postStore.myResumeId) {
     // View/edit existing resume
@@ -101,7 +104,23 @@ onMounted(() => {
   searchInput.value = postStore.keyword
   postStore.fetchResumePostList()
   checkMyResume()
+  document.addEventListener('visibilitychange', onVisibilityChange)
 })
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+})
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    const kw = postStore.keyword || undefined
+    if (postStore.activeTab === 'resume') {
+      postStore.fetchResumePostList(1, kw)
+    } else {
+      postStore.fetchPostList(1, kw, postStore.sort)
+    }
+  }
+}
 
 watch(() => postStore.resumePostList.length, () => {
   checkMyResume()

@@ -44,13 +44,6 @@ const chsiStatusText = computed(() => {
 
 const heatDays = ref(30)
 
-function formatLocalDateKey(date: Date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 const heatMap = computed(() => {
   const today = new Date()
   const source = new Map(authStore.activity.map(item => [item.date, item.count]))
@@ -59,7 +52,7 @@ const heatMap = computed(() => {
   for (let i = heatDays.value - 1; i >= 0; i -= 1) {
     const d = new Date(today)
     d.setDate(d.getDate() - i)
-    const key = formatLocalDateKey(d)
+    const key = d.toISOString().slice(0, 10)
     points.push({ date: key, count: source.get(key) || 0 })
   }
   return points
@@ -84,12 +77,10 @@ const avatarUrl = computed(() => {
 })
 
 const heatIntensity = (count: number) => {
-  if (count <= 0) return 'bg-[#30363d]'
-  if (count <= 1) return 'bg-[#1d4ed8]'
-  if (count <= 3) return 'bg-[#16a34a]'
-  if (count <= 5) return 'bg-[#eab308]'
-  if (count <= 8) return 'bg-[#f97316]'
-  return 'bg-[#ef4444]'
+  if (count <= 0) return 'bg-gray-700'
+  if (count <= 2) return 'bg-emerald-700'
+  if (count <= 4) return 'bg-emerald-500'
+  return 'bg-emerald-300'
 }
 
 const switchMode = (target: 'login' | 'register') => {

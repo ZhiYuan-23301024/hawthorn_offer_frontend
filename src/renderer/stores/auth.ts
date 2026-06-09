@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { apiGet, apiPost, apiPut, apiUpload, ApiResponse } from '@/api/http'
 import type { UserProfile, HeatmapPoint, ChsiVerificationStatus } from '@/types'
+import { usePostStore } from '@/stores/post'
 
 interface LoginResponse {
   token: string
@@ -62,6 +63,14 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     localStorage.removeItem(AUTH_TOKEN_KEY)
     chsiVerification.value = null
+    // 清除帖子相关缓存，避免退出登录后残留上一用户的点赞和评论数据
+    localStorage.removeItem('hawthorn_post_liked_ids')
+    try {
+      const postStore = usePostStore()
+      postStore.clearLikedIds()
+      postStore.comments = []
+      postStore.currentDetail = null
+    } catch { /* store 可能尚未初始化，忽略 */ }
   }
 
   async function login(payload: LoginPayload) {

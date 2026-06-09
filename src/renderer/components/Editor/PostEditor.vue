@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { usePostStore } from '@/stores/post'
 import { useEditorStore } from '@/stores/editor'
 import * as postApi from '@/api/post'
+import { useRequireAuth } from '@/composables/useRequireAuth'
 import PostDetail from './PostDetail.vue'
 
 const props = defineProps<{
@@ -34,6 +35,7 @@ function handleCancel() {
 }
 
 async function handleSubmit() {
+  if (!useRequireAuth()) return
   error.value = ''
   if (props.postType === 'resume') {
     if (!resumeName.value.trim() || !content.value.trim()) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed, ref } from 'vue'
+import { onMounted, onUnmounted, computed, ref } from 'vue'
 import { Heart, Edit3, Trash2 } from 'lucide-vue-next'
 import { usePostStore } from '@/stores/post'
 import { useAuthStore } from '@/stores/auth'
@@ -8,6 +8,7 @@ import { useWorkspaceStore } from '@/stores/workspace'
 import * as postApi from '@/api/post'
 import type { ResumePostDetail, PostDetail, PostListVO } from '@/api/post'
 import { avatarUrl, avatarColor } from '@/utils/format'
+import { useRequireAuth } from '@/composables/useRequireAuth'
 import CommentSection from './CommentSection.vue'
 import PostEditor from './PostEditor.vue'
 
@@ -97,6 +98,7 @@ async function handleDelete() {
 }
 
 function handleLike() {
+  if (!useRequireAuth()) return
   postStore.toggleLike(props.postId, props.postType)
 }
 
@@ -111,7 +113,18 @@ function formatTime(dateStr: string): string {
 
 onMounted(async () => {
   postStore.selectPost(props.postId, props.postType)
+  document.addEventListener('visibilitychange', onVisibilityChange)
 })
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+})
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    postStore.selectPost(props.postId, props.postType)
+  }
+}
 </script>
 
 <template>

@@ -1,5 +1,6 @@
 node_modules
 dist
+output
 package-lock.json
 release
 Users21774AppDataLocalnpm-cache

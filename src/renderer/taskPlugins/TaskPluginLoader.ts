@@ -1,6 +1,19 @@
 import { ref, markRaw } from 'vue'
 import type { PluginManifest, PluginInstance, PluginAPI } from '../plugins/types'
 
+declare global {
+  interface Window {
+    electronAPI: {
+      savePluginCode: (pluginId: string, code: string) => Promise<boolean>
+      loadPluginCode: (pluginId: string) => Promise<string | null>
+      deletePluginCode: (pluginId: string) => Promise<boolean>
+      loadInstalledPlugins: () => Promise<PluginManifest[]>
+      savePluginManifest: (manifest: PluginManifest) => Promise<boolean>
+      deletePluginManifest: (pluginId: string) => Promise<boolean>
+    }
+  }
+}
+
 export class PluginLoader implements PluginAPI {
   private plugins = ref<Map<string, PluginInstance>>(new Map())
   private pluginCache = ref<Map<string, string>>(new Map())
@@ -42,6 +55,9 @@ export class PluginLoader implements PluginAPI {
     const manifest = await this.fetchManifest(pluginId)
     const code = await this.downloadPlugin(pluginId)
     await this.validateCode(code)
+
+    await this.persistToLocal(pluginId, code, manifest)
+
     const component = await this.compileComponent(code)
     
     const instance: PluginInstance = {
@@ -57,6 +73,18 @@ export class PluginLoader implements PluginAPI {
     
     this.onInstall?.(pluginId)
     return instance
+  }
+
+  private async persistToLocal(pluginId: string, code: string, manifest: PluginManifest): Promise<void> {
+    if (window.electronAPI) {
+      try {
+        await window.electronAPI.savePluginCode(pluginId, code)
+        await window.electronAPI.savePluginManifest(manifest)
+        console.log(`[PluginLoader] 插件已持久化到本地: ${pluginId}`)
+      } catch (err) {
+        console.warn(`[PluginLoader] 本地持久化失败 (非 Electron 环境可忽略):`, err)
+      }
+    }
   }
 
   private async fetchManifest(pluginId: string): Promise<PluginManifest> {
@@ -128,6 +156,8 @@ export class PluginLoader implements PluginAPI {
       instance.component?.unmount?.()
       this.plugins.value.delete(pluginId)
       this.pluginCache.value.delete(pluginId)
+
+      await this.removeFromLocal(pluginId)
       
       try {
         await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/uninstall`, {
@@ -145,10 +175,68 @@ export class PluginLoader implements PluginAPI {
     }
   }
 
+  private async removeFromLocal(pluginId: string): Promise<void> {
+    if (window.electronAPI) {
+      try {
+        await window.electronAPI.deletePluginCode(pluginId)
+        await window.electronAPI.deletePluginManifest(pluginId)
+        console.log(`[PluginLoader] 本地插件已清理: ${pluginId}`)
+      } catch (err) {
+        console.warn(`[PluginLoader] 本地清理失败:`, err)
+      }
+    }
+  }
+
   async update(pluginId: string): Promise<void> {
     await this.uninstall(pluginId)
     await this.install(pluginId)
     this.onUpdate?.(pluginId)
+  }
+
+  async restoreInstalledPlugins(): Promise<PluginInstance[]> {
+    if (!window.electronAPI) {
+      console.log('[PluginLoader] 非 Electron 环境，跳过本地插件恢复')
+      return []
+    }
+
+    try {
+      const installedManifests: PluginManifest[] = await window.electronAPI.loadInstalledPlugins()
+      console.log(`[PluginLoader] 发现 ${installedManifests.length} 个本地已安装插件`)
+
+      const restored: PluginInstance[] = []
+
+      for (const manifest of installedManifests) {
+        try {
+          const code = await window.electronAPI.loadPluginCode(manifest.id)
+          if (!code) {
+            console.warn(`[PluginLoader] 插件 ${manifest.id} 本地代码缺失，跳过`)
+            continue
+          }
+
+          await this.validateCode(code)
+          const component = await this.compileComponent(code)
+
+          const instance: PluginInstance = {
+            manifest,
+            component: markRaw(component),
+            mounted: false,
+            config: {}
+          }
+
+          this.plugins.value.set(manifest.id, instance)
+          this.pluginCache.value.set(manifest.id, code)
+          restored.push(instance)
+          console.log(`[PluginLoader] 已恢复插件: ${manifest.id}`)
+        } catch (err) {
+          console.error(`[PluginLoader] 恢复插件 ${manifest.id} 失败:`, err)
+        }
+      }
+
+      return restored
+    } catch (err) {
+      console.error('[PluginLoader] 读取本地插件清单失败:', err)
+      return []
+    }
   }
 
   getPlugin(pluginId: string): PluginInstance | null {

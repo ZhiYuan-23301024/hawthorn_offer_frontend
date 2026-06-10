@@ -21,6 +21,13 @@ app.use(pinia)
 import { taskPluginLoader } from './taskPlugins/TaskPluginLoader'
 taskPluginLoader.initialize(null, pinia)
 
+// 从本地文件系统恢复已安装的插件
+taskPluginLoader.restoreInstalledPlugins().then((restored) => {
+  if (restored.length > 0) {
+    console.log(`[App] 已从本地恢复 ${restored.length} 个插件`)
+  }
+})
+
 // Restore user session on app start
 import { useAuthStore } from '@/stores/auth'
 import { useSocialStore } from '@/stores/social'

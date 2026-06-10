@@ -1,10 +1,41 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 let mainWindow: BrowserWindow | null = null
+
+function getPluginsDir(): string {
+  const dir = join(app.getPath('userData'), 'plugins')
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true })
+  }
+  return dir
+}
+
+function getPluginsManifestPath(): string {
+  return join(getPluginsDir(), 'plugins.json')
+}
+
+function readPluginsManifest(): Record<string, any> {
+  const manifestPath = getPluginsManifestPath()
+  if (!existsSync(manifestPath)) {
+    return {}
+  }
+  try {
+    const raw = readFileSync(manifestPath, 'utf-8')
+    return JSON.parse(raw)
+  } catch {
+    return {}
+  }
+}
+
+function writePluginsManifest(manifest: Record<string, any>): void {
+  const manifestPath = getPluginsManifestPath()
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8')
+}
 
 function setupConsoleRedirect() {
   const originalLog = console.log
@@ -91,6 +122,57 @@ ipcMain.handle('file:open', async () => {
 ipcMain.handle('file:save', async (_, path: string, content: string) => {
   const fs = await import('fs')
   await fs.promises.writeFile(path, content, 'utf-8')
+  return true
+})
+
+// ===== 插件本地持久化 IPC handlers =====
+
+ipcMain.handle('plugin:save-code', async (_, pluginId: string, code: string) => {
+  const pluginsDir = getPluginsDir()
+  const filePath = join(pluginsDir, `${pluginId}.js`)
+  writeFileSync(filePath, code, 'utf-8')
+  console.log(`[Plugin] 插件代码已保存: ${filePath}`)
+  return true
+})
+
+ipcMain.handle('plugin:load-code', async (_, pluginId: string) => {
+  const pluginsDir = getPluginsDir()
+  const filePath = join(pluginsDir, `${pluginId}.js`)
+  if (!existsSync(filePath)) {
+    console.warn(`[Plugin] 插件代码不存在: ${filePath}`)
+    return null
+  }
+  return readFileSync(filePath, 'utf-8')
+})
+
+ipcMain.handle('plugin:delete-code', async (_, pluginId: string) => {
+  const pluginsDir = getPluginsDir()
+  const filePath = join(pluginsDir, `${pluginId}.js`)
+  if (existsSync(filePath)) {
+    unlinkSync(filePath)
+    console.log(`[Plugin] 插件代码已删除: ${filePath}`)
+  }
+  return true
+})
+
+ipcMain.handle('plugin:load-installed', async () => {
+  const manifest = readPluginsManifest()
+  return Object.values(manifest)
+})
+
+ipcMain.handle('plugin:save-manifest', async (_, pluginManifest: any) => {
+  const manifest = readPluginsManifest()
+  manifest[pluginManifest.id] = pluginManifest
+  writePluginsManifest(manifest)
+  console.log(`[Plugin] 插件清单已保存: ${pluginManifest.id}`)
+  return true
+})
+
+ipcMain.handle('plugin:delete-manifest', async (_, pluginId: string) => {
+  const manifest = readPluginsManifest()
+  delete manifest[pluginId]
+  writePluginsManifest(manifest)
+  console.log(`[Plugin] 插件清单已删除: ${pluginId}`)
   return true
 })
 

@@ -133,24 +133,24 @@ export class PluginLoader implements PluginAPI {
     if (instance) {
       instance.component?.unmount?.()
       this.plugins.value.delete(pluginId)
-      this.pluginCache.value.delete(pluginId)
-
-      await this.removeFromLocal(pluginId)
-      
-      try {
-        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/uninstall`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'X-User-Id': 'test-user-001'
-          }
-        })
-      } catch (err) {
-        console.warn('Failed to report uninstallation:', err)
-      }
-      
-      this.onUninstall?.(pluginId)
     }
+    this.pluginCache.value.delete(pluginId)
+
+    await this.removeFromLocal(pluginId)
+    
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/uninstall`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-User-Id': 'test-user-001'
+        }
+      })
+    } catch (err) {
+      console.warn('Failed to report uninstallation:', err)
+    }
+    
+    this.onUninstall?.(pluginId)
   }
 
   private async removeFromLocal(pluginId: string): Promise<void> {

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { CheckinTask, CheckinPlan, PlanTask } from '@/types/checkin'
+import { taskPluginLoader } from '@/taskPlugins/TaskPluginLoader'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
 
@@ -201,15 +202,9 @@ export const useCheckinStore = defineStore('checkin', () => {
     const task = availableTasks.value.find(t => t.id === taskId)
     if (task && !installedTasks.value.find(t => t.id === taskId)) {
       try {
-        await fetch(`${API_BASE_URL}/plugins/${taskId}/install`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-Id': 'test-user-001'
-          }
-        })
+        await taskPluginLoader.install(taskId)
       } catch (err) {
-        console.warn('Failed to report install:', err)
+        console.warn('Failed to install plugin:', err)
       }
       installedTasks.value.push(task)
       saveInstalledTasks()
@@ -218,15 +213,9 @@ export const useCheckinStore = defineStore('checkin', () => {
 
   async function uninstallTask(taskId: string) {
     try {
-      await fetch(`${API_BASE_URL}/plugins/${taskId}/uninstall`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Id': 'test-user-001'
-        }
-      })
+      await taskPluginLoader.uninstall(taskId)
     } catch (err) {
-      console.warn('Failed to report uninstall:', err)
+      console.warn('Failed to uninstall plugin:', err)
     }
     installedTasks.value = installedTasks.value.filter(t => t.id !== taskId)
     saveInstalledTasks()

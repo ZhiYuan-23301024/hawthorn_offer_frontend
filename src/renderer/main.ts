@@ -8,6 +8,7 @@ import './plugins/builtin/search'
 import './plugins/builtin/git'
 import './plugins/builtin/extensions'
 import './plugins/builtin/postBrowser'
+import './plugins/builtin/chat'
 import './plugins/builtin/account'
 import './plugins/builtin/checkin'
 
@@ -22,9 +23,15 @@ taskPluginLoader.initialize(null, pinia)
 
 // Restore user session on app start
 import { useAuthStore } from '@/stores/auth'
+import { useSocialStore } from '@/stores/social'
 const authStore = useAuthStore()
 if (authStore.token) {
-  authStore.fetchCurrentUser()
+  authStore.fetchCurrentUser().then(() => {
+    if (authStore.isAuthenticated) {
+      const socialStore = useSocialStore()
+      socialStore.fetchConversations()
+    }
+  })
 }
 
 app.mount('#app')

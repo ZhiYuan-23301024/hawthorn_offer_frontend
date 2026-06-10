@@ -72,7 +72,7 @@ function handleAccountFeatureSelect(featureId: string) {
 
 <template>
   <aside class="w-64 bg-vscode-bg border-r border-vscode-border flex flex-col">
-    <div class="p-2 border-b border-vscode-border">
+    <div v-if="currentPlugin?.id !== 'chat'" class="p-2 border-b border-vscode-border">
       <div class="flex items-center justify-between">
         <span class="text-xs font-semibold text-vscode-text-secondary uppercase tracking-wider">
           {{ directoryTitle }}

@@ -1,10 +1,29 @@
 <script setup lang="ts">
-import { FolderOpen, Search, GitBranch, Puzzle, UserCircle, MessageSquare, CalendarCheck } from 'lucide-vue-next'
+import { onMounted, onUnmounted } from 'vue'
+import { FolderOpen, Search, GitBranch, Puzzle, UserCircle, MessageSquare, MessageCircle, CalendarCheck } from 'lucide-vue-next'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useWorkspaceStore } from '@/stores/workspace'
+import { useSocialStore } from '@/stores/social'
+import { useAuthStore } from '@/stores/auth'
 
 const sidebarStore = useSidebarStore()
 const workspaceStore = useWorkspaceStore()
+const socialStore = useSocialStore()
+const authStore = useAuthStore()
+
+let unreadPollTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  unreadPollTimer = setInterval(() => {
+    if (authStore.isAuthenticated) {
+      socialStore.fetchConversations()
+    }
+  }, 30000)
+})
+
+onUnmounted(() => {
+  if (unreadPollTimer) { clearInterval(unreadPollTimer); unreadPollTimer = null }
+})
 
 const iconComponents: Record<string, any> = {
   'folder-open': FolderOpen,
@@ -12,8 +31,9 @@ const iconComponents: Record<string, any> = {
   'git-branch': GitBranch,
   'puzzle': Puzzle,
   'user-circle': UserCircle,
-  'calendar-check': CalendarCheck,
-  'message-square': MessageSquare
+  'message-square': MessageSquare,
+  'message-circle': MessageCircle,
+  'calendar-check': CalendarCheck
 }
 
 function handleItemClick(itemId: string) {
@@ -42,6 +62,11 @@ function handleItemClick(itemId: string) {
             'text-vscode-icon': sidebarStore.activeItem !== item.id
           }"
         />
+        <!-- 未读消息角标 -->
+        <span
+          v-if="item.id === 'chat' && socialStore.totalUnread > 0"
+          class="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 leading-none"
+        >{{ socialStore.totalUnread > 99 ? '99+' : socialStore.totalUnread }}</span>
         <span class="absolute left-full ml-2 px-2 py-1 bg-vscode-active text-vscode-text text-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
           {{ item.label }}
         </span>

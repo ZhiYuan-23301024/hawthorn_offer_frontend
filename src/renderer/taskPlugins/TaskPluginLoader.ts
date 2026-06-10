@@ -54,7 +54,6 @@ export class PluginLoader implements PluginAPI {
   async install(pluginId: string): Promise<PluginInstance> {
     const manifest = await this.fetchManifest(pluginId)
     const code = await this.downloadPlugin(pluginId)
-    await this.validateCode(code)
 
     await this.persistToLocal(pluginId, code, manifest)
 
@@ -101,27 +100,6 @@ export class PluginLoader implements PluginAPI {
       throw new Error(`Failed to download plugin: ${response.statusText}`)
     }
     return response.text()
-  }
-
-  private async validateCode(code: string): Promise<void> {
-    const dangerousPatterns = [
-      /eval\(/g,
-      /new Function\(/g,
-      /document\.write\(/g,
-      /window\.location/g,
-      /localStorage\.setItem/g,
-      /sessionStorage\.setItem/g
-    ]
-    
-    for (const pattern of dangerousPatterns) {
-      if (pattern.test(code)) {
-        throw new Error(`插件代码包含危险操作: ${pattern}`)
-      }
-    }
-    
-    if (code.length > 100 * 1024) {
-      throw new Error('插件代码过大（超过100KB）')
-    }
   }
 
   private async compileComponent(code: string): Promise<any> {
@@ -213,7 +191,6 @@ export class PluginLoader implements PluginAPI {
             continue
           }
 
-          await this.validateCode(code)
           const component = await this.compileComponent(code)
 
           const instance: PluginInstance = {

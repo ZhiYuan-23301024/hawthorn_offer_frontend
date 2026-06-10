@@ -4,7 +4,7 @@ import { Check, Circle, ArrowRight, Play } from 'lucide-vue-next'
 import { useCheckinStore } from '@/stores/checkin'
 import { useEditorStore } from '@/stores/editor'
 import CheckinTaskView from './CheckinTaskView.vue'
-import type { CheckinPlan, PlanTask } from '@/types/checkin'
+import type { CheckinPlan, PlanNode } from '@/types/checkin'
 
 const props = defineProps<{
   planId: string
@@ -17,22 +17,52 @@ const plan = ref<CheckinPlan | null>(null)
 
 const progress = computed(() => {
   if (!plan.value) return 0
-  const completed = plan.value.tasks.filter(t => t.completed).length
-  return Math.round((completed / plan.value.tasks.length) * 100)
+  const completed = plan.value.nodes.filter(n => n.completed).length
+  return Math.round((completed / plan.value.nodes.length) * 100)
 })
+
+const sortedNodes = computed(() => {
+  if (!plan.value) return []
+  return getMainPathNodes(plan.value)
+})
+
+function getMainPathNodes(plan: CheckinPlan): PlanNode[] {
+  if (plan.nodes.length === 0) return []
+  
+  const nodesWithIncoming = new Set(plan.edges.map(e => e.targetNodeId))
+  const entryNode = plan.nodes.find(n => !nodesWithIncoming.has(n.id)) || plan.nodes[0]
+  
+  const result: PlanNode[] = []
+  const visited = new Set<string>()
+  const queue = [entryNode.id]
+  
+  while (queue.length > 0) {
+    const nodeId = queue.shift()!
+    if (visited.has(nodeId)) continue
+    visited.add(nodeId)
+    const node = plan.nodes.find(n => n.id === nodeId)
+    if (node) result.push(node)
+    plan.edges
+      .filter(e => e.sourceNodeId === nodeId && e.type === 'main')
+      .forEach(e => queue.push(e.targetNodeId))
+  }
+  
+  const remainingNodes = plan.nodes.filter(n => !visited.has(n.id))
+  return [...result, ...remainingNodes]
+}
 
 function loadPlan() {
   plan.value = checkinStore.myPlans.find(p => p.id === props.planId) || null
 }
 
-function openTask(task: PlanTask) {
+function openTask(node: PlanNode) {
   if (!plan.value) return
   
   editorStore.openComponentTab(
-    `checkin:task:${task.id}`,
-    task.taskName,
+    `checkin:task:${node.id}`,
+    node.taskName,
     CheckinTaskView,
-    { planId: plan.value.id, taskId: task.id, taskName: task.taskName }
+    { planId: plan.value.id, taskId: node.id, taskName: node.taskName }
   )
 }
 
@@ -68,16 +98,16 @@ onMounted(loadPlan)
           
           <div class="space-y-4">
             <div
-              v-for="(task, index) in plan.tasks"
-              :key="task.id"
+              v-for="(node, index) in sortedNodes"
+              :key="node.id"
               class="relative flex items-start"
             >
               <div
                 class="w-12 h-12 rounded-full flex items-center justify-center z-10 cursor-pointer transition-transform hover:scale-110"
-                :class="task.completed ? 'bg-vscode-success' : 'bg-vscode-active'"
-                @click="openTask(task)"
+                :class="node.completed ? 'bg-vscode-success' : 'bg-vscode-active'"
+                @click="openTask(node)"
               >
-                <Check v-if="task.completed" class="w-6 h-6 text-white" />
+                <Check v-if="node.completed" class="w-6 h-6 text-white" />
                 <Circle v-else class="w-6 h-6 text-vscode-icon-hover" />
               </div>
               
@@ -86,25 +116,25 @@ onMounted(loadPlan)
                   <div>
                     <div class="flex items-center">
                       <span class="text-sm font-medium text-vscode-text-secondary mr-2">步骤 {{ index + 1 }}</span>
-                      <h3 class="text-lg font-semibold text-vscode-text">{{ task.taskName }}</h3>
+                      <h3 class="text-lg font-semibold text-vscode-text">{{ node.taskName }}</h3>
                     </div>
                     <p class="text-sm text-vscode-text-secondary mt-1">点击任务节点开始执行</p>
                   </div>
                   <button
                     class="flex items-center px-3 py-1.5 rounded bg-vscode-active hover:bg-vscode-hover text-vscode-icon-hover text-sm transition-colors"
-                    @click="openTask(task)"
+                    @click="openTask(node)"
                   >
                     <Play class="w-4 h-4 mr-2" />
                     开始
                   </button>
                 </div>
-                <div v-if="task.completed && task.completedAt" class="mt-2 text-xs text-vscode-text-secondary">
-                  完成时间: {{ new Date(task.completedAt).toLocaleString() }}
+                <div v-if="node.completed && node.completedAt" class="mt-2 text-xs text-vscode-text-secondary">
+                  完成时间: {{ new Date(node.completedAt).toLocaleString() }}
                 </div>
               </div>
               
               <ArrowRight
-                v-if="index < plan.tasks.length - 1"
+                v-if="index < sortedNodes.length - 1"
                 class="absolute left-6 top-full w-4 h-4 text-vscode-border -translate-x-1/2 translate-y-1"
               />
             </div>

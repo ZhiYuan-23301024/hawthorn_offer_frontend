@@ -13,12 +13,38 @@ export interface CheckinTask {
   readme: string
 }
 
+export interface PlanNode {
+  id: string
+  taskId: string
+  taskName: string
+  category: string
+  x: number
+  y: number
+  completed: boolean
+  completedAt?: string
+}
+
+export interface PlanEdge {
+  id: string
+  sourceNodeId: string
+  targetNodeId: string
+  type: 'main' | 'branch' | 'side'
+}
+
+export const EdgeType = {
+  MAIN: 'main' as const,
+  BRANCH: 'branch' as const,
+  SIDE: 'side' as const,
+}
+
 export interface CheckinPlan {
   id: string
   name: string
   description: string
   createdAt: string
-  tasks: PlanTask[]
+  nodes: PlanNode[]
+  edges: PlanEdge[]
+  tasks?: PlanTask[]
 }
 
 export interface PlanTask {

@@ -345,8 +345,8 @@ export const useCheckinStore = defineStore('checkin', () => {
     if (plan) {
       const node = plan.nodes.find(n => n.id === nodeId)
       if (node) {
-        node.completed = true
-        node.completedAt = new Date().toISOString()
+        node.completed = !node.completed
+        node.completedAt = node.completed ? new Date().toISOString() : undefined
         saveMyPlans()
       }
     }

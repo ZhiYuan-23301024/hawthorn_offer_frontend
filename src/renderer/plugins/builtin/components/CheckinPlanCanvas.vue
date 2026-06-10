@@ -118,10 +118,12 @@ function handleDrop(e: DragEvent) {
  }
 }
 function handleMouseDown(e: MouseEvent) {
- if ((e.target as HTMLElement).classList.contains('canvas-area') && !canvasState.isDraggingNode) {
+ const target = e.target as HTMLElement;
+ if (target.closest('.canvas-area') && !target.closest('button') && !target.closest('.node-card') && !canvasState.isDraggingNode) {
  canvasState.isPanning = true;
  canvasState.dragStartX = e.clientX - canvasState.offsetX;
  canvasState.dragStartY = e.clientY - canvasState.offsetY;
+ e.preventDefault();
  }
 }
 function handleMouseMove(e: MouseEvent) {
@@ -297,10 +299,14 @@ const sideEdgeCount = () => localEdges.value.filter(e => e.type === 'side').leng
 onMounted(() => {
  window.addEventListener('keydown', handleKeyDown);
  window.addEventListener('click', closeContextMenu);
+ window.addEventListener('mousemove', handleMouseMove);
+ window.addEventListener('mouseup', handleMouseUp);
 });
 onUnmounted(() => {
  window.removeEventListener('keydown', handleKeyDown);
  window.removeEventListener('click', closeContextMenu);
+ window.removeEventListener('mousemove', handleMouseMove);
+ window.removeEventListener('mouseup', handleMouseUp);
 });
 </script>
 

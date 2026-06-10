@@ -53,7 +53,7 @@ function handleTargetHandleMouseDown(e: MouseEvent) {
 
 <template>
   <div
-    class="absolute w-[160px] h-[72px] rounded-[10px] flex flex-col items-center justify-center cursor-move transition-all duration-200 select-none"
+    class="node-card absolute w-[160px] h-[72px] rounded-[10px] flex flex-col items-center justify-center cursor-move transition-all duration-200 select-none"
     :class="[
       categoryStyles.bg,
       categoryStyles.border,

@@ -50,16 +50,6 @@ const markerId = computed(() => `arrowhead-${props.edge.type}`)
   >
     <path
       :d="pathData"
-      :stroke="edgeStyles.stroke"
-      :stroke-width="isSelected ? `${parseInt(edgeStyles.strokeWidth) + 1}` : edgeStyles.strokeWidth"
-      :stroke-dasharray="edgeStyles.strokeDasharray"
-      fill="none"
-      :stroke-linecap="'round'"
-      class="transition-all duration-200"
-    />
-    
-    <path
-      :d="pathData"
       :stroke="isSelected ? edgeStyles.stroke : 'transparent'"
       stroke-width="12"
       fill="none"
@@ -69,10 +59,12 @@ const markerId = computed(() => `arrowhead-${props.edge.type}`)
     <path
       :d="pathData"
       :stroke="edgeStyles.stroke"
-      :stroke-width="edgeStyles.strokeWidth"
+      :stroke-width="isSelected ? `${parseInt(edgeStyles.strokeWidth) + 1}` : edgeStyles.strokeWidth"
       :stroke-dasharray="edgeStyles.strokeDasharray"
       fill="none"
+      :stroke-linecap="'round'"
       :marker-end="`url(#${markerId})`"
+      class="transition-all duration-200"
     />
   </g>
 </template>

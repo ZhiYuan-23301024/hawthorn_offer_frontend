@@ -1,4 +1,4 @@
-<script setup lang="ts">import { ref, reactive, onMounted, onUnmounted } from 'vue';
+<script setup lang="ts">import { ref, reactive, watch, onMounted, onUnmounted } from 'vue';
 import { Save, Undo, Redo, Maximize2, ZoomIn, ZoomOut, Trash2 } from 'lucide-vue-next';
 import CheckinNode from './CheckinNode.vue';
 import CheckinEdge from './CheckinEdge.vue';
@@ -30,6 +30,10 @@ const canvasState = reactive({
  connectEdgeType: 'main' as 'main' | 'branch' | 'side',
  tempLineEndX: 0,
  tempLineEndY: 0,
+ showContextMenu: false,
+ contextMenuX: 0,
+ contextMenuY: 0,
+ contextMenuTarget: 'edge' as 'edge' | 'node' | null,
 });
 const undoStack: {
  nodes: PlanNode[];
@@ -41,6 +45,11 @@ const redoStack: {
 }[] = [];
 const localNodes = ref<PlanNode[]>(JSON.parse(JSON.stringify(props.nodes)));
 const localEdges = ref<PlanEdge[]>(JSON.parse(JSON.stringify(props.edges)));
+
+watch(() => [props.nodes, props.edges], () => {
+  localNodes.value = JSON.parse(JSON.stringify(props.nodes));
+  localEdges.value = JSON.parse(JSON.stringify(props.edges));
+}, { deep: true });
 function pushUndo() {
  undoStack.push({
  nodes: JSON.parse(JSON.stringify(localNodes.value)),
@@ -253,6 +262,29 @@ function getEdgeColor(type: string) {
  };
  return colors[type] || '#3b82f6';
 }
+function closeContextMenu() {
+ canvasState.showContextMenu = false;
+}
+function handleContextMenu(e: MouseEvent) {
+ e.preventDefault();
+ if (canvasState.selectedEdgeId) {
+ canvasState.contextMenuX = e.clientX;
+ canvasState.contextMenuY = e.clientY;
+ canvasState.contextMenuTarget = 'edge';
+ canvasState.showContextMenu = true;
+ }
+}
+function toggleEdgeType(type: 'main' | 'branch' | 'side') {
+ if (canvasState.selectedEdgeId) {
+ pushUndo();
+ const edge = localEdges.value.find(e => e.id === canvasState.selectedEdgeId);
+ if (edge) {
+ edge.type = type;
+ emit('update', localNodes.value, localEdges.value);
+ }
+ }
+ closeContextMenu();
+}
 function getSourceNode(edge: PlanEdge) {
  return localNodes.value.find(n => n.id === edge.sourceNodeId);
 }
@@ -264,9 +296,11 @@ const branchEdgeCount = () => localEdges.value.filter(e => e.type === 'branch').
 const sideEdgeCount = () => localEdges.value.filter(e => e.type === 'side').length;
 onMounted(() => {
  window.addEventListener('keydown', handleKeyDown);
+ window.addEventListener('click', closeContextMenu);
 });
 onUnmounted(() => {
  window.removeEventListener('keydown', handleKeyDown);
+ window.removeEventListener('click', closeContextMenu);
 });
 </script>
 
@@ -356,6 +390,7 @@ onUnmounted(() => {
       @mousemove="handleMouseMove"
       @mouseup="handleMouseUp"
       @mouseleave="handleMouseUp"
+      @contextmenu="handleContextMenu"
     >
       <svg
         ref="svgRef"
@@ -437,5 +472,35 @@ onUnmounted(() => {
       <span>(主线: {{ mainEdgeCount() }} / 支线A: {{ branchEdgeCount() }} / 支线B: {{ sideEdgeCount() }})</span>
       <span :class="{ 'text-vscode-warning': canvasState.isDirty }">{{ canvasState.isDirty ? '已修改' : '已保存' }}</span>
     </div>
+    
+    <Teleport to="body">
+      <div
+        v-if="canvasState.showContextMenu && canvasState.contextMenuTarget === 'edge'"
+        class="fixed z-50 bg-vscode-sidebar border border-vscode-border rounded-lg shadow-xl py-1 min-w-[140px]"
+        :style="{ left: `${canvasState.contextMenuX}px`, top: `${canvasState.contextMenuY}px` }"
+      >
+        <button
+          class="w-full px-4 py-2 text-left text-sm hover:bg-vscode-selected flex items-center space-x-2"
+          @click="toggleEdgeType('main')"
+        >
+          <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+          <span class="text-vscode-text">主线 (蓝色)</span>
+        </button>
+        <button
+          class="w-full px-4 py-2 text-left text-sm hover:bg-vscode-selected flex items-center space-x-2"
+          @click="toggleEdgeType('branch')"
+        >
+          <span class="w-3 h-3 rounded-full bg-orange-500"></span>
+          <span class="text-vscode-text">支线A (橙色)</span>
+        </button>
+        <button
+          class="w-full px-4 py-2 text-left text-sm hover:bg-vscode-selected flex items-center space-x-2"
+          @click="toggleEdgeType('side')"
+        >
+          <span class="w-3 h-3 rounded-full bg-green-500"></span>
+          <span class="text-vscode-text">支线B (绿色虚线)</span>
+        </button>
+      </div>
+    </Teleport>
   </div>
 </template>

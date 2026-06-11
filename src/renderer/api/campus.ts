@@ -1,4 +1,10 @@
-import { apiGet, type ApiResponse } from './http'
+import { apiGet, apiPost, type ApiResponse } from './http'
+import { useAuthStore } from '@/stores/auth'
+
+const getToken = () => {
+  const authStore = useAuthStore()
+  return authStore.token || undefined
+}
 
 export interface CampusCompanyCard {
   id: string
@@ -36,6 +42,29 @@ export interface CampusOverview {
   hotJobs: CampusJobCard[]
 }
 
+export interface CampusTimelineItem {
+  id: string
+  companyName?: string | null
+  campaignTitle?: string | null
+  type?: string | null
+  title: string
+  happenAt?: string | null
+  note?: string | null
+}
+
+export interface CampusFollowItem {
+  id: string
+  jobId: string
+  companyName?: string | null
+  jobTitle: string
+  city?: string | null
+  category?: string | null
+  deadline?: string | null
+  applyUrl?: string | null
+  status?: string | null
+  note?: string | null
+}
+
 export interface CampusCompanyDetail {
   company: CampusCompanyCard
   campaigns: Array<{
@@ -50,7 +79,7 @@ export interface CampusCompanyDetail {
 }
 
 export function getCampusOverview() {
-  return apiGet<ApiResponse<CampusOverview>>('/api/campus/overview')
+  return apiGet<ApiResponse<CampusOverview>>('/api/campus/overview', getToken())
 }
 
 export function getCampusCompanies(keyword?: string, status?: string) {
@@ -58,11 +87,11 @@ export function getCampusCompanies(keyword?: string, status?: string) {
   if (keyword) params.append('keyword', keyword)
   if (status) params.append('status', status)
   const query = params.toString()
-  return apiGet<ApiResponse<CampusCompanyCard[]>>(`/api/campus/companies${query ? `?${query}` : ''}`)
+  return apiGet<ApiResponse<CampusCompanyCard[]>>(`/api/campus/companies${query ? `?${query}` : ''}`, getToken())
 }
 
 export function getCampusCompanyDetail(id: string) {
-  return apiGet<ApiResponse<CampusCompanyDetail>>(`/api/campus/companies/${id}`)
+  return apiGet<ApiResponse<CampusCompanyDetail>>(`/api/campus/companies/${id}`, getToken())
 }
 
 export function getCampusJobs(keyword?: string, city?: string, category?: string) {
@@ -71,5 +100,17 @@ export function getCampusJobs(keyword?: string, city?: string, category?: string
   if (city) params.append('city', city)
   if (category) params.append('category', category)
   const query = params.toString()
-  return apiGet<ApiResponse<CampusJobCard[]>>(`/api/campus/jobs${query ? `?${query}` : ''}`)
+  return apiGet<ApiResponse<CampusJobCard[]>>(`/api/campus/jobs${query ? `?${query}` : ''}`, getToken())
+}
+
+export function getCampusTimeline() {
+  return apiGet<ApiResponse<CampusTimelineItem[]>>('/api/campus/timeline', getToken())
+}
+
+export function getMyCampusFollows() {
+  return apiGet<ApiResponse<CampusFollowItem[]>>('/api/campus/follows/me', getToken())
+}
+
+export function saveCampusFollow(payload: { jobId: string; status: string; note?: string }) {
+  return apiPost<ApiResponse<CampusFollowItem>>('/api/campus/follows', payload, getToken())
 }

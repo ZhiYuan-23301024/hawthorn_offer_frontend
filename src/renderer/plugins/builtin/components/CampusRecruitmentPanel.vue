@@ -13,13 +13,19 @@ import {
 import {
   getCampusCompanies,
   getCampusCompanyDetail,
+  getMyCampusFollows,
   getCampusJobs,
   getCampusOverview,
+  getCampusTimeline,
+  saveCampusFollow,
   type CampusCompanyCard,
   type CampusCompanyDetail,
+  type CampusFollowItem,
   type CampusJobCard,
-  type CampusOverview
+  type CampusOverview,
+  type CampusTimelineItem
 } from '@/api/campus'
+import { useAuthStore } from '@/stores/auth'
 
 type CampusSection = 'all' | 'overview' | 'companies' | 'jobs' | 'timeline' | 'tracking'
 
@@ -30,6 +36,7 @@ const props = withDefaults(defineProps<{
 })
 
 const activeSection = computed(() => props.activeSection || 'all')
+const authStore = useAuthStore()
 
 const showSection = (section: Exclude<CampusSection, 'all'>) => {
   return activeSection.value === 'all' || activeSection.value === section
@@ -40,11 +47,15 @@ const pageMessage = ref('')
 const overview = ref<CampusOverview | null>(null)
 const companies = ref<CampusCompanyCard[]>([])
 const jobs = ref<CampusJobCard[]>([])
+const timeline = ref<CampusTimelineItem[]>([])
+const follows = ref<CampusFollowItem[]>([])
 const companyKeyword = ref('')
 const jobKeyword = ref('')
+const followNoteDrafts = ref<Record<string, string>>({})
 const selectedCompanyId = ref('')
 const selectedCompanyDetail = ref<CampusCompanyDetail | null>(null)
 const selectedCompanyLoading = ref(false)
+const followLoadingJobId = ref('')
 
 const stats = computed(() => {
   const current = overview.value
@@ -59,13 +70,14 @@ const stats = computed(() => {
 const featuredCompanies = computed(() => overview.value?.featuredCompanies ?? [])
 const hotJobs = computed(() => overview.value?.hotJobs ?? [])
 
-const timelineTips = [
-  { date: '下一步', title: '补流程节点接口', note: '建议后端后续新增 milestones 表，把网申、笔试、面试、截止串成真实时间线。' },
-  { date: '当前状态', title: '时间线仍是占位区', note: '这块暂时还没有接真实接口，我先把结构位留好了。' }
-]
-
-const trackingTips = [
-  { company: '建议', role: '关注记录', status: '待实现', note: '下一步可以补 user_campus_follows 表，把“已投递 / 笔试中 / 面试中”做成用户自己的进度。' }
+const followStatusOptions = [
+  { value: 'BOOKMARKED', label: '已收藏' },
+  { value: 'PREPARING', label: '准备投递' },
+  { value: 'APPLIED', label: '已投递' },
+  { value: 'WRITTEN_TEST', label: '笔试中' },
+  { value: 'INTERVIEWING', label: '面试中' },
+  { value: 'OFFER', label: '已拿 Offer' },
+  { value: 'ENDED', label: '已结束' }
 ]
 
 async function loadOverview() {
@@ -84,6 +96,8 @@ async function loadCompanies(keyword?: string) {
     companies.value = res.data
     if (!selectedCompanyId.value && res.data.length > 0) {
       selectedCompanyId.value = res.data[0].id
+    } else if (selectedCompanyId.value && !res.data.some(item => item.id === selectedCompanyId.value)) {
+      selectedCompanyId.value = res.data[0]?.id || ''
     }
     return true
   }
@@ -95,6 +109,33 @@ async function loadJobs(keyword?: string) {
   const res = await getCampusJobs(keyword)
   if (res.code === 200) {
     jobs.value = res.data
+    return true
+  }
+  pageMessage.value = res.message
+  return false
+}
+
+async function loadTimeline() {
+  const res = await getCampusTimeline()
+  if (res.code === 200) {
+    timeline.value = res.data
+    return true
+  }
+  pageMessage.value = res.message
+  return false
+}
+
+async function loadFollows() {
+  if (!authStore.token) {
+    follows.value = []
+    followNoteDrafts.value = {}
+    return true
+  }
+
+  const res = await getMyCampusFollows()
+  if (res.code === 200) {
+    follows.value = res.data
+    followNoteDrafts.value = Object.fromEntries(res.data.map(item => [item.jobId, item.note || '']))
     return true
   }
   pageMessage.value = res.message
@@ -127,7 +168,9 @@ async function initializeData() {
     await Promise.all([
       loadOverview(),
       loadCompanies(),
-      loadJobs()
+      loadJobs(),
+      loadTimeline(),
+      loadFollows()
     ])
   } finally {
     loading.value = false
@@ -144,11 +187,51 @@ async function searchJobs() {
   await loadJobs(jobKeyword.value.trim() || undefined)
 }
 
+async function updateFollow(jobId: string, status: string) {
+  if (!authStore.token) {
+    pageMessage.value = '登录后才能记录投递进度'
+    return
+  }
+
+  followLoadingJobId.value = jobId
+  pageMessage.value = ''
+  try {
+    const res = await saveCampusFollow({
+      jobId,
+      status,
+      note: followNoteDrafts.value[jobId]?.trim() || undefined
+    })
+    if (res.code === 200) {
+      await Promise.all([loadFollows(), loadOverview()])
+    } else {
+      pageMessage.value = res.message
+    }
+  } finally {
+    followLoadingJobId.value = ''
+  }
+}
+
 function formatDeadline(value?: string | null) {
   if (!value) return '未设置'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return `${date.getMonth() + 1}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return '待定'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return `${date.getMonth() + 1}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+function formatFollowStatus(status?: string | null) {
+  const matched = followStatusOptions.find(item => item.value === status)
+  return matched?.label || '已收藏'
+}
+
+function getFollowStatus(jobId: string) {
+  return follows.value.find(item => item.jobId === jobId)?.status || 'BOOKMARKED'
 }
 
 watch(selectedCompanyId, async (next) => {
@@ -170,7 +253,7 @@ onMounted(initializeData)
             </div>
             <h2 class="text-xl font-semibold text-vscode-text">校招专区</h2>
             <p class="max-w-2xl text-vscode-text-secondary">
-              现在这版已经接上后端接口，优先展示企业、岗位和总览数据，方便你先验证专区的信息密度是否合理。
+              聚合近期企业校招批次、岗位和关键节点，也支持记录你自己的投递进度，尽量把信息浏览和跟进放在一个地方。
             </p>
           </div>
           <button
@@ -381,6 +464,29 @@ onMounted(initializeData)
               <span v-if="job.degreeRequirement" class="rounded-full bg-vscode-bg px-2 py-1">{{ job.degreeRequirement }}</span>
             </div>
             <p class="mt-3 text-sm text-vscode-text-secondary">{{ job.description || '暂无岗位说明' }}</p>
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+              <select
+                :value="getFollowStatus(job.id)"
+                class="rounded-lg border border-vscode-border bg-vscode-panel px-2 py-1.5 text-xs text-vscode-text"
+                @change="updateFollow(job.id, ($event.target as HTMLSelectElement).value)"
+              >
+                <option v-for="option in followStatusOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+              <input
+                v-model="followNoteDrafts[job.id]"
+                class="min-w-[220px] rounded-lg border border-vscode-border bg-vscode-panel px-3 py-1.5 text-xs text-vscode-text"
+                placeholder="补一句自己的备注"
+              />
+              <button
+                class="rounded-lg border border-vscode-border px-3 py-1.5 text-xs hover:bg-vscode-active"
+                :disabled="followLoadingJobId === job.id"
+                @click="updateFollow(job.id, getFollowStatus(job.id))"
+              >
+                {{ followLoadingJobId === job.id ? '保存中...' : '保存进度' }}
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -390,16 +496,18 @@ onMounted(initializeData)
           <CalendarClock class="h-4 w-4 text-vscode-icon" />
           <h3 class="font-medium text-vscode-text">流程时间线</h3>
         </div>
-        <div class="space-y-3">
+        <div v-if="timeline.length === 0" class="text-sm text-vscode-text-secondary">暂无流程节点数据</div>
+        <div v-else class="space-y-3">
           <div
-            v-for="item in timelineTips"
-            :key="`${item.date}-${item.title}`"
+            v-for="item in timeline"
+            :key="item.id"
             class="grid gap-2 rounded-xl border border-vscode-border bg-vscode-active/35 p-4 md:grid-cols-[88px_minmax(0,1fr)]"
           >
-            <div class="text-sm font-medium text-sky-300">{{ item.date }}</div>
+            <div class="text-sm font-medium text-sky-300">{{ formatDateTime(item.happenAt) }}</div>
             <div>
-              <p class="font-medium text-vscode-text">{{ item.title }}</p>
-              <p class="mt-1 text-sm text-vscode-text-secondary">{{ item.note }}</p>
+              <p class="font-medium text-vscode-text">{{ item.companyName || '企业待定' }} · {{ item.title }}</p>
+              <p class="mt-1 text-xs text-vscode-text-secondary">{{ item.campaignTitle || '未命名批次' }}</p>
+              <p v-if="item.note" class="mt-1 text-sm text-vscode-text-secondary">{{ item.note }}</p>
             </div>
           </div>
         </div>
@@ -410,20 +518,37 @@ onMounted(initializeData)
           <BadgeCheck class="h-4 w-4 text-vscode-icon" />
           <h3 class="font-medium text-vscode-text">我的关注</h3>
         </div>
-        <div class="space-y-3">
+        <div v-if="!authStore.token" class="text-sm text-vscode-text-secondary">登录后可以在这里查看自己的关注岗位和投递进度。</div>
+        <div v-else-if="follows.length === 0" class="text-sm text-vscode-text-secondary">你还没有记录关注岗位，可以先在岗位列表里保存进度。</div>
+        <div v-else class="space-y-3">
           <div
-            v-for="item in trackingTips"
-            :key="`${item.company}-${item.role}`"
+            v-for="item in follows"
+            :key="item.id"
             class="rounded-xl border border-vscode-border bg-vscode-active/35 p-4"
           >
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p class="font-medium text-vscode-text">{{ item.company }} · {{ item.role }}</p>
-                <p class="mt-1 text-sm text-vscode-text-secondary">{{ item.note }}</p>
+                <p class="font-medium text-vscode-text">{{ item.companyName || '未知企业' }} · {{ item.jobTitle }}</p>
+                <p class="mt-1 text-sm text-vscode-text-secondary">
+                  {{ item.city || '城市待定' }}<span v-if="item.category"> · {{ item.category }}</span><span v-if="item.deadline"> · 截止 {{ formatDeadline(item.deadline) }}</span>
+                </p>
+                <p v-if="item.note" class="mt-2 text-sm text-vscode-text-secondary">{{ item.note }}</p>
               </div>
-              <span class="rounded-full bg-amber-500/15 px-2 py-1 text-xs text-amber-300">
-                {{ item.status }}
-              </span>
+              <div class="flex items-center gap-2">
+                <span class="rounded-full bg-amber-500/15 px-2 py-1 text-xs text-amber-300">
+                  {{ formatFollowStatus(item.status) }}
+                </span>
+                <a
+                  v-if="item.applyUrl"
+                  :href="item.applyUrl"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="inline-flex items-center gap-1 rounded-lg border border-vscode-border px-2 py-1 text-xs text-vscode-text-secondary"
+                >
+                  投递入口
+                  <ArrowUpRight class="h-3.5 w-3.5" />
+                </a>
+              </div>
             </div>
           </div>
         </div>

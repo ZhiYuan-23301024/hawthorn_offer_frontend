@@ -17,7 +17,8 @@ const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const verifyCode = ref('')
-const verifyMessage = ref('')
+const authMessage = ref('')
+const settingsMessage = ref('')
 const cooldown = ref(0)
 const timerRef = ref<number | null>(null)
 
@@ -83,9 +84,19 @@ const heatIntensity = (count: number) => {
   return 'bg-emerald-300'
 }
 
+const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+
+const clearAuthMessage = () => {
+  authMessage.value = ''
+}
+
+const clearSettingsMessage = () => {
+  settingsMessage.value = ''
+}
+
 const switchMode = (target: 'login' | 'register') => {
   mode.value = target
-  verifyMessage.value = ''
+  clearAuthMessage()
 }
 
 const readAuth = async () => {
@@ -102,15 +113,20 @@ const readAuth = async () => {
 }
 
 const doSendCode = async () => {
-  if (!email.value) {
-    verifyMessage.value = '请输入邮箱'
+  clearAuthMessage()
+  if (!email.value.trim()) {
+    authMessage.value = '请输入邮箱'
+    return
+  }
+  if (!isValidEmail(email.value.trim())) {
+    authMessage.value = '请输入正确的邮箱格式'
     return
   }
   if (cooldown.value > 0) {
     return
   }
-  const res = await authStore.sendVerifyCode(email.value)
-  verifyMessage.value = res.code === 200 ? '验证码已发送' : res.message
+  const res = await authStore.sendVerifyCode(email.value.trim())
+  authMessage.value = res.code === 200 ? '验证码已发送' : res.message
   if (res.code === 200) {
     cooldown.value = 60
     timerRef.value = window.setInterval(() => {
@@ -123,38 +139,72 @@ const doSendCode = async () => {
 }
 
 const doLogin = async () => {
-  verifyMessage.value = ''
-  const res = await authStore.login({ email: email.value, password: password.value })
+  clearAuthMessage()
+  if (!email.value.trim() || !password.value) {
+    authMessage.value = '请输入邮箱和密码'
+    return
+  }
+  if (!isValidEmail(email.value.trim())) {
+    authMessage.value = '请输入正确的邮箱格式'
+    return
+  }
+  const res = await authStore.login({ email: email.value.trim(), password: password.value })
   if (res.code === 200) {
     await readAuth()
   } else {
-    verifyMessage.value = res.message
+    authMessage.value = res.message
   }
 }
 
 const doRegister = async () => {
-  verifyMessage.value = ''
+  clearAuthMessage()
+  if (!email.value.trim() || !password.value || !confirmPassword.value || !verifyCode.value.trim()) {
+    authMessage.value = '请完整填写注册信息'
+    return
+  }
+  if (!isValidEmail(email.value.trim())) {
+    authMessage.value = '请输入正确的邮箱格式'
+    return
+  }
+  if (password.value !== confirmPassword.value) {
+    authMessage.value = '两次输入的密码不一致'
+    return
+  }
   const res = await authStore.register({
-    email: email.value,
+    email: email.value.trim(),
     password: password.value,
     confirmPassword: confirmPassword.value,
-    verifyCode: verifyCode.value
+    verifyCode: verifyCode.value.trim()
   })
   if (res.code === 200) {
     await readAuth()
   } else {
-    verifyMessage.value = res.message
+    authMessage.value = res.message
   }
 }
 
 const doUpdateProfile = async () => {
+  clearSettingsMessage()
+  if (!nickname.value.trim()) {
+    settingsMessage.value = '昵称不能为空'
+    return
+  }
   await authStore.updateProfile({
-    nickname: nickname.value,
-    bio: bio.value
+    nickname: nickname.value.trim(),
+    bio: bio.value.trim()
   })
 }
 
 const doChangePassword = async () => {
+  clearSettingsMessage()
+  if (!oldPassword.value || !newPassword.value) {
+    settingsMessage.value = '请填写旧密码和新密码'
+    return
+  }
+  if (oldPassword.value === newPassword.value) {
+    settingsMessage.value = '新密码不能与旧密码相同'
+    return
+  }
   const res = await authStore.changePassword({
     oldPassword: oldPassword.value,
     newPassword: newPassword.value
@@ -162,24 +212,29 @@ const doChangePassword = async () => {
   if (res.code === 200) {
     oldPassword.value = ''
     newPassword.value = ''
-    verifyMessage.value = '密码已更新'
+    settingsMessage.value = '密码已更新'
   } else {
-    verifyMessage.value = res.message
+    settingsMessage.value = res.message
   }
 }
 
 const doVerifyChsi = async () => {
+  clearSettingsMessage()
+  if (!chsiName.value.trim() || !chsiStudentId.value.trim()) {
+    settingsMessage.value = '请先填写真实姓名和学号'
+    return
+  }
   if (!chsiProofFile.value) {
-    verifyMessage.value = '请先上传截图'
+    settingsMessage.value = '请先上传截图'
     return
   }
   const res = await authStore.submitChsi({
-    realName: chsiName.value,
-    studentId: chsiStudentId.value,
+    realName: chsiName.value.trim(),
+    studentId: chsiStudentId.value.trim(),
     proofImage: chsiProofFile.value
   })
   if (res.code === 200) {
-    verifyMessage.value = '学信网认证材料已提交，等待管理员审核'
+    settingsMessage.value = '学信网认证材料已提交，等待管理员审核'
     chsiProofFile.value = null
     chsiProofFileName.value = ''
     if (chsiProofPreviewUrl.value) {
@@ -187,7 +242,7 @@ const doVerifyChsi = async () => {
     }
     chsiProofPreviewUrl.value = ''
   } else {
-    verifyMessage.value = res.message
+    settingsMessage.value = res.message
   }
 }
 
@@ -195,17 +250,17 @@ const onChsiProofUpload = (evt: Event) => {
   const input = evt.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) {
-    verifyMessage.value = '未选择任何文件'
+    settingsMessage.value = '未选择任何文件'
     chsiProofFile.value = null
     chsiProofFileName.value = ''
     return
   }
   if (!file.type.startsWith('image/')) {
-    verifyMessage.value = '请上传图片文件'
+    settingsMessage.value = '请上传图片文件'
     return
   }
   if (file.size <= 0) {
-    verifyMessage.value = '文件内容为空'
+    settingsMessage.value = '文件内容为空'
     return
   }
   chsiProofFile.value = file
@@ -221,18 +276,19 @@ const doLogout = async () => {
 }
 
 const onAvatarUpload = async (evt: Event) => {
+  clearSettingsMessage()
   const input = evt.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) {
-    verifyMessage.value = '未选择任何文件'
+    settingsMessage.value = '未选择任何文件'
     return
   }
   if (!file.type.startsWith('image/')) {
-    verifyMessage.value = '请上传图片文件'
+    settingsMessage.value = '请上传图片文件'
     return
   }
   if (file.size <= 0) {
-    verifyMessage.value = '文件内容为空'
+    settingsMessage.value = '文件内容为空'
     return
   }
 
@@ -244,13 +300,13 @@ const onAvatarUpload = async (evt: Event) => {
   try {
     const res = await authStore.uploadAvatar(file)
     if (res.code === 200) {
-      verifyMessage.value = '头像已更新'
+      settingsMessage.value = '头像已更新'
       avatarPreviewUrl.value = ''
     } else {
-      verifyMessage.value = res.message
+      settingsMessage.value = res.message
     }
   } catch (e: unknown) {
-    verifyMessage.value = e instanceof Error ? e.message : '上传失败'
+    settingsMessage.value = e instanceof Error ? e.message : '上传失败'
   }
 }
 
@@ -262,7 +318,11 @@ const onHeatDaysChange = async (days: number) => {
 onMounted(readAuth)
 watch(() => authStore.message, (next) => {
   if (next) {
-    verifyMessage.value = next
+    if (authStore.isAuthenticated) {
+      settingsMessage.value = next
+    } else {
+      authMessage.value = next
+    }
   }
 })
 </script>
@@ -280,8 +340,6 @@ watch(() => authStore.message, (next) => {
       </button>
     </div>
 
-    <div v-if="authStore.message" class="rounded bg-vscode-active px-3 py-2 text-vscode-warning">{{ authStore.message }}</div>
-
     <template v-if="!authStore.isAuthenticated">
       <div class="flex gap-2">
         <button
@@ -297,6 +355,7 @@ watch(() => authStore.message, (next) => {
       </div>
 
       <div class="grid gap-3">
+        <div v-if="authMessage" class="rounded bg-vscode-active px-3 py-2 text-vscode-warning">{{ authMessage }}</div>
         <label class="grid gap-1">
           <span>邮箱</span>
           <input v-model="email" class="bg-vscode-active border border-vscode-border px-2 py-1 rounded" />
@@ -333,6 +392,7 @@ watch(() => authStore.message, (next) => {
     </template>
 
     <template v-else>
+      <div v-if="settingsMessage" class="rounded bg-vscode-active px-3 py-2 text-vscode-warning">{{ settingsMessage }}</div>
       <section v-if="showSection('profile')" class="border border-vscode-border rounded p-3 space-y-2">
         <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">个人信息</h3>
         <div class="flex items-center gap-2">
@@ -444,7 +504,5 @@ watch(() => authStore.message, (next) => {
       </section>
       <p class="text-xs text-vscode-text-secondary"><Flame class="w-4 h-4 inline" /> 活跃度基于近期发帖/评论/offer/简历记录</p>
     </template>
-
-    <p v-if="verifyMessage" class="text-xs text-vscode-warning">{{ verifyMessage }}</p>
   </div>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
-import { FolderOpen, Search, GitBranch, Puzzle, UserCircle, MessageSquare, MessageCircle, CalendarCheck, Briefcase } from 'lucide-vue-next'
+import { FolderOpen, Search, GitBranch, Puzzle, UserCircle, MessageSquare, MessageCircle, CalendarCheck, Briefcase, ScrollText } from 'lucide-vue-next'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useSocialStore } from '@/stores/social'
@@ -34,7 +34,8 @@ const iconComponents: Record<string, any> = {
   'message-square': MessageSquare,
   'message-circle': MessageCircle,
   'calendar-check': CalendarCheck,
-  'briefcase': Briefcase
+  'briefcase': Briefcase,
+  'scroll-text': ScrollText
 }
 
 function handleItemClick(itemId: string) {

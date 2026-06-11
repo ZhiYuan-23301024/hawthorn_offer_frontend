@@ -467,20 +467,20 @@ onMounted(initializeData)
             <div class="mt-4 flex flex-wrap items-center gap-2">
               <select
                 :value="getFollowStatus(job.id)"
-                class="rounded-lg border border-vscode-border bg-vscode-panel px-2 py-1.5 text-xs text-vscode-text"
+                class="rounded-lg border border-vscode-border bg-vscode-bg px-2 py-1.5 text-xs text-vscode-text"
                 @change="updateFollow(job.id, ($event.target as HTMLSelectElement).value)"
               >
-                <option v-for="option in followStatusOptions" :key="option.value" :value="option.value">
+                <option v-for="option in followStatusOptions" :key="option.value" :value="option.value" class="bg-vscode-bg text-vscode-text">
                   {{ option.label }}
                 </option>
               </select>
               <input
                 v-model="followNoteDrafts[job.id]"
-                class="min-w-[220px] rounded-lg border border-vscode-border bg-vscode-panel px-3 py-1.5 text-xs text-vscode-text"
+                class="min-w-[220px] rounded-lg border border-vscode-border bg-vscode-bg px-3 py-1.5 text-xs text-vscode-text"
                 placeholder="补一句自己的备注"
               />
               <button
-                class="rounded-lg border border-vscode-border px-3 py-1.5 text-xs hover:bg-vscode-active"
+                class="rounded-lg border border-vscode-border bg-vscode-bg px-3 py-1.5 text-xs hover:bg-vscode-active"
                 :disabled="followLoadingJobId === job.id"
                 @click="updateFollow(job.id, getFollowStatus(job.id))"
               >

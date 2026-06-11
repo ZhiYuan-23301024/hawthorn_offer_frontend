@@ -45,9 +45,6 @@ watch(() => props.show, async (val) => {
     activeTab.value = 'members'
     historyFilter.value = 'all'
     await fetchDetail()
-    if (activeTab.value === 'history') {
-      await fetchHistory(1)
-    }
   } else {
     detail.value = null
     historyMessages.value = []

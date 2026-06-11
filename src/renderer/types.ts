@@ -6,6 +6,7 @@ export interface UserProfile {
   avatar?: string
   chsiVerified: boolean
   chsiReviewer?: boolean
+  beans: number
 }
 
 export interface HeatmapPoint {

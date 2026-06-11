@@ -14,7 +14,7 @@ import PostEditor from './PostEditor.vue'
 
 const props = defineProps<{
   postId: string
-  postType: 'resume' | 'regular'
+  postType: 'resume' | 'regular' | 'qa'
 }>()
 
 const postStore = usePostStore()
@@ -22,6 +22,14 @@ const authStore = useAuthStore()
 const editorStore = useEditorStore()
 const workspaceStore = useWorkspaceStore()
 const commentSectionRef = ref<InstanceType<typeof CommentSection> | null>(null)
+
+const now = ref(Date.now())
+let timeTimer: ReturnType<typeof setInterval> | null = null
+
+const showPinDialog = ref(false)
+const pinHours = ref(1)
+const pinPresets = [1, 6, 12, 24, 72, 168]
+const pinPresetLabels = ['1h', '6h', '12h', '1天', '3天', '7天']
 
 function onPostContentClick() {
   commentSectionRef.value?.cancelReply()
@@ -56,6 +64,28 @@ const isOwner = computed(() => {
   return uid === authStore.user.id
 })
 
+const isQaPost = computed(() => (detail.value as any)?.postType === 'qa')
+const bountyBeansTotal = computed(() => (detail.value as any)?.bountyBeans ?? 0)
+const bountyRemaining = computed(() => (detail.value as any)?.bountyRemaining ?? 0)
+const bountyStatus = computed(() => (detail.value as any)?.bountyStatus ?? '')
+const bountyExpiresAt = computed(() => (detail.value as any)?.bountyExpiresAt ?? '')
+
+const bountyTimeLeft = computed(() => {
+  if (!bountyExpiresAt.value || bountyStatus.value !== 'active') return ''
+  const remaining = new Date(bountyExpiresAt.value).getTime() - now.value
+  if (remaining <= 0) return '已过期'
+  const totalSec = Math.floor(remaining / 1000)
+  const totalMin = Math.floor(totalSec / 60)
+  const days = Math.floor(totalMin / 1440)
+  const hours = Math.floor((totalMin % 1440) / 60)
+  const mins = totalMin % 60
+  const secs = totalSec % 60
+  if (days > 0) return `${days}天${hours}小时`
+  if (hours > 0) return `${hours}小时${mins}分钟`
+  if (mins > 0) return `${mins}分钟`
+  return `${secs}秒`
+})
+
 function handleEdit() {
   const label = props.postType === 'resume' ? '编辑简历' : '编辑帖子'
   if (props.postType === 'regular' && postData.value) {
@@ -76,7 +106,12 @@ function handleEdit() {
 }
 
 async function handleDelete() {
-  const message = props.postType === 'resume' ? '确定要删除这份简历吗？' : '确定要删除这篇帖子吗？'
+  const isQa = isQaPost.value
+  const message = props.postType === 'resume'
+    ? '确定要删除这份简历吗？'
+    : isQa
+      ? '确定要删除这篇求助帖吗？求助豆子不会返还。'
+      : '确定要删除这篇帖子吗？'
   if (!confirm(message)) return
   try {
     if (props.postType === 'resume') {
@@ -84,8 +119,21 @@ async function handleDelete() {
       postStore.clearMyResumeId()
       postStore.fetchResumePostList(1)
     } else {
-      await postApi.deletePost(props.postId)
-      postStore.fetchPostList(1)
+      const resp = await postApi.deletePost(props.postId)
+      const refund = (resp.code === 200 && resp.data?.refund) ? resp.data.refund : 0
+      if (isQa) {
+        if (refund > 0) {
+          alert(`求助帖已删除，返还 🫘 ${refund} 百斩豆（置顶退款），求助豆子不返还`)
+        } else {
+          alert('求助帖已删除，求助豆子不返还')
+        }
+        postStore.fetchQaPosts(1)
+      } else {
+        if (refund > 0) {
+          alert(`帖子已删除，返还 🫘 ${refund} 百斩豆`)
+        }
+        postStore.fetchPostList(1)
+      }
     }
     // Navigate back to post browser
     workspaceStore.setActivePanel('postBrowser')
@@ -102,6 +150,76 @@ function handleLike() {
   postStore.toggleLike(props.postId, props.postType)
 }
 
+const isPostPinned = computed(() => {
+  const listItem = postListItem.value
+  return listItem?.isPinned ?? false
+})
+
+const pinRemainingHours = computed(() => {
+  const li = postListItem.value
+  if (!li?.pinExpiresAt) return 0
+  return Math.max(0, (new Date(li.pinExpiresAt).getTime() - Date.now()) / 3600000)
+})
+
+const maxRenewHours = computed(() => {
+  const globalMax = Math.max(0, 168 - Math.ceil(pinRemainingHours.value))
+  // 问答帖：置顶时长不能超过求助剩余时间
+  if (isQaPost.value && bountyExpiresAt.value) {
+    const bountyRemainingMs = new Date(bountyExpiresAt.value).getTime() - Date.now()
+    const bountyRemainingHours = Math.max(0, Math.floor(bountyRemainingMs / 3600000))
+    return Math.min(globalMax, bountyRemainingHours)
+  }
+  return globalMax
+})
+
+function computeRemainingDetail(expiresAt: string | null): string {
+  if (!expiresAt) return ''
+  const remaining = new Date(expiresAt).getTime() - now.value
+  if (remaining <= 0) return '已过期'
+  const totalSec = Math.floor(remaining / 1000)
+  const totalMin = Math.floor(totalSec / 60)
+  const days = Math.floor(totalMin / 1440)
+  const hours = Math.floor((totalMin % 1440) / 60)
+  const mins = totalMin % 60
+  const secs = totalSec % 60
+  if (days > 0) return `${days}天 ${hours}小时 ${mins}分钟`
+  if (hours > 0) return `${hours}小时 ${mins}分钟`
+  if (mins > 0) return `${mins}分钟`
+  return `${secs}秒`
+}
+
+async function handlePin() {
+  try {
+    const resp = await postApi.pinPost(props.postId, pinHours.value)
+    if (resp.code === 200) {
+      showPinDialog.value = false
+      alert(`置顶成功！消耗 🫘 ${resp.data!.beansSpent} 百斩豆`)
+      await postStore.fetchPostList(1, postStore.keyword || undefined, postStore.sort)
+      await postStore.selectPost(props.postId, props.postType)
+    } else {
+      alert(resp.message || '置顶失败')
+    }
+  } catch {
+    // ignore
+  }
+}
+
+async function handleUnpin() {
+  if (!confirm('取消置顶将返还 80% 百斩豆，确认取消？')) return
+  try {
+    const resp = await postApi.unpinPost(props.postId)
+    if (resp.code === 200) {
+      alert(`已取消置顶，返还 🫘 ${resp.data!.refund} 百斩豆`)
+      await postStore.fetchPostList(1, postStore.keyword || undefined, postStore.sort)
+      await postStore.selectPost(props.postId, props.postType)
+    } else {
+      alert(resp.message || '取消失败')
+    }
+  } catch {
+    // ignore
+  }
+}
+
 function formatTime(dateStr: string): string {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleDateString('zh-CN', {
@@ -114,10 +232,12 @@ function formatTime(dateStr: string): string {
 onMounted(async () => {
   postStore.selectPost(props.postId, props.postType)
   document.addEventListener('visibilitychange', onVisibilityChange)
+  timeTimer = setInterval(() => { now.value = Date.now() }, 1000)
 })
 
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', onVisibilityChange)
+  if (timeTimer) { clearInterval(timeTimer); timeTimer = null }
 })
 
 function onVisibilityChange() {
@@ -128,7 +248,7 @@ function onVisibilityChange() {
 </script>
 
 <template>
-  <div v-if="detail" class="h-full flex flex-col p-6 text-[#ccc]">
+  <div v-if="detail" class="h-full flex flex-col text-[#ccc]">
     <!-- Post content: scrollable, takes up to half the height -->
     <div class="overflow-y-auto flex-shrink-0" style="max-height: 45%">
     <!-- Resume detail -->
@@ -169,6 +289,18 @@ function onVisibilityChange() {
 
     <!-- Regular post detail -->
     <template v-else>
+      <!-- Bounty info card (QA posts only) -->
+      <div v-if="isQaPost" class="mb-4 p-4 border rounded-md"
+        :class="bountyStatus === 'active' ? 'border-[#4a9eff]/30 bg-[#4a9eff]/5' : 'border-[#555]/30 bg-[#2a2a2a]'">
+        <div class="flex items-center gap-3 text-sm flex-wrap">
+          <span class="text-[#f0c040]">🫘 求助 {{ bountyBeansTotal }} 豆子</span>
+          <span v-if="bountyStatus === 'active'" class="text-[#4a9eff]">| 剩余 {{ bountyRemaining }}</span>
+          <span v-if="bountyStatus === 'active' && bountyTimeLeft" class="text-[#888]">| ⏱ 剩余 {{ bountyTimeLeft }}</span>
+          <span v-else-if="bountyStatus === 'distributed'" class="text-[#27ae60]">| 已分配</span>
+          <span v-else-if="bountyStatus === 'expired'" class="text-[#888]">| 已结束</span>
+        </div>
+      </div>
+
       <div class="flex items-center gap-3 mb-5">
         <div
           class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden"
@@ -190,6 +322,9 @@ function onVisibilityChange() {
             {{ postListItem?.authorName }}
             <span v-if="detailCreatedAt" class="ml-2">{{ formatTime(detailCreatedAt) }}</span>
           </div>
+          <div v-if="isPostPinned && postListItem?.pinExpiresAt" class="text-xs text-[#e74c3c] mt-0.5">
+            📌 置顶 · 剩余 {{ computeRemainingDetail(postListItem.pinExpiresAt) }}
+          </div>
         </div>
         <div class="flex items-center gap-2">
           <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#4a9eff] text-[#4a9eff] text-sm hover:bg-[#4a9eff]/10 transition-colors" @click="handleEdit">
@@ -197,6 +332,15 @@ function onVisibilityChange() {
           </button>
           <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="handleDelete">
             <Trash2 class="w-3.5 h-3.5" /> 删除
+          </button>
+          <button v-if="isOwner && postType === 'regular' && !isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="showPinDialog = true">
+            📌 置顶
+          </button>
+          <button v-if="isOwner && postType === 'regular' && isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="showPinDialog = true">
+            📌 续费置顶
+          </button>
+          <button v-if="isOwner && postType === 'regular' && isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#888] text-[#888] text-sm hover:bg-[#888]/10 transition-colors" @click="handleUnpin">
+            取消置顶
           </button>
           <button
             class="flex items-center gap-1.5 px-4 py-2 rounded-md border transition-colors"
@@ -216,8 +360,8 @@ function onVisibilityChange() {
 
     </div>
 
-    <!-- Comments (regular posts only) -->
-    <CommentSection ref="commentSectionRef" v-if="postType === 'regular'" :target-id="postId" :target-type="postType" class="flex-1 min-h-0" />
+    <!-- Comments (regular / QA posts only) -->
+    <CommentSection ref="commentSectionRef" v-if="postType !== 'resume'" :target-id="postId" :target-type="postType === 'qa' ? 'regular' : postType" :post-type="isQaPost ? 'qa' : 'normal'" :bounty-remaining="bountyRemaining" :bounty-status="bountyStatus" :post-author-id="detailUserId" class="flex-1 min-h-0" />
   </div>
 
   <div v-else-if="postStore.loadingDetail" class="h-full flex items-center justify-center">
@@ -226,5 +370,59 @@ function onVisibilityChange() {
 
   <div v-else class="h-full flex items-center justify-center">
     <div class="text-sm text-[#888]">请选择一篇帖子查看详情</div>
+  </div>
+
+  <!-- 置顶弹窗 -->
+  <div v-if="showPinDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="showPinDialog = false">
+    <div class="bg-[#1e1e1e] border border-[#333] rounded-lg p-6 w-[400px]">
+      <h3 class="text-lg font-semibold text-[#ccc] mb-4">{{ isPostPinned ? '续费置顶' : '帖子置顶' }}</h3>
+
+      <div v-if="isPostPinned && postListItem?.pinExpiresAt" class="text-xs text-[#888] mb-3">
+        当前剩余：{{ computeRemainingDetail(postListItem.pinExpiresAt) }}
+        <span v-if="maxRenewHours <= 0 && isQaPost" class="text-[#e74c3c]">（已达到求助最大置顶时长）</span>
+        <span v-else-if="maxRenewHours <= 0" class="text-[#e74c3c]">（已达到7天上限）</span>
+        <span v-else class="text-[#888]">（最多续费 {{ maxRenewHours }} 小时）</span>
+      </div>
+
+      <div v-if="maxRenewHours > 0" class="mb-3">
+        <span class="text-sm text-[#888]">选择时长：</span>
+        <div class="flex flex-wrap gap-2 mt-2">
+          <button
+            v-for="(label, i) in pinPresetLabels"
+            :key="i"
+            class="px-3 py-1 text-xs rounded border transition-colors"
+            :class="pinPresets[i] <= maxRenewHours ? (pinHours === pinPresets[i] ? 'bg-[#4a9eff]/20 border-[#4a9eff] text-[#4a9eff]' : 'border-[#444] text-[#888] hover:border-[#4a9eff] hover:text-[#4a9eff]') : 'border-[#333] text-[#555] cursor-not-allowed'"
+            @click="pinPresets[i] <= maxRenewHours && (pinHours = pinPresets[i])"
+          >{{ label }}</button>
+        </div>
+      </div>
+
+      <div v-if="maxRenewHours > 0" class="mb-4">
+        <span class="text-sm text-[#888]">自定义：</span>
+        <input
+          v-model.number="pinHours"
+          type="number"
+          min="1"
+          :max="maxRenewHours"
+          class="ml-2 w-24 bg-[#2d2d2d] border border-[#444] rounded px-2 py-1 text-sm text-[#ccc] outline-none focus:border-[#4a9eff]"
+        /> 小时
+      </div>
+
+      <div v-if="maxRenewHours > 0" class="text-sm text-[#aaa] mb-4">
+        消耗：🫘 {{ Math.min(pinHours, maxRenewHours) * 10 }} 百斩豆
+      </div>
+
+      <div v-else-if="isQaPost" class="text-sm text-[#e74c3c] mb-4">
+        已达到求助最大置顶时长，不可高于求助时长
+      </div>
+      <div v-else class="text-sm text-[#e74c3c] mb-4">
+        已达到最大置顶时长（7天），无法续费
+      </div>
+
+      <div class="flex gap-3 justify-end">
+        <button class="px-4 py-2 border border-[#555] text-[#aaa] rounded-md text-sm hover:bg-[#2a2a2a]" @click="showPinDialog = false">取消</button>
+        <button v-if="maxRenewHours > 0" class="px-4 py-2 bg-[#4a9eff] text-white rounded-md text-sm hover:bg-[#3a8eef]" @click="handlePin">确认{{ isPostPinned ? '续费' : '置顶' }}</button>
+      </div>
+    </div>
   </div>
 </template>

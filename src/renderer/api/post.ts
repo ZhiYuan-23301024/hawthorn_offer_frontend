@@ -14,12 +14,19 @@ export interface PostListVO {
   isAnonymous: boolean
   commentCount: number
   likeCount: number
+  isPinned: boolean
+  pinExpiresAt: string | null
   isLiked: boolean
   authorName: string
   authorAvatar: string
   authorAvatarUrl: string | null
   createdAt: string
   updatedAt: string
+  postType?: string
+  bountyBeans?: number
+  bountyRemaining?: number
+  bountyStatus?: string
+  bountyExpiresAt?: string
 }
 
 export interface ResumePostListVO {
@@ -64,6 +71,13 @@ export interface PostDetail {
   isLiked: boolean
   createdAt: string
   updatedAt: string
+  postType?: string
+  bountyBeans?: number
+  bountyDuration?: number
+  bountyRemaining?: number
+  bountyStatus?: string
+  bountyExpiresAt?: string
+  bountyStartedAt?: string
 }
 
 export interface CommentVO {
@@ -75,8 +89,12 @@ export interface CommentVO {
   targetId: string
   parentId: string | null
   likeCount: number
+  isAnonymous: boolean
+  isPostAuthor: boolean
   isLiked: boolean
   createdAt: string
+  bountyBeans?: number
+  isAdopted?: boolean
   children: CommentVO[]
 }
 
@@ -85,6 +103,7 @@ export interface CommentCreateData {
   targetType: string
   content: string
   parentId?: string
+  isAnonymous?: boolean
 }
 
 // ===== 简历帖 API =====
@@ -117,9 +136,11 @@ export function deleteResumePost(id: string) {
 
 // ===== 常规帖 API =====
 
-export function getPostList(page = 1, size = 10, keyword?: string, sort = 'latest') {
+export function getPostList(page = 1, size = 10, keyword?: string, sort = 'latest', postType?: string, bountyStatus?: string) {
   const params = new URLSearchParams({ page: String(page), size: String(size), sort })
   if (keyword) params.append('keyword', keyword)
+  if (postType) params.append('postType', postType)
+  if (bountyStatus) params.append('bountyStatus', bountyStatus)
   return apiGet<ApiResponse<PageResponse<PostListVO>>>(`/api/posts?${params}`, getToken())
 }
 
@@ -127,8 +148,10 @@ export function getPostDetail(id: string) {
   return apiGet<ApiResponse<PostDetail>>(`/api/posts/${id}`, getToken())
 }
 
-export function createPost(title: string, content: string, isAnonymous: boolean) {
-  return apiPost<ApiResponse<{ postId: string }>>('/api/posts', { title, content, isAnonymous }, getToken())
+export function createPost(title: string, content: string, isAnonymous: boolean, postType = 'normal', bountyBeans = 0, bountyDuration = 0) {
+  return apiPost<ApiResponse<{ postId: string }>>('/api/posts', {
+    title, content, isAnonymous, postType, bountyBeans, bountyDuration
+  }, getToken())
 }
 
 export function updatePost(id: string, title: string, content: string) {
@@ -144,16 +167,15 @@ export function unlikePost(id: string) {
 }
 
 export function deletePost(id: string) {
-  return apiDelete<ApiResponse<void>>(`/api/posts/${id}`, getToken())
+  return apiDelete<ApiResponse<{ refund?: number }>>(`/api/posts/${id}`, getToken())
 }
 
 // ===== 评论 API =====
 
-export function getComments(targetType: string, targetId: string) {
-  return apiGet<ApiResponse<CommentVO[]>>(
-    `/api/comments?targetType=${targetType}&targetId=${targetId}`,
-    getToken()
-  )
+export function getComments(targetType: string, targetId: string, bountyFilter?: string) {
+  let url = `/api/comments?targetType=${targetType}&targetId=${targetId}`
+  if (bountyFilter) url += `&bountyFilter=${bountyFilter}`
+  return apiGet<ApiResponse<CommentVO[]>>(url, getToken())
 }
 
 export function createComment(data: CommentCreateData) {
@@ -170,4 +192,83 @@ export function unlikeComment(id: string) {
 
 export function deleteComment(id: string) {
   return apiDelete<ApiResponse<void>>(`/api/comments/${id}`, getToken())
+}
+
+// ===== CDKEY API =====
+
+export interface RedeemResponse {
+  amount: number
+  balance: number
+}
+
+export function redeemCdkey(code: string) {
+  return apiPost<ApiResponse<RedeemResponse>>('/api/cdkeys/redeem', { code }, getToken())
+}
+
+// ===== Admin CDKEY API =====
+
+export interface GenerateCdkeyData {
+  amount: number
+  count: number
+}
+
+export interface GenerateCdkeyResponse {
+  codes: string[]
+  amount: number
+  count: number
+}
+
+export function generateCdkeys(data: GenerateCdkeyData) {
+  return apiPost<ApiResponse<GenerateCdkeyResponse>>('/api/admin/cdkeys/generate', data, getToken())
+}
+
+// ===== Pin API =====
+
+export interface PinPostResponse {
+  beansSpent: number
+  balance: number
+}
+
+export function pinPost(postId: string, hours: number) {
+  return apiPost<ApiResponse<PinPostResponse>>(`/api/posts/${postId}/pin`, { hours }, getToken())
+}
+
+export interface UnpinResponse {
+  refund: number
+  balance: number
+}
+
+export function unpinPost(postId: string) {
+  return apiDelete<ApiResponse<UnpinResponse>>(`/api/posts/${postId}/pin`, getToken())
+}
+
+// ===== Bounty API =====
+
+export interface BountyRewardVO {
+  id: string
+  commentId: string
+  fromUserId: string
+  fromUserName: string
+  toUserId: string
+  toUserName: string
+  beans: number
+  type: string
+  isAuto: boolean
+  createdAt: string
+}
+
+export function adoptComment(postId: string, commentId: string, beans: number) {
+  return apiPost<ApiResponse<{ fromBounty: number; fromAccount: number; bountyRemaining: number }>>(
+    `/api/posts/${postId}/bounty/adopt`, { commentId, beans }, getToken()
+  )
+}
+
+export function rewardComment(postId: string, commentId: string, beans: number) {
+  return apiPost<ApiResponse<{ fromBounty: number; fromAccount: number }>>(
+    `/api/posts/${postId}/bounty/reward`, { commentId, beans }, getToken()
+  )
+}
+
+export function getBountyRewards(postId: string) {
+  return apiGet<ApiResponse<BountyRewardVO[]>>(`/api/posts/${postId}/bounty/rewards`, getToken())
 }

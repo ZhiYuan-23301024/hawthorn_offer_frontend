@@ -22,38 +22,70 @@ const sortOptions = [
   { value: 'latest', label: '最新' }
 ]
 
+const qaFilterOptions = [
+  { value: 'hot', label: '最热' },
+  { value: 'latest', label: '最新' },
+  { value: 'active', label: '进行中' },
+  { value: 'expired', label: '已过期' }
+]
+const qaActiveFilter = ref('hot')
+
+function onQaFilterChange(filter: string) {
+  qaActiveFilter.value = filter
+  const kw = postStore.keyword || undefined
+  if (filter === 'hot' || filter === 'latest') {
+    postStore.qaFilter = ''
+    postStore.fetchQaPosts(1, kw, filter)
+  } else {
+    postStore.qaFilter = filter
+    postStore.fetchQaPosts(1, kw, 'latest', filter)
+  }
+}
+
 function onSearchInput() {
   if (searchTimer) clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
     postStore.setKeyword(searchInput.value)
     if (postStore.activeTab === 'resume') {
       postStore.fetchResumePostList(1, searchInput.value)
+    } else if (postStore.activeTab === 'myOwn') {
+      postStore.fetchMyPosts(1, searchInput.value)
     } else {
       postStore.fetchPostList(1, searchInput.value)
     }
   }, 300)
 }
 
-function onTabChange(tab: 'resume' | 'regular') {
+function onTabChange(tab: 'resume' | 'regular' | 'qa' | 'myOwn') {
   postStore.setTab(tab)
   searchInput.value = postStore.keyword
   const kw = postStore.keyword || undefined
   if (tab === 'resume') {
     postStore.fetchResumePostList(1, kw)
+  } else if (tab === 'myOwn') {
+    postStore.fetchMyPosts(1, kw)
+  } else if (tab === 'qa') {
+    const f = qaActiveFilter.value
+    if (f === 'hot' || f === 'latest') {
+      postStore.fetchQaPosts(1, kw, f)
+    } else {
+      postStore.fetchQaPosts(1, kw, 'latest', f)
+    }
   } else {
     postStore.fetchPostList(1, kw, postStore.sort)
   }
 }
 
-function onSelectPost(id: string, type: 'resume' | 'regular') {
+function onSelectPost(id: string, type: 'resume' | 'regular' | 'qa') {
   postStore.selectPost(id, type)
   // 从列表数据中获取标题（同步，无需等 API 返回）
+  const tabType = type === 'qa' ? 'regular' : type
   const title = type === 'resume'
     ? postStore.resumePostList.find(p => p.id === id)?.resumeName || '简历详情'
     : postStore.postList.find(p => p.id === id)?.title || '帖子详情'
-  editorStore.openComponentTab(`post:${type}:${id}`, title, PostDetail, {
+  editorStore.openComponentTab(`post:${tabType}:${id}`, title, PostDetail, {
     postId: id,
-    postType: type
+    postType: tabType
   })
 }
 
@@ -67,13 +99,13 @@ async function checkMyResume() {
   const authStore = useAuthStore()
   if (!authStore.token) return
   checkingResume.value = true
-  await postStore.checkMyResume()
+  await postStore.checkMyResumePost()
   checkingResume.value = false
 }
 
 function handlePublish() {
   if (!useRequireAuth()) return
-  const type = postStore.activeTab
+  const type = postStore.activeTab === 'myOwn' ? 'regular' : postStore.activeTab
   if (type === 'resume' && postStore.myResumeId) {
     // View/edit existing resume
     postStore.selectPost(postStore.myResumeId, 'resume')
@@ -81,8 +113,12 @@ function handlePublish() {
       postId: postStore.myResumeId,
       postType: 'resume'
     })
+  } else if (type === 'qa') {
+    editorStore.openComponentTab(`post:editor:qa`, '发布求助帖', PostEditor, {
+      postType: 'qa'
+    })
   } else {
-    const label = type === 'resume' ? '发布简历' : '发布帖子'
+    const label = type === 'resume' ? '发布简历' : '发布社区帖'
     editorStore.openComponentTab(`post:editor:${type}`, label, PostEditor, {
       postType: type
     })
@@ -91,7 +127,11 @@ function handlePublish() {
 
 function onSortChange(sort: string) {
   postStore.setSort(sort)
-  postStore.fetchPostList(1, postStore.keyword, sort)
+  if (postStore.activeTab === 'qa') {
+    postStore.fetchQaPosts(1, postStore.keyword, sort)
+  } else {
+    postStore.fetchPostList(1, postStore.keyword, sort)
+  }
 }
 
 const currentList = computed(() => {
@@ -116,6 +156,15 @@ function onVisibilityChange() {
     const kw = postStore.keyword || undefined
     if (postStore.activeTab === 'resume') {
       postStore.fetchResumePostList(1, kw)
+    } else if (postStore.activeTab === 'myOwn') {
+      postStore.fetchMyPosts(1, kw)
+    } else if (postStore.activeTab === 'qa') {
+      const f = qaActiveFilter.value
+      if (f === 'hot' || f === 'latest') {
+        postStore.fetchQaPosts(1, kw, f)
+      } else {
+        postStore.fetchQaPosts(1, kw, 'latest', f)
+      }
     } else {
       postStore.fetchPostList(1, kw, postStore.sort)
     }
@@ -147,7 +196,25 @@ watch(() => postStore.resumePostList.length, () => {
           : 'text-[#888] hover:text-[#ccc]'"
         @click="onTabChange('regular')"
       >
-        常规贴
+        社区
+      </button>
+      <button
+        class="px-3 py-1.5 text-sm font-medium transition-colors"
+        :class="postStore.activeTab === 'qa'
+          ? 'text-[#4a9eff] border-b-2 border-[#4a9eff]'
+          : 'text-[#888] hover:text-[#ccc]'"
+        @click="onTabChange('qa')"
+      >
+        求助
+      </button>
+      <button
+        class="px-3 py-1.5 text-sm font-medium transition-colors"
+        :class="postStore.activeTab === 'myOwn'
+          ? 'text-[#4a9eff] border-b-2 border-[#4a9eff]'
+          : 'text-[#888] hover:text-[#ccc]'"
+        @click="onTabChange('myOwn')"
+      >
+        我的
       </button>
     </div>
 
@@ -158,7 +225,7 @@ watch(() => postStore.resumePostList.length, () => {
         <input
           v-model="searchInput"
           type="text"
-          :placeholder="postStore.activeTab === 'resume' ? '搜索简历...' : '搜索帖子...'"
+          :placeholder="postStore.activeTab === 'resume' ? '搜索简历...' : (postStore.activeTab === 'myOwn' ? '搜索我的帖子...' : (postStore.activeTab === 'qa' ? '搜索求助...' : '搜索社区...'))"
           class="bg-transparent text-[#ccc] text-xs outline-none flex-1 placeholder:text-[#666]"
           @input="onSearchInput"
         />
@@ -166,6 +233,7 @@ watch(() => postStore.resumePostList.length, () => {
     </div>
 
     <!-- Sort bar (regular posts only) -->
+    <!-- Sort bar for regular posts -->
     <div v-if="postStore.activeTab === 'regular'" class="px-3 py-1.5 border-b border-[#2a2a2a] flex gap-4">
       <button
         v-for="opt in sortOptions"
@@ -175,6 +243,21 @@ watch(() => postStore.resumePostList.length, () => {
           ? 'text-[#4a9eff] border-b border-[#4a9eff]'
           : 'text-[#888] hover:text-[#ccc]'"
         @click="onSortChange(opt.value)"
+      >
+        {{ opt.label }}
+      </button>
+    </div>
+
+    <!-- Filter bar for QA posts -->
+    <div v-if="postStore.activeTab === 'qa'" class="px-3 py-1.5 border-b border-[#2a2a2a] flex gap-4">
+      <button
+        v-for="opt in qaFilterOptions"
+        :key="opt.value"
+        class="text-xs pb-1 transition-colors"
+        :class="qaActiveFilter === opt.value
+          ? 'text-[#4a9eff] border-b border-[#4a9eff]'
+          : 'text-[#888] hover:text-[#ccc]'"
+        @click="onQaFilterChange(opt.value)"
       >
         {{ opt.label }}
       </button>
@@ -207,7 +290,7 @@ watch(() => postStore.resumePostList.length, () => {
       </template>
 
       <!-- Regular post cards -->
-      <template v-else>
+      <template v-else-if="postStore.activeTab === 'regular'">
         <RegularPostCard
           v-for="post in postStore.postList"
           :key="post.id"
@@ -216,6 +299,34 @@ watch(() => postStore.resumePostList.length, () => {
           :is-liked="postStore.likedIds.has(post.id)"
           @select="onSelectPost($event, 'regular')"
           @like="onLike"
+        />
+      </template>
+
+      <!-- QA post cards -->
+      <template v-else-if="postStore.activeTab === 'qa'">
+        <RegularPostCard
+          v-for="post in postStore.postList"
+          :key="post.id"
+          :post="post"
+          :is-selected="postStore.selectedId === post.id"
+          :is-liked="postStore.likedIds.has(post.id)"
+          @select="onSelectPost($event, 'qa')"
+          @like="onLike"
+        />
+      </template>
+
+      <!-- My own posts -->
+      <template v-else-if="postStore.activeTab === 'myOwn'">
+        <RegularPostCard
+          v-for="post in postStore.postList"
+          :key="post.id"
+          :post="post"
+          :is-selected="postStore.selectedId === post.id"
+          :is-liked="postStore.likedIds.has(post.id)"
+          :show-pin-actions="true"
+          @select="onSelectPost($event, 'regular')"
+          @like="onLike"
+          @pin-changed="postStore.fetchMyPosts(1, postStore.keyword || undefined)"
         />
       </template>
     </div>
@@ -229,7 +340,7 @@ watch(() => postStore.resumePostList.length, () => {
           : 'bg-[#4a9eff] hover:bg-[#3a8eef]'"
         @click="handlePublish"
       >
-        {{ postStore.activeTab === 'resume' ? (postStore.myResumeId ? '查看我的简历' : '+ 发布简历') : '+ 发布帖子' }}
+        {{ postStore.activeTab === 'resume' ? (postStore.myResumeId ? '查看我的简历' : '+ 发布简历') : postStore.activeTab === 'qa' ? '+ 发布求助' : '+ 发布社区帖' }}
       </button>
     </div>
   </div>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { UserCircle, LogOut, PenLine, ShieldCheck, Flame } from 'lucide-vue-next'
+import { UserCircle, LogOut, PenLine, ShieldCheck, Flame, Gift, Download } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { API_BASE_URL, apiGet, apiPost, type ApiResponse } from '@/api/http'
 import type { ChsiVerificationStatus } from '@/types'
@@ -16,7 +16,7 @@ type HeatPoint = {
 }
 
 const props = withDefaults(defineProps<{
-  activeSection?: 'all' | 'profile' | 'avatar' | 'password' | 'chsi' | 'activity' | 'chsi-review'
+  activeSection?: 'all' | 'profile' | 'avatar' | 'password' | 'chsi' | 'activity' | 'chsi-review' | 'cdkey' | 'cdkey-admin'
 }>(), {
   activeSection: 'all'
 })
@@ -83,7 +83,7 @@ const heatMap = computed(() => {
 
 const activeSection = computed(() => props.activeSection || 'all')
 
-const showSection = (section: 'profile' | 'avatar' | 'password' | 'chsi' | 'activity' | 'chsi-review') => {
+const showSection = (section: 'profile' | 'avatar' | 'password' | 'chsi' | 'activity' | 'chsi-review' | 'cdkey' | 'cdkey-admin') => {
   return activeSection.value === 'all' || activeSection.value === section
 }
 
@@ -204,6 +204,7 @@ const readAuth = async () => {
     await authStore.fetchCurrentUser()
     await authStore.fetchChsiVerificationStatus()
     await authStore.fetchActivity(heatDays.value)
+    cdkeyBalance.value = authStore.user?.beans ?? 0
     if (authStore.user?.chsiReviewer) {
       await fetchPendingChsiReviews()
     }
@@ -472,6 +473,76 @@ const onHeatDaysChange = async (days: number) => {
   await authStore.fetchActivity(days)
 }
 
+// ===== CDKEY =====
+const cdkeyCode = ref('')
+const cdkeyMessage = ref('')
+const cdkeyMessageType = ref<'success' | 'error'>('success')
+const cdkeyBalance = ref(0)
+
+const adminAmount = ref(100)
+const adminCount = ref(10)
+const adminCodes = ref<string[]>([])
+const adminMessage = ref('')
+const adminMessageType = ref<'success' | 'error'>('success')
+
+const cdkeyAmounts = [10, 50, 100, 300, 500, 1000, 5000]
+
+async function doRedeemCdkey() {
+  cdkeyMessage.value = ''
+  if (!cdkeyCode.value.trim()) {
+    cdkeyMessage.value = '请输入 CDKEY'
+    cdkeyMessageType.value = 'error'
+    return
+  }
+  try {
+    const { redeemCdkey } = await import('@/api/post')
+    const resp = await redeemCdkey(cdkeyCode.value.trim().toUpperCase())
+    if (resp.code === 200) {
+      const data = resp.data!
+      cdkeyMessage.value = `兑换成功！获得 🫘 ${data.amount} 百斩豆`
+      cdkeyMessageType.value = 'success'
+      cdkeyBalance.value = data.balance
+      cdkeyCode.value = ''
+    } else {
+      cdkeyMessage.value = resp.message || '兑换失败'
+      cdkeyMessageType.value = 'error'
+    }
+  } catch {
+    cdkeyMessage.value = '兑换失败，请稍后再试'
+    cdkeyMessageType.value = 'error'
+  }
+}
+
+async function doGenerateCdkeys() {
+  adminMessage.value = ''
+  try {
+    const { generateCdkeys } = await import('@/api/post')
+    const resp = await generateCdkeys({ amount: adminAmount.value, count: adminCount.value })
+    if (resp.code === 200) {
+      adminCodes.value = resp.data!.codes
+      adminMessage.value = `成功生成 ${adminCount.value} 个 CDKEY（面值 ${adminAmount.value} 百斩豆）`
+      adminMessageType.value = 'success'
+    } else {
+      adminMessage.value = resp.message || '生成失败'
+      adminMessageType.value = 'error'
+    }
+  } catch {
+    adminMessage.value = '生成失败，请稍后再试'
+    adminMessageType.value = 'error'
+  }
+}
+
+function downloadCdkeyTxt() {
+  const text = adminCodes.value.join('\n')
+  const blob = new Blob([text], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `cdkeys_${adminAmount.value}x${adminCount.value}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 onMounted(readAuth)
 watch(() => authStore.message, (next) => {
   if (next) {
@@ -513,7 +584,7 @@ watch(activeSection, () => {
 </script>
 
 <template>
-  <div class="h-full p-4 space-y-4 overflow-auto text-sm text-vscode-text">
+  <div class="h-full py-4 space-y-4 overflow-y-auto text-sm text-vscode-text" style="scrollbar-gutter: stable">
     <div class="flex items-center justify-between">
       <h2 class="text-base font-semibold">账户与个人设置</h2>
       <button
@@ -735,6 +806,63 @@ watch(activeSection, () => {
             </div>
           </div>
         </div>
+      </section>
+
+      <!-- CDKEY 兑换 -->
+      <section v-if="showSection('cdkey')" class="border border-vscode-border rounded p-3 space-y-2">
+        <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">CDKEY 兑换</h3>
+        <div class="text-xs text-vscode-text-secondary">格式：HAWTHORN-XXXX-XXXX</div>
+        <input
+          v-model="cdkeyCode"
+          placeholder="HAWTHORN-XXXX-XXXX"
+          class="w-full bg-vscode-active border border-vscode-border px-2 py-1 rounded text-sm"
+          style="text-transform: uppercase"
+          @keydown.enter="doRedeemCdkey"
+        />
+        <div v-if="cdkeyMessage" class="text-xs" :class="cdkeyMessageType === 'success' ? 'text-emerald-500' : 'text-vscode-warning'">
+          {{ cdkeyMessage }}
+        </div>
+        <div class="flex items-center justify-between">
+          <button class="px-3 py-1 bg-vscode-selected rounded text-sm" @click="doRedeemCdkey">
+            <span class="inline-flex gap-1 items-center"><Gift class="w-4 h-4"/> 兑换</span>
+          </button>
+          <span class="text-xs text-vscode-text-secondary">余额：🫘 {{ cdkeyBalance }}</span>
+        </div>
+      </section>
+
+      <!-- CDKEY 管理（仅管理员） -->
+      <section v-if="canReviewChsi && showSection('cdkey-admin')" class="border border-vscode-border rounded p-3 space-y-2">
+        <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">CDKEY 管理 — 批量生成</h3>
+        <div class="flex items-center gap-3">
+          <label class="text-xs text-vscode-text-secondary">
+            面值
+            <select v-model="adminAmount" class="ml-1 bg-vscode-active border border-vscode-border px-2 py-1 rounded text-sm">
+              <option v-for="a in cdkeyAmounts" :key="a" :value="a">{{ a }}</option>
+            </select>
+          </label>
+          <label class="text-xs text-vscode-text-secondary">
+            数量
+            <input v-model.number="adminCount" type="number" min="1" max="1000" class="ml-1 w-20 bg-vscode-active border border-vscode-border px-2 py-1 rounded text-sm" />
+          </label>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="px-3 py-1 bg-vscode-selected rounded text-sm" @click="doGenerateCdkeys">
+            生成 CDKEY
+          </button>
+          <button v-if="adminCodes.length > 0" class="px-3 py-1 border border-vscode-border rounded text-sm" @click="downloadCdkeyTxt">
+            <span class="inline-flex gap-1 items-center"><Download class="w-4 h-4"/> 下载 TXT</span>
+          </button>
+        </div>
+        <div v-if="adminMessage" class="text-xs" :class="adminMessageType === 'success' ? 'text-emerald-500' : 'text-vscode-warning'">
+          {{ adminMessage }}
+        </div>
+        <textarea
+          v-if="adminCodes.length > 0"
+          readonly
+          :value="adminCodes.join('\n')"
+          rows="6"
+          class="w-full bg-vscode-active border border-vscode-border px-2 py-1 rounded text-xs font-mono"
+        />
       </section>
 
       <section v-if="showSection('activity')" class="border border-vscode-border rounded p-3 space-y-2">

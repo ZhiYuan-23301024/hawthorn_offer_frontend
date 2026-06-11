@@ -1,9 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import type { PostListVO, ResumePostListVO, ResumePostDetail, PostDetail, CommentVO } from '@/api/post'
+import type { PostListVO, ResumePostListVO, ResumePostDetail, PostDetail, CommentVO, PageResponse } from '@/api/post'
 import * as postApi from '@/api/post'
+import { apiGet } from '@/api/http'
+import type { ApiResponse } from '@/api/http'
+import { useAuthStore } from '@/stores/auth'
 
-export type PostTab = 'resume' | 'regular'
+export type PostTab = 'resume' | 'regular' | 'qa' | 'myOwn'
 
 const LIKED_IDS_KEY = 'hawthorn_post_liked_ids'
 
@@ -87,6 +90,51 @@ export const usePostStore = defineStore('post', () => {
         postPage.value = page
         // 从服务端同步点赞状态（处理跨标签页/跨设备同步）
         syncLikedIdsFromList(res.data.items || [])
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const qaFilter = ref('')
+
+  async function fetchQaPosts(page = 1, kw?: string, s?: string, bs?: string) {
+    loading.value = true
+    try {
+      const kwParam = kw !== undefined ? kw : keyword.value
+      const sParam = s !== undefined ? s : sort.value
+      const bsParam = bs !== undefined ? bs : qaFilter.value
+      const res = await postApi.getPostList(page, 10, kwParam || undefined, sParam, 'qa', bsParam || undefined)
+      if (res.code === 200) {
+        postList.value = (res.data.items || []).map(item => ({
+          ...item,
+          likeCount: item.likeCount || 0,
+          commentCount: item.commentCount || 0
+        }))
+        postTotal.value = res.data.total
+        postPage.value = page
+        syncLikedIdsFromList(res.data.items || [])
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchMyPosts(page = 1, keyword?: string) {
+    const authStore = useAuthStore()
+    loading.value = true
+    try {
+      let url = `/api/posts?page=${page}&size=10&sort=latest&myOwn=true`
+      if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`
+      const res = await apiGet<ApiResponse<PageResponse<PostListVO>>>(url, authStore.token || undefined)
+      if (res.code === 200 && res.data) {
+        postList.value = (res.data.items || []).map(item => ({
+          ...item,
+          likeCount: item.likeCount || 0,
+          commentCount: item.commentCount || 0
+        }))
+        postTotal.value = res.data.total
+        postPage.value = page
       }
     } finally {
       loading.value = false
@@ -229,8 +277,8 @@ export const usePostStore = defineStore('post', () => {
     resumePostList, resumePostTotal, resumePostPage,
     postList, postTotal, postPage,
     selectedId, selectedType, currentDetail, comments, loadingDetail,
-    likedIds,
-    fetchResumePostList, fetchPostList, selectPost, toggleLike,
+    likedIds, qaFilter,
+    fetchResumePostList, fetchPostList, fetchQaPosts, fetchMyPosts, selectPost, toggleLike,
     setTab, setKeyword, setSort, fetchComments,
     myResumeId, checkMyResumePost, clearMyResumeId, clearLikedIds
   }

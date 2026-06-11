@@ -44,7 +44,7 @@ function handleItemClick(itemId: string) {
 </script>
 
 <template>
-  <aside class="w-12 bg-vscode-sidebar flex flex-col items-center py-4 border-r border-vscode-border">
+  <aside class="w-12 bg-vscode-sidebar flex flex-col items-center py-4 border-r border-vscode-border flex-shrink-0">
     <div class="flex-1 flex flex-col items-center space-y-1">
       <button
         v-for="item in sidebarStore.items"

@@ -52,12 +52,12 @@ function isModified(tabId: string) {
 </script>
 
 <template>
-  <main class="flex-1 flex flex-col bg-vscode-bg">
-    <div v-if="editorStore.tabs.length > 0" class="flex items-center border-b border-vscode-border bg-vscode-active">
+  <main class="flex-1 flex flex-col bg-vscode-bg min-w-0">
+    <div v-if="editorStore.tabs.length > 0" class="flex items-center border-b border-vscode-border bg-vscode-active overflow-x-auto flex-nowrap">
       <div
         v-for="tab in editorStore.tabs"
         :key="tab.id"
-        class="flex items-center px-3 py-2 cursor-pointer border-r border-vscode-border transition-colors relative"
+        class="flex items-center px-3 py-2 cursor-pointer border-r border-vscode-border transition-colors relative flex-shrink-0"
         :class="{
           'bg-vscode-bg': editorStore.activeTabId === tab.id,
           'hover:bg-vscode-selected': editorStore.activeTabId !== tab.id

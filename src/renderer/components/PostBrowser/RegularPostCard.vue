@@ -13,6 +13,15 @@ const emit = defineEmits<{
   select: [id: string]
   like: [id: string]
 }>()
+
+function computeRemaining(expiresAt: string | null): string {
+  if (!expiresAt) return ''
+  const remaining = new Date(expiresAt).getTime() - Date.now()
+  if (remaining <= 0) return '已过期'
+  const hours = Math.floor(remaining / 3600000)
+  if (hours >= 24) return `${Math.floor(hours / 24)}天`
+  return `${hours}小时`
+}
 </script>
 
 <template>
@@ -21,6 +30,13 @@ const emit = defineEmits<{
     :class="isSelected ? 'bg-[#094771] border-[#007acc]' : 'hover:bg-[#2a2a2a]'"
     @click="emit('select', post.id)"
   >
+    <!-- 置顶标识 -->
+    <div v-if="post.isPinned" class="flex items-center gap-1 mb-1">
+      <span class="text-xs text-[#e74c3c] font-medium">📌 置顶</span>
+      <span v-if="post.pinExpiresAt" class="text-xs text-[#888]">
+        · 剩余 {{ computeRemaining(post.pinExpiresAt) }}
+      </span>
+    </div>
     <div class="flex items-start gap-2.5">
       <div
         class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden"
@@ -33,6 +49,13 @@ const emit = defineEmits<{
       <div class="flex-1 min-w-0">
         <div class="font-semibold text-sm" :class="isSelected ? 'text-white' : 'text-[#ddd]'">
           {{ post.title }}
+        </div>
+        <!-- Bounty badge for QA posts -->
+        <div v-if="post.postType === 'qa'" class="flex items-center gap-2 mt-0.5">
+          <span class="text-xs text-[#f0c040]">🫘 {{ post.bountyBeans }}</span>
+          <span v-if="post.bountyStatus === 'active'" class="text-xs text-[#4a9eff]">求助中</span>
+          <span v-else-if="post.bountyStatus === 'expired'" class="text-xs text-[#888]">已结束</span>
+          <span v-else-if="post.bountyStatus === 'distributed'" class="text-xs text-[#27ae60]">已分配</span>
         </div>
         <div class="text-xs mt-0.5" :class="isSelected ? 'text-[#b0d4f1]' : 'text-[#aaa]'">
           {{ post.authorName }}

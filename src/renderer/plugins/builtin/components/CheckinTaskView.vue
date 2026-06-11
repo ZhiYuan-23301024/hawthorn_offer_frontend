@@ -54,7 +54,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full p-8 overflow-y-auto">
+  <div class="h-full overflow-y-auto">
     <div v-if="showComplete" class="h-full flex flex-col items-center justify-center">
       <div class="w-24 h-24 rounded-full bg-vscode-success flex items-center justify-center mb-6 animate-bounce">
         <Check class="w-12 h-12 text-white" />

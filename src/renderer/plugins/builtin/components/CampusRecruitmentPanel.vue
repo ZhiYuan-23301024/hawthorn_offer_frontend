@@ -242,7 +242,7 @@ onMounted(initializeData)
 </script>
 
 <template>
-  <div class="h-full overflow-auto p-4 text-sm text-vscode-text">
+  <div class="h-full overflow-auto py-4 text-sm text-vscode-text">
     <div class="mx-auto max-w-6xl space-y-4">
       <section class="rounded-2xl border border-vscode-border bg-vscode-active/50 p-5">
         <div class="flex flex-wrap items-start justify-between gap-4">

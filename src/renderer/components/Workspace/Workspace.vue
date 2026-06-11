@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, markRaw, ref, watch } from 'vue'
-import { FilePlus, UserCircle, Search, LogOut, User, ShieldCheck, Building2, Briefcase, CalendarClock, BadgeCheck } from 'lucide-vue-next'
+import { FilePlus, UserCircle, Search, LogOut, User, ShieldCheck, Building2, Briefcase, CalendarClock, BadgeCheck, Gift, Download } from 'lucide-vue-next'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useEditorStore } from '@/stores/editor'
 import { useAuthStore } from '@/stores/auth'
@@ -17,11 +17,13 @@ const accountFeatures = computed(() => {
     { id: 'avatar', label: '修改头像', icon: FilePlus },
     { id: 'password', label: '修改密码', icon: LogOut },
     { id: 'chsi', label: '学信网认证', icon: UserCircle },
-    { id: 'activity', label: 'Activity热力图', icon: Search }
+    { id: 'activity', label: 'Activity热力图', icon: Search },
+    { id: 'cdkey', label: 'CDKEY 兑换', icon: Gift }
   ]
 
   if (authStore.user?.chsiReviewer) {
     base.push({ id: 'chsi-review', label: '认证审核', icon: ShieldCheck })
+    base.push({ id: 'cdkey-admin', label: 'CDKEY 管理', icon: Download })
   }
 
   return base
@@ -123,7 +125,7 @@ function handleCampusFeatureSelect(featureId: string) {
 </script>
 
 <template>
-  <aside class="w-64 bg-vscode-bg border-r border-vscode-border flex flex-col">
+  <aside class="w-64 bg-vscode-bg border-r border-vscode-border flex flex-col flex-shrink-0">
     <div v-if="currentPlugin?.id !== 'chat'" class="p-2 border-b border-vscode-border">
       <div class="flex items-center justify-between">
         <span class="text-xs font-semibold text-vscode-text-secondary uppercase tracking-wider">

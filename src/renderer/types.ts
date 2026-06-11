@@ -10,6 +10,9 @@ export interface UserProfile {
 export interface HeatmapPoint {
   date: string
   count: number
+  postCount?: number
+  commentCount?: number
+  offerCount?: number
 }
 
 export interface ChsiVerificationStatus {

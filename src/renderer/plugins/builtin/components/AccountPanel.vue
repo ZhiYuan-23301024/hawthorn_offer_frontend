@@ -47,14 +47,21 @@ const heatDays = ref(30)
 
 const heatMap = computed(() => {
   const today = new Date()
-  const source = new Map(authStore.activity.map(item => [item.date, item.count]))
-  const points = [] as { date: string; count: number }[]
+  const source = new Map(authStore.activity.map(item => [item.date, item]))
+  const points = [] as { date: string; count: number; postCount: number; commentCount: number; offerCount: number }[]
 
   for (let i = heatDays.value - 1; i >= 0; i -= 1) {
     const d = new Date(today)
     d.setDate(d.getDate() - i)
     const key = d.toISOString().slice(0, 10)
-    points.push({ date: key, count: source.get(key) || 0 })
+    const current = source.get(key)
+    points.push({
+      date: key,
+      count: current?.count || 0,
+      postCount: current?.postCount || 0,
+      commentCount: current?.commentCount || 0,
+      offerCount: current?.offerCount || 0
+    })
   }
   return points
 })
@@ -82,6 +89,20 @@ const heatIntensity = (count: number) => {
   if (count <= 2) return 'bg-emerald-700'
   if (count <= 4) return 'bg-emerald-500'
   return 'bg-emerald-300'
+}
+
+const getHeatPointTitle = (point: { date: string; count: number; postCount: number; commentCount: number; offerCount: number }) => {
+  if (point.count <= 0) {
+    return `${point.date}\n暂无活跃记录`
+  }
+
+  const parts = [
+    point.postCount > 0 ? `帖子 ${point.postCount}` : '',
+    point.commentCount > 0 ? `评论 ${point.commentCount}` : '',
+    point.offerCount > 0 ? `Offer ${point.offerCount}` : ''
+  ].filter(Boolean)
+
+  return `${point.date}\n总计 ${point.count}\n${parts.join('，')}`
 }
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
@@ -497,7 +518,7 @@ watch(() => authStore.message, (next) => {
           <div
             v-for="point in heatMap"
             :key="point.date"
-            :title="`${point.date} (${point.count})`"
+            :title="getHeatPointTitle(point)"
             :class="[heatIntensity(point.count), 'h-4 rounded-sm']"
           ></div>
         </div>

@@ -20,6 +20,7 @@ const confirmPassword = ref('')
 const verifyCode = ref('')
 const authMessage = ref('')
 const settingsMessage = ref('')
+const reviewMessage = ref('')
 const cooldown = ref(0)
 const timerRef = ref<number | null>(null)
 
@@ -112,6 +113,10 @@ const clearAuthMessage = () => {
 
 const clearSettingsMessage = () => {
   settingsMessage.value = ''
+}
+
+const clearReviewMessage = () => {
+  reviewMessage.value = ''
 }
 
 const toAbsoluteAssetUrl = (path: string) => {
@@ -307,6 +312,9 @@ const onChsiProofUpload = (evt: Event) => {
 
 const doLogout = async () => {
   await authStore.logout()
+  clearAuthMessage()
+  clearSettingsMessage()
+  clearReviewMessage()
   pendingChsiReviews.value = []
   rejectReasonDrafts.value = {}
 }
@@ -314,6 +322,7 @@ const doLogout = async () => {
 const fetchPendingChsiReviews = async () => {
   if (!authStore.token || !canReviewChsi.value) {
     pendingChsiReviews.value = []
+    clearReviewMessage()
     return
   }
 
@@ -333,14 +342,14 @@ const fetchPendingChsiReviews = async () => {
 }
 
 const reviewSubmission = async (submissionId: string, action: 'approve' | 'reject') => {
-  clearSettingsMessage()
+  clearReviewMessage()
   if (!submissionId) {
     return
   }
 
   const rejectReason = (rejectReasonDrafts.value[submissionId] || '').trim()
   if (action === 'reject' && !rejectReason) {
-    settingsMessage.value = '驳回时请填写原因'
+    reviewMessage.value = '驳回时请填写原因'
     return
   }
 
@@ -356,14 +365,14 @@ const reviewSubmission = async (submissionId: string, action: 'approve' | 'rejec
     )
 
     if (res.code === 200) {
-      settingsMessage.value = action === 'approve' ? '已通过该认证申请' : '已驳回该认证申请'
+      reviewMessage.value = action === 'approve' ? '已通过该认证申请' : '已驳回该认证申请'
       delete rejectReasonDrafts.value[submissionId]
       await fetchPendingChsiReviews()
     } else {
-      settingsMessage.value = res.message
+      reviewMessage.value = res.message
     }
   } catch (error) {
-    settingsMessage.value = error instanceof Error ? error.message : '审核失败'
+    reviewMessage.value = error instanceof Error ? error.message : '审核失败'
   } finally {
     reviewActionLoadingId.value = ''
   }
@@ -426,7 +435,16 @@ watch(canReviewChsi, async (next) => {
   } else {
     pendingChsiReviews.value = []
     rejectReasonDrafts.value = {}
+    clearReviewMessage()
   }
+})
+
+watch(() => authStore.user?.id, () => {
+  clearAuthMessage()
+  clearSettingsMessage()
+  clearReviewMessage()
+  pendingChsiReviews.value = []
+  rejectReasonDrafts.value = {}
 })
 </script>
 
@@ -595,6 +613,10 @@ watch(canReviewChsi, async (next) => {
           <button class="px-2 py-1 border border-vscode-border rounded text-xs" @click="fetchPendingChsiReviews">
             刷新列表
           </button>
+        </div>
+
+        <div v-if="reviewMessage" class="rounded bg-vscode-active px-3 py-2 text-vscode-warning">
+          {{ reviewMessage }}
         </div>
 
         <div v-if="pendingReviewLoading" class="text-xs text-vscode-text-secondary">正在加载待审核记录...</div>

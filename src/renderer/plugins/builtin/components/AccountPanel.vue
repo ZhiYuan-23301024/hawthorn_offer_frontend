@@ -119,6 +119,57 @@ const clearReviewMessage = () => {
   reviewMessage.value = ''
 }
 
+const resetProfileForm = () => {
+  nickname.value = authStore.user?.nickname || ''
+  bio.value = authStore.user?.bio || ''
+}
+
+const resetAuthForm = () => {
+  email.value = ''
+  password.value = ''
+  confirmPassword.value = ''
+  verifyCode.value = ''
+}
+
+const resetPasswordForm = () => {
+  oldPassword.value = ''
+  newPassword.value = ''
+}
+
+const resetAvatarForm = () => {
+  selectedAvatarName.value = ''
+  if (avatarPreviewUrl.value) {
+    URL.revokeObjectURL(avatarPreviewUrl.value)
+  }
+  avatarPreviewUrl.value = ''
+}
+
+const resetChsiForm = () => {
+  chsiName.value = ''
+  chsiStudentId.value = ''
+  chsiProofFile.value = null
+  chsiProofFileName.value = ''
+  if (chsiProofPreviewUrl.value) {
+    URL.revokeObjectURL(chsiProofPreviewUrl.value)
+  }
+  chsiProofPreviewUrl.value = ''
+}
+
+const resetReviewForm = () => {
+  pendingChsiReviews.value = []
+  rejectReasonDrafts.value = {}
+  reviewActionLoadingId.value = ''
+  pendingReviewLoading.value = false
+}
+
+const resetAllDrafts = () => {
+  resetAuthForm()
+  resetPasswordForm()
+  resetAvatarForm()
+  resetChsiForm()
+  resetReviewForm()
+}
+
 const toAbsoluteAssetUrl = (path: string) => {
   if (!path) return ''
   if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
@@ -133,6 +184,7 @@ const toAbsoluteAssetUrl = (path: string) => {
 const switchMode = (target: 'login' | 'register') => {
   mode.value = target
   clearAuthMessage()
+  resetAuthForm()
 }
 
 const readAuth = async () => {
@@ -143,11 +195,7 @@ const readAuth = async () => {
     if (authStore.user?.chsiReviewer) {
       await fetchPendingChsiReviews()
     }
-    if (authStore.user) {
-      nickname.value = authStore.user.nickname || ''
-      bio.value = authStore.user.bio || ''
-    }
-    avatarPreviewUrl.value = ''
+    resetProfileForm()
   }
 }
 
@@ -274,12 +322,7 @@ const doVerifyChsi = async () => {
   })
   if (res.code === 200) {
     settingsMessage.value = '学信网认证材料已提交，等待管理员审核'
-    chsiProofFile.value = null
-    chsiProofFileName.value = ''
-    if (chsiProofPreviewUrl.value) {
-      URL.revokeObjectURL(chsiProofPreviewUrl.value)
-    }
-    chsiProofPreviewUrl.value = ''
+    resetChsiForm()
   } else {
     settingsMessage.value = res.message
   }
@@ -315,13 +358,12 @@ const doLogout = async () => {
   clearAuthMessage()
   clearSettingsMessage()
   clearReviewMessage()
-  pendingChsiReviews.value = []
-  rejectReasonDrafts.value = {}
+  resetAllDrafts()
 }
 
 const fetchPendingChsiReviews = async () => {
   if (!authStore.token || !canReviewChsi.value) {
-    pendingChsiReviews.value = []
+    resetReviewForm()
     clearReviewMessage()
     return
   }
@@ -433,8 +475,7 @@ watch(canReviewChsi, async (next) => {
   if (next) {
     await fetchPendingChsiReviews()
   } else {
-    pendingChsiReviews.value = []
-    rejectReasonDrafts.value = {}
+    resetReviewForm()
     clearReviewMessage()
   }
 })
@@ -443,8 +484,18 @@ watch(() => authStore.user?.id, () => {
   clearAuthMessage()
   clearSettingsMessage()
   clearReviewMessage()
-  pendingChsiReviews.value = []
-  rejectReasonDrafts.value = {}
+  resetAllDrafts()
+})
+
+watch(activeSection, () => {
+  clearAuthMessage()
+  clearSettingsMessage()
+  clearReviewMessage()
+  resetProfileForm()
+  resetPasswordForm()
+  resetAvatarForm()
+  resetChsiForm()
+  resetReviewForm()
 })
 </script>
 

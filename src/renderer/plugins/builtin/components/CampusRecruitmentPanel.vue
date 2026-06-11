@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   Building2,
   Briefcase,
@@ -10,6 +10,16 @@ import {
   ArrowUpRight,
   Sparkles
 } from 'lucide-vue-next'
+import {
+  getCampusCompanies,
+  getCampusCompanyDetail,
+  getCampusJobs,
+  getCampusOverview,
+  type CampusCompanyCard,
+  type CampusCompanyDetail,
+  type CampusJobCard,
+  type CampusOverview
+} from '@/api/campus'
 
 type CampusSection = 'all' | 'overview' | 'companies' | 'jobs' | 'timeline' | 'tracking'
 
@@ -25,79 +35,127 @@ const showSection = (section: Exclude<CampusSection, 'all'>) => {
   return activeSection.value === 'all' || activeSection.value === section
 }
 
-const stats = [
-  { label: '本周新增企业', value: '12', tone: 'text-sky-300' },
-  { label: '正在进行批次', value: '37', tone: 'text-emerald-300' },
-  { label: '7天内将截止', value: '9', tone: 'text-amber-300' },
-  { label: '已关注岗位', value: '18', tone: 'text-fuchsia-300' }
+const loading = ref(false)
+const pageMessage = ref('')
+const overview = ref<CampusOverview | null>(null)
+const companies = ref<CampusCompanyCard[]>([])
+const jobs = ref<CampusJobCard[]>([])
+const companyKeyword = ref('')
+const jobKeyword = ref('')
+const selectedCompanyId = ref('')
+const selectedCompanyDetail = ref<CampusCompanyDetail | null>(null)
+const selectedCompanyLoading = ref(false)
+
+const stats = computed(() => {
+  const current = overview.value
+  return [
+    { label: '企业数量', value: String(current?.companyCount ?? 0), tone: 'text-sky-300' },
+    { label: '开放批次', value: String(current?.activeCampaignCount ?? 0), tone: 'text-emerald-300' },
+    { label: '7天内将截止', value: String(current?.upcomingDeadlineCount ?? 0), tone: 'text-amber-300' },
+    { label: '已关注岗位', value: String(current?.followedJobCount ?? 0), tone: 'text-fuchsia-300' }
+  ]
+})
+
+const featuredCompanies = computed(() => overview.value?.featuredCompanies ?? [])
+const hotJobs = computed(() => overview.value?.hotJobs ?? [])
+
+const timelineTips = [
+  { date: '下一步', title: '补流程节点接口', note: '建议后端后续新增 milestones 表，把网申、笔试、面试、截止串成真实时间线。' },
+  { date: '当前状态', title: '时间线仍是占位区', note: '这块暂时还没有接真实接口，我先把结构位留好了。' }
 ]
 
-const featuredCompanies = [
-  {
-    name: '字节跳动',
-    track: '技术 / 产品 / 设计',
-    deadline: '08-25',
-    highlight: '提前批进行中，后端与算法岗需求高'
-  },
-  {
-    name: '阿里巴巴',
-    track: '研发 / 运营 / 数据',
-    deadline: '08-28',
-    highlight: '国际电商与云计算方向岗位同步开放'
-  },
-  {
-    name: '腾讯',
-    track: '开发 / 测试 / 游戏策划',
-    deadline: '08-31',
-    highlight: '校招主批开启，广深岗位占比高'
+const trackingTips = [
+  { company: '建议', role: '关注记录', status: '待实现', note: '下一步可以补 user_campus_follows 表，把“已投递 / 笔试中 / 面试中”做成用户自己的进度。' }
+]
+
+async function loadOverview() {
+  const res = await getCampusOverview()
+  if (res.code === 200) {
+    overview.value = res.data
+    return true
   }
-]
+  pageMessage.value = res.message
+  return false
+}
 
-const hotJobs = [
-  {
-    title: '后端开发工程师',
-    company: '美团',
-    city: '北京',
-    batch: '2027 届秋招',
-    tags: ['Java', '分布式', '提前批'],
-    deadline: '08-20'
-  },
-  {
-    title: '数据分析师',
-    company: '小红书',
-    city: '上海',
-    batch: '2027 届秋招',
-    tags: ['SQL', 'Python', '商业分析'],
-    deadline: '08-22'
-  },
-  {
-    title: '客户端开发工程师',
-    company: '快手',
-    city: '北京',
-    batch: '2027 届秋招',
-    tags: ['iOS', 'Android', '基础架构'],
-    deadline: '08-26'
+async function loadCompanies(keyword?: string) {
+  const res = await getCampusCompanies(keyword)
+  if (res.code === 200) {
+    companies.value = res.data
+    if (!selectedCompanyId.value && res.data.length > 0) {
+      selectedCompanyId.value = res.data[0].id
+    }
+    return true
   }
-]
+  pageMessage.value = res.message
+  return false
+}
 
-const timelineItems = [
-  { date: '08-18', title: '网易雷火笔试', note: '晚上 19:00，算法 + 系统设计混合卷' },
-  { date: '08-20', title: '美团后端网申截止', note: '关注基础架构与到家事业群' },
-  { date: '08-23', title: '腾讯产品群面周', note: '已投同学建议提前准备案例表达' },
-  { date: '08-25', title: '字节研发一面集中开始', note: '预计投递后 3-5 天进入面试' }
-]
+async function loadJobs(keyword?: string) {
+  const res = await getCampusJobs(keyword)
+  if (res.code === 200) {
+    jobs.value = res.data
+    return true
+  }
+  pageMessage.value = res.message
+  return false
+}
 
-const trackingItems = [
-  { company: '腾讯', role: '后台开发', status: '笔试完成', note: '等一面通知，预计本周出结果' },
-  { company: '阿里云', role: 'Java 开发', status: '已投递', note: '简历刚完成筛选，注意查短信' },
-  { company: '小米', role: '数据研发', status: '准备投递', note: '还差项目描述优化和内推码' }
-]
+async function loadCompanyDetail(companyId: string) {
+  if (!companyId) {
+    selectedCompanyDetail.value = null
+    return
+  }
 
-const tips = [
-  '把“网申截止前 3 天”单独标成高优先级，比只看发布时间更有用。',
-  '企业详情页建议长期保留“投递要求、流程节点、内推入口、笔面经链接”四类固定信息。',
-  '我的关注最好允许自己打状态，不然专区会沦为只读公告栏。'
-]
+  selectedCompanyLoading.value = true
+  try {
+    const res = await getCampusCompanyDetail(companyId)
+    if (res.code === 200) {
+      selectedCompanyDetail.value = res.data
+    } else {
+      pageMessage.value = res.message
+    }
+  } finally {
+    selectedCompanyLoading.value = false
+  }
+}
+
+async function initializeData() {
+  loading.value = true
+  pageMessage.value = ''
+  try {
+    await Promise.all([
+      loadOverview(),
+      loadCompanies(),
+      loadJobs()
+    ])
+  } finally {
+    loading.value = false
+  }
+}
+
+async function searchCompanies() {
+  pageMessage.value = ''
+  await loadCompanies(companyKeyword.value.trim() || undefined)
+}
+
+async function searchJobs() {
+  pageMessage.value = ''
+  await loadJobs(jobKeyword.value.trim() || undefined)
+}
+
+function formatDeadline(value?: string | null) {
+  if (!value) return '未设置'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return `${date.getMonth() + 1}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+watch(selectedCompanyId, async (next) => {
+  await loadCompanyDetail(next)
+}, { immediate: true })
+
+onMounted(initializeData)
 </script>
 
 <template>
@@ -112,15 +170,25 @@ const tips = [
             </div>
             <h2 class="text-xl font-semibold text-vscode-text">校招专区</h2>
             <p class="max-w-2xl text-vscode-text-secondary">
-              把企业、岗位、截止时间、流程节点和自己的投递进度放到同一块区域里，避免信息散落在帖子和聊天里。
+              现在这版已经接上后端接口，优先展示企业、岗位和总览数据，方便你先验证专区的信息密度是否合理。
             </p>
           </div>
-          <div class="rounded-2xl border border-vscode-border bg-vscode-bg px-4 py-3 text-xs text-vscode-text-secondary">
-            <p class="font-medium text-vscode-text">当前骨架版已包含</p>
-            <p class="mt-2">总览、企业列表、岗位列表、时间线、我的关注</p>
-          </div>
+          <button
+            class="rounded-xl border border-vscode-border px-3 py-2 text-xs text-vscode-text-secondary hover:bg-vscode-active"
+            @click="initializeData"
+          >
+            刷新数据
+          </button>
         </div>
       </section>
+
+      <div v-if="pageMessage" class="rounded-xl border border-vscode-border bg-vscode-active px-3 py-2 text-vscode-warning">
+        {{ pageMessage }}
+      </div>
+
+      <div v-if="loading" class="rounded-xl border border-vscode-border bg-vscode-panel px-4 py-3 text-vscode-text-secondary">
+        正在加载校招专区数据...
+      </div>
 
       <section v-if="showSection('overview')" class="space-y-4">
         <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -138,24 +206,25 @@ const tips = [
           <div class="rounded-2xl border border-vscode-border bg-vscode-panel p-4">
             <div class="mb-3 flex items-center gap-2">
               <Building2 class="h-4 w-4 text-vscode-icon" />
-              <h3 class="font-medium text-vscode-text">本周重点企业</h3>
+              <h3 class="font-medium text-vscode-text">重点企业</h3>
             </div>
-            <div class="space-y-3">
+            <div v-if="featuredCompanies.length === 0" class="text-sm text-vscode-text-secondary">暂无企业数据</div>
+            <div v-else class="space-y-3">
               <div
                 v-for="company in featuredCompanies"
-                :key="company.name"
+                :key="company.id"
                 class="rounded-xl border border-vscode-border bg-vscode-active/40 p-3"
               >
                 <div class="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p class="font-medium text-vscode-text">{{ company.name }}</p>
-                    <p class="text-xs text-vscode-text-secondary">{{ company.track }}</p>
+                    <p class="text-xs text-vscode-text-secondary">{{ company.industry || '未分类行业' }}</p>
                   </div>
                   <span class="rounded-full bg-amber-500/15 px-2 py-1 text-xs text-amber-300">
-                    截止 {{ company.deadline }}
+                    截止 {{ formatDeadline(company.latestDeadline) }}
                   </span>
                 </div>
-                <p class="mt-2 text-sm text-vscode-text-secondary">{{ company.highlight }}</p>
+                <p class="mt-2 text-sm text-vscode-text-secondary">{{ company.summary || '暂无企业介绍' }}</p>
               </div>
             </div>
           </div>
@@ -163,15 +232,18 @@ const tips = [
           <div class="rounded-2xl border border-vscode-border bg-vscode-panel p-4">
             <div class="mb-3 flex items-center gap-2">
               <BellRing class="h-4 w-4 text-vscode-icon" />
-              <h3 class="font-medium text-vscode-text">设计建议</h3>
+              <h3 class="font-medium text-vscode-text">热门岗位</h3>
             </div>
-            <div class="space-y-3">
+            <div v-if="hotJobs.length === 0" class="text-sm text-vscode-text-secondary">暂无岗位数据</div>
+            <div v-else class="space-y-3">
               <div
-                v-for="tip in tips"
-                :key="tip"
-                class="rounded-xl border border-vscode-border bg-vscode-active/30 p-3 text-sm text-vscode-text-secondary"
+                v-for="job in hotJobs"
+                :key="job.id"
+                class="rounded-xl border border-vscode-border bg-vscode-active/30 p-3 text-sm"
               >
-                {{ tip }}
+                <p class="font-medium text-vscode-text">{{ job.title }}</p>
+                <p class="mt-1 text-vscode-text-secondary">{{ job.companyName || '未知企业' }} · {{ job.city || '未填写城市' }}</p>
+                <p class="mt-2 text-xs text-vscode-text-secondary">截止 {{ formatDeadline(job.deadline) }}</p>
               </div>
             </div>
           </div>
@@ -179,64 +251,136 @@ const tips = [
       </section>
 
       <section v-if="showSection('companies')" class="rounded-2xl border border-vscode-border bg-vscode-panel p-4">
-        <div class="mb-4 flex items-center gap-2">
-          <Building2 class="h-4 w-4 text-vscode-icon" />
-          <h3 class="font-medium text-vscode-text">企业列表</h3>
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <Building2 class="h-4 w-4 text-vscode-icon" />
+            <h3 class="font-medium text-vscode-text">企业列表</h3>
+          </div>
+          <div class="flex gap-2">
+            <input
+              v-model="companyKeyword"
+              class="rounded-lg border border-vscode-border bg-vscode-active px-3 py-1.5 text-sm"
+              placeholder="搜索企业名或行业"
+              @keyup.enter="searchCompanies"
+            />
+            <button class="rounded-lg border border-vscode-border px-3 py-1.5 text-xs hover:bg-vscode-active" @click="searchCompanies">
+              搜索
+            </button>
+          </div>
         </div>
-        <div class="grid gap-3 lg:grid-cols-2">
-          <div
-            v-for="company in featuredCompanies"
-            :key="`${company.name}-card`"
-            class="rounded-xl border border-vscode-border bg-vscode-active/35 p-4"
-          >
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="text-base font-medium text-vscode-text">{{ company.name }}</p>
-                <p class="mt-1 text-sm text-vscode-text-secondary">{{ company.track }}</p>
+
+        <div class="grid gap-4 xl:grid-cols-[1.1fr_1fr]">
+          <div class="space-y-3">
+            <div v-if="companies.length === 0" class="text-sm text-vscode-text-secondary">暂无企业数据</div>
+            <button
+              v-for="company in companies"
+              :key="company.id"
+              class="w-full rounded-xl border p-4 text-left transition"
+              :class="company.id === selectedCompanyId ? 'border-sky-500 bg-sky-500/10' : 'border-vscode-border bg-vscode-active/35 hover:bg-vscode-active/60'"
+              @click="selectedCompanyId = company.id"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="text-base font-medium text-vscode-text">{{ company.name }}</p>
+                  <p class="mt-1 text-sm text-vscode-text-secondary">{{ company.industry || '未分类行业' }}</p>
+                </div>
+                <span class="rounded-full bg-vscode-bg px-2 py-1 text-xs text-vscode-text-secondary">
+                  {{ company.status || 'OPEN' }}
+                </span>
               </div>
-              <button class="inline-flex items-center gap-1 rounded-lg border border-vscode-border px-2 py-1 text-xs text-vscode-text-secondary">
-                查看详情
-                <ArrowUpRight class="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <p class="mt-3 text-sm text-vscode-text-secondary">{{ company.highlight }}</p>
+              <p class="mt-3 text-sm text-vscode-text-secondary">{{ company.summary || '暂无企业介绍' }}</p>
+            </button>
+          </div>
+
+          <div class="rounded-xl border border-vscode-border bg-vscode-active/20 p-4">
+            <div v-if="selectedCompanyLoading" class="text-sm text-vscode-text-secondary">正在加载企业详情...</div>
+            <template v-else-if="selectedCompanyDetail">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <h4 class="text-lg font-semibold text-vscode-text">{{ selectedCompanyDetail.company.name }}</h4>
+                  <p class="mt-1 text-sm text-vscode-text-secondary">{{ selectedCompanyDetail.company.industry || '未分类行业' }}</p>
+                </div>
+                <a
+                  v-if="selectedCompanyDetail.company.officialUrl"
+                  :href="selectedCompanyDetail.company.officialUrl"
+                  target="_blank"
+                  rel="noreferrer"
+                  class="inline-flex items-center gap-1 rounded-lg border border-vscode-border px-2 py-1 text-xs text-vscode-text-secondary"
+                >
+                  官方入口
+                  <ArrowUpRight class="h-3.5 w-3.5" />
+                </a>
+              </div>
+              <p class="mt-3 text-sm text-vscode-text-secondary">
+                {{ selectedCompanyDetail.company.summary || '暂无企业介绍' }}
+              </p>
+
+              <div class="mt-4 space-y-2">
+                <p class="text-xs uppercase tracking-wide text-vscode-text-secondary">当前批次</p>
+                <div v-if="selectedCompanyDetail.campaigns.length === 0" class="text-sm text-vscode-text-secondary">暂无批次信息</div>
+                <div
+                  v-for="campaign in selectedCompanyDetail.campaigns"
+                  :key="campaign.id"
+                  class="rounded-lg border border-vscode-border bg-vscode-panel px-3 py-2"
+                >
+                  <p class="font-medium text-vscode-text">{{ campaign.title }}</p>
+                  <p class="mt-1 text-xs text-vscode-text-secondary">
+                    {{ campaign.targetYear || '-' }} 届 · {{ campaign.status || 'OPEN' }}
+                  </p>
+                </div>
+              </div>
+            </template>
+            <div v-else class="text-sm text-vscode-text-secondary">选择左侧企业后，在这里查看详情。</div>
           </div>
         </div>
       </section>
 
       <section v-if="showSection('jobs')" class="rounded-2xl border border-vscode-border bg-vscode-panel p-4">
-        <div class="mb-4 flex items-center gap-2">
-          <Briefcase class="h-4 w-4 text-vscode-icon" />
-          <h3 class="font-medium text-vscode-text">岗位列表</h3>
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <Briefcase class="h-4 w-4 text-vscode-icon" />
+            <h3 class="font-medium text-vscode-text">岗位列表</h3>
+          </div>
+          <div class="flex gap-2">
+            <input
+              v-model="jobKeyword"
+              class="rounded-lg border border-vscode-border bg-vscode-active px-3 py-1.5 text-sm"
+              placeholder="搜索岗位或企业"
+              @keyup.enter="searchJobs"
+            />
+            <button class="rounded-lg border border-vscode-border px-3 py-1.5 text-xs hover:bg-vscode-active" @click="searchJobs">
+              搜索
+            </button>
+          </div>
         </div>
-        <div class="space-y-3">
+
+        <div v-if="jobs.length === 0" class="text-sm text-vscode-text-secondary">暂无岗位数据</div>
+        <div v-else class="space-y-3">
           <div
-            v-for="job in hotJobs"
-            :key="`${job.company}-${job.title}`"
+            v-for="job in jobs"
+            :key="job.id"
             class="rounded-xl border border-vscode-border bg-vscode-active/35 p-4"
           >
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p class="text-base font-medium text-vscode-text">{{ job.title }}</p>
-                <p class="mt-1 text-sm text-vscode-text-secondary">{{ job.company }} · {{ job.batch }}</p>
+                <p class="mt-1 text-sm text-vscode-text-secondary">
+                  {{ job.companyName || '未知企业' }} · {{ job.campaignTitle || '未命名批次' }}
+                </p>
               </div>
               <span class="rounded-full bg-rose-500/15 px-2 py-1 text-xs text-rose-300">
-                截止 {{ job.deadline }}
+                截止 {{ formatDeadline(job.deadline) }}
               </span>
             </div>
             <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-vscode-text-secondary">
               <span class="inline-flex items-center gap-1 rounded-full border border-vscode-border px-2 py-1">
                 <MapPin class="h-3.5 w-3.5" />
-                {{ job.city }}
+                {{ job.city || '未填写城市' }}
               </span>
-              <span
-                v-for="tag in job.tags"
-                :key="tag"
-                class="rounded-full bg-vscode-bg px-2 py-1"
-              >
-                {{ tag }}
-              </span>
+              <span v-if="job.category" class="rounded-full bg-vscode-bg px-2 py-1">{{ job.category }}</span>
+              <span v-if="job.degreeRequirement" class="rounded-full bg-vscode-bg px-2 py-1">{{ job.degreeRequirement }}</span>
             </div>
+            <p class="mt-3 text-sm text-vscode-text-secondary">{{ job.description || '暂无岗位说明' }}</p>
           </div>
         </div>
       </section>
@@ -248,7 +392,7 @@ const tips = [
         </div>
         <div class="space-y-3">
           <div
-            v-for="item in timelineItems"
+            v-for="item in timelineTips"
             :key="`${item.date}-${item.title}`"
             class="grid gap-2 rounded-xl border border-vscode-border bg-vscode-active/35 p-4 md:grid-cols-[88px_minmax(0,1fr)]"
           >
@@ -268,7 +412,7 @@ const tips = [
         </div>
         <div class="space-y-3">
           <div
-            v-for="item in trackingItems"
+            v-for="item in trackingTips"
             :key="`${item.company}-${item.role}`"
             class="rounded-xl border border-vscode-border bg-vscode-active/35 p-4"
           >
@@ -277,7 +421,7 @@ const tips = [
                 <p class="font-medium text-vscode-text">{{ item.company }} · {{ item.role }}</p>
                 <p class="mt-1 text-sm text-vscode-text-secondary">{{ item.note }}</p>
               </div>
-              <span class="rounded-full bg-emerald-500/15 px-2 py-1 text-xs text-emerald-300">
+              <span class="rounded-full bg-amber-500/15 px-2 py-1 text-xs text-amber-300">
                 {{ item.status }}
               </span>
             </div>

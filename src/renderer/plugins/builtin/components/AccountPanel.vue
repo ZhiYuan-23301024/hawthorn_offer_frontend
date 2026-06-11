@@ -2,12 +2,13 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { UserCircle, LogOut, PenLine, ShieldCheck, Flame } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
-import { API_BASE_URL } from '@/api/http'
+import { API_BASE_URL, apiGet, apiPost, type ApiResponse } from '@/api/http'
+import type { ChsiVerificationStatus } from '@/types'
 
 const authStore = useAuthStore()
 
 const props = withDefaults(defineProps<{
-  activeSection?: 'all' | 'profile' | 'avatar' | 'password' | 'chsi' | 'activity'
+  activeSection?: 'all' | 'profile' | 'avatar' | 'password' | 'chsi' | 'activity' | 'chsi-review'
 }>(), {
   activeSection: 'all'
 })
@@ -34,6 +35,10 @@ const chsiStudentId = ref('')
 const chsiProofFile = ref<File | null>(null)
 const chsiProofFileName = ref('')
 const chsiProofPreviewUrl = ref('')
+const pendingChsiReviews = ref<ChsiVerificationStatus[]>([])
+const reviewActionLoadingId = ref('')
+const pendingReviewLoading = ref(false)
+const rejectReasonDrafts = ref<Record<string, string>>({})
 
 const chsiStatusText = computed(() => {
   const status = authStore.chsiVerification?.status
@@ -68,20 +73,14 @@ const heatMap = computed(() => {
 
 const activeSection = computed(() => props.activeSection || 'all')
 
-const showSection = (section: 'profile' | 'avatar' | 'password' | 'chsi' | 'activity') => {
+const showSection = (section: 'profile' | 'avatar' | 'password' | 'chsi' | 'activity' | 'chsi-review') => {
   return activeSection.value === 'all' || activeSection.value === section
 }
 
+const canReviewChsi = computed(() => !!authStore.user?.chsiReviewer)
+
 const avatarUrl = computed(() => {
-  const avatar = authStore.user?.avatar || ''
-  if (!avatar) return ''
-  if (avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('data:')) {
-    return avatar
-  }
-  if (avatar.startsWith('/')) {
-    return `${API_BASE_URL}${avatar}`
-  }
-  return `${API_BASE_URL}/${avatar}`
+  return toAbsoluteAssetUrl(authStore.user?.avatar || '')
 })
 
 const heatIntensity = (count: number) => {
@@ -115,6 +114,17 @@ const clearSettingsMessage = () => {
   settingsMessage.value = ''
 }
 
+const toAbsoluteAssetUrl = (path: string) => {
+  if (!path) return ''
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path
+  }
+  if (path.startsWith('/')) {
+    return `${API_BASE_URL}${path}`
+  }
+  return `${API_BASE_URL}/${path}`
+}
+
 const switchMode = (target: 'login' | 'register') => {
   mode.value = target
   clearAuthMessage()
@@ -125,6 +135,9 @@ const readAuth = async () => {
     await authStore.fetchCurrentUser()
     await authStore.fetchChsiVerificationStatus()
     await authStore.fetchActivity(heatDays.value)
+    if (authStore.user?.chsiReviewer) {
+      await fetchPendingChsiReviews()
+    }
     if (authStore.user) {
       nickname.value = authStore.user.nickname || ''
       bio.value = authStore.user.bio || ''
@@ -294,6 +307,66 @@ const onChsiProofUpload = (evt: Event) => {
 
 const doLogout = async () => {
   await authStore.logout()
+  pendingChsiReviews.value = []
+  rejectReasonDrafts.value = {}
+}
+
+const fetchPendingChsiReviews = async () => {
+  if (!authStore.token || !canReviewChsi.value) {
+    pendingChsiReviews.value = []
+    return
+  }
+
+  pendingReviewLoading.value = true
+  try {
+    const res = await apiGet<ApiResponse<ChsiVerificationStatus[]>>('/api/users/admin/chsi/pending', authStore.token)
+    if (res.code === 200) {
+      pendingChsiReviews.value = res.data
+    } else {
+      settingsMessage.value = res.message
+    }
+  } catch (error) {
+    settingsMessage.value = error instanceof Error ? error.message : '获取待审核列表失败'
+  } finally {
+    pendingReviewLoading.value = false
+  }
+}
+
+const reviewSubmission = async (submissionId: string, action: 'approve' | 'reject') => {
+  clearSettingsMessage()
+  if (!submissionId) {
+    return
+  }
+
+  const rejectReason = (rejectReasonDrafts.value[submissionId] || '').trim()
+  if (action === 'reject' && !rejectReason) {
+    settingsMessage.value = '驳回时请填写原因'
+    return
+  }
+
+  reviewActionLoadingId.value = `${submissionId}:${action}`
+  try {
+    const res = await apiPost<ApiResponse<ChsiVerificationStatus>>(
+      `/api/users/admin/chsi/${submissionId}/review`,
+      {
+        action,
+        rejectReason: action === 'reject' ? rejectReason : undefined
+      },
+      authStore.token
+    )
+
+    if (res.code === 200) {
+      settingsMessage.value = action === 'approve' ? '已通过该认证申请' : '已驳回该认证申请'
+      delete rejectReasonDrafts.value[submissionId]
+      await fetchPendingChsiReviews()
+    } else {
+      settingsMessage.value = res.message
+    }
+  } catch (error) {
+    settingsMessage.value = error instanceof Error ? error.message : '审核失败'
+  } finally {
+    reviewActionLoadingId.value = ''
+  }
 }
 
 const onAvatarUpload = async (evt: Event) => {
@@ -344,6 +417,15 @@ watch(() => authStore.message, (next) => {
     } else {
       authMessage.value = next
     }
+  }
+})
+
+watch(canReviewChsi, async (next) => {
+  if (next) {
+    await fetchPendingChsiReviews()
+  } else {
+    pendingChsiReviews.value = []
+    rejectReasonDrafts.value = {}
   }
 })
 </script>
@@ -505,6 +587,68 @@ watch(() => authStore.message, (next) => {
         <button class="px-2 py-1 border border-vscode-border rounded" @click="doVerifyChsi">
           提交认证
         </button>
+      </section>
+
+      <section v-if="canReviewChsi && showSection('chsi-review')" class="border border-vscode-border rounded p-3 space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">认证审核</h3>
+          <button class="px-2 py-1 border border-vscode-border rounded text-xs" @click="fetchPendingChsiReviews">
+            刷新列表
+          </button>
+        </div>
+
+        <div v-if="pendingReviewLoading" class="text-xs text-vscode-text-secondary">正在加载待审核记录...</div>
+        <div v-else-if="pendingChsiReviews.length === 0" class="text-xs text-vscode-text-secondary">当前没有待审核的学信网认证</div>
+
+        <div v-else class="space-y-3">
+          <div
+            v-for="item in pendingChsiReviews"
+            :key="item.id"
+            class="rounded border border-vscode-border p-3 space-y-2"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-sm font-medium text-vscode-text">
+                {{ item.realName || '未填写姓名' }}
+                <span class="ml-2 text-xs text-vscode-text-secondary">学号：{{ item.studentId || '未填写' }}</span>
+              </div>
+              <span class="text-xs text-vscode-text-secondary">提交于：{{ item.submittedAt || '-' }}</span>
+            </div>
+
+            <img
+              v-if="item.proofImageUrl"
+              :src="toAbsoluteAssetUrl(item.proofImageUrl)"
+              class="max-h-56 rounded border border-vscode-border object-contain bg-vscode-active"
+              alt="chsi-review-proof"
+            />
+
+            <label class="grid gap-1">
+              <span class="text-xs text-vscode-text-secondary">驳回原因（仅驳回时必填）</span>
+              <textarea
+                v-model="rejectReasonDrafts[item.id || '']"
+                rows="2"
+                class="bg-vscode-active border border-vscode-border px-2 py-1 rounded"
+                placeholder="例如：截图信息不完整、姓名学号不清晰"
+              />
+            </label>
+
+            <div class="flex items-center gap-2">
+              <button
+                class="px-2 py-1 rounded bg-emerald-700 text-white disabled:opacity-60"
+                :disabled="reviewActionLoadingId !== ''"
+                @click="reviewSubmission(item.id || '', 'approve')"
+              >
+                {{ reviewActionLoadingId === `${item.id}:approve` ? '通过中...' : '通过' }}
+              </button>
+              <button
+                class="px-2 py-1 rounded border border-vscode-warning text-vscode-warning disabled:opacity-60"
+                :disabled="reviewActionLoadingId !== ''"
+                @click="reviewSubmission(item.id || '', 'reject')"
+              >
+                {{ reviewActionLoadingId === `${item.id}:reject` ? '驳回中...' : '驳回' }}
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section v-if="showSection('activity')" class="border border-vscode-border rounded p-3 space-y-2">

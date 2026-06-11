@@ -5,6 +5,7 @@ export interface UserProfile {
   bio?: string
   avatar?: string
   chsiVerified: boolean
+  chsiReviewer?: boolean
 }
 
 export interface HeatmapPoint {
@@ -16,9 +17,16 @@ export interface HeatmapPoint {
 }
 
 export interface ChsiVerificationStatus {
+  id?: string
   status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  realName?: string
+  studentId?: string
+  proofImageUrl?: string
   rejectReason?: string
   submittedAt?: string
+  reviewedAt?: string
+  reviewedBy?: string
+  userChsiVerified?: boolean
 }
 
 export interface Plugin {

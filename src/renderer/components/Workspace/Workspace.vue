@@ -1,21 +1,31 @@
 <script setup lang="ts">
 import { computed, markRaw, ref, watch } from 'vue'
-import { FilePlus, UserCircle, Search, LogOut, User } from 'lucide-vue-next'
+import { FilePlus, UserCircle, Search, LogOut, User, ShieldCheck } from 'lucide-vue-next'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useEditorStore } from '@/stores/editor'
+import { useAuthStore } from '@/stores/auth'
 import ExplorerPanel from '@/plugins/builtin/components/ExplorerPanel.vue'
 import { pluginManager } from '@/plugins/pluginManager'
 
 const workspaceStore = useWorkspaceStore()
 const editorStore = useEditorStore()
+const authStore = useAuthStore()
 
-const accountFeatures = [
-  { id: 'profile', label: '个人信息', icon: User },
-  { id: 'avatar', label: '修改头像', icon: FilePlus },
-  { id: 'password', label: '修改密码', icon: LogOut },
-  { id: 'chsi', label: '学信网认证', icon: UserCircle },
-  { id: 'activity', label: 'Activity热力图', icon: Search }
-]
+const accountFeatures = computed(() => {
+  const base = [
+    { id: 'profile', label: '个人信息', icon: User },
+    { id: 'avatar', label: '修改头像', icon: FilePlus },
+    { id: 'password', label: '修改密码', icon: LogOut },
+    { id: 'chsi', label: '学信网认证', icon: UserCircle },
+    { id: 'activity', label: 'Activity热力图', icon: Search }
+  ]
+
+  if (authStore.user?.chsiReviewer) {
+    base.push({ id: 'chsi-review', label: '认证审核', icon: ShieldCheck })
+  }
+
+  return base
+})
 const activeAccountIndex = ref(0)
 
 const currentPlugin = computed(() => pluginManager.getPlugin(workspaceStore.activePanel))
@@ -44,7 +54,7 @@ watch(
       return
     }
     const section = activeTabId.replace('account:', '')
-    const idx = accountFeatures.findIndex(item => item.id === section)
+    const idx = accountFeatures.value.findIndex(item => item.id === section)
     if (idx >= 0) {
       activeAccountIndex.value = idx
     }
@@ -56,13 +66,13 @@ function handleAccountFeatureSelect(featureId: string) {
   if (!currentPlugin.value) {
     return
   }
-  const index = accountFeatures.findIndex(item => item.id === featureId)
+  const index = accountFeatures.value.findIndex(item => item.id === featureId)
   if (index >= 0) {
     activeAccountIndex.value = index
   }
   editorStore.openComponentTab(
     `account:${featureId}`,
-    `${directoryTitle.value}/${accountFeatures.find(item => item.id === featureId)?.label || '详情'}`,
+    `${directoryTitle.value}/${accountFeatures.value.find(item => item.id === featureId)?.label || '详情'}`,
     currentPlugin.value.component,
     { activeSection: featureId }
   )

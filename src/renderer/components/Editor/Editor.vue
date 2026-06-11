@@ -12,7 +12,8 @@ const accountSections = [
   { id: 'avatar', label: '修改头像' },
   { id: 'password', label: '修改密码' },
   { id: 'chsi', label: '学信网认证' },
-  { id: 'activity', label: 'Activity热力图' }
+  { id: 'activity', label: 'Activity热力图' },
+  { id: 'chsi-review', label: '认证审核' }
 ] as const
 
 type AccountSectionId = (typeof accountSections)[number]['id']

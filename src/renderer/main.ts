@@ -11,6 +11,7 @@ import './plugins/builtin/postBrowser'
 import './plugins/builtin/chat'
 import './plugins/builtin/account'
 import './plugins/builtin/checkin'
+import './plugins/builtin/campusRecruitment'
 
 const app = createApp(App)
 const pinia = createPinia()

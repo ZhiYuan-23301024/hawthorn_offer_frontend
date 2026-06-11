@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, markRaw, ref, watch } from 'vue'
-import { FilePlus, UserCircle, Search, LogOut, User, ShieldCheck } from 'lucide-vue-next'
+import { FilePlus, UserCircle, Search, LogOut, User, ShieldCheck, Building2, Briefcase, CalendarClock, BadgeCheck } from 'lucide-vue-next'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useEditorStore } from '@/stores/editor'
 import { useAuthStore } from '@/stores/auth'
@@ -27,6 +27,14 @@ const accountFeatures = computed(() => {
   return base
 })
 const activeAccountIndex = ref(0)
+const campusFeatures = [
+  { id: 'overview', label: '校招总览', icon: Building2 },
+  { id: 'companies', label: '企业列表', icon: Building2 },
+  { id: 'jobs', label: '岗位列表', icon: Briefcase },
+  { id: 'timeline', label: '流程时间线', icon: CalendarClock },
+  { id: 'tracking', label: '我的关注', icon: BadgeCheck }
+]
+const activeCampusIndex = ref(0)
 
 const currentPlugin = computed(() => pluginManager.getPlugin(workspaceStore.activePanel))
 
@@ -35,6 +43,9 @@ const showExplorer = computed(() => workspaceStore.activePanel === 'explorer')
 const directoryTitle = computed(() => {
   if (currentPlugin.value?.id === 'account') {
     return '账户与设置'
+  }
+  if (currentPlugin.value?.id === 'campusRecruitment') {
+    return '校招专区'
   }
   if (currentPlugin.value?.name) {
     return currentPlugin.value.name
@@ -62,6 +73,21 @@ watch(
   { immediate: true }
 )
 
+watch(
+  () => editorStore.activeTab?.id,
+  (activeTabId) => {
+    if (!activeTabId || !activeTabId.startsWith('campus:')) {
+      return
+    }
+    const section = activeTabId.replace('campus:', '')
+    const idx = campusFeatures.findIndex(item => item.id === section)
+    if (idx >= 0) {
+      activeCampusIndex.value = idx
+    }
+  },
+  { immediate: true }
+)
+
 function handleAccountFeatureSelect(featureId: string) {
   if (!currentPlugin.value) {
     return
@@ -73,6 +99,22 @@ function handleAccountFeatureSelect(featureId: string) {
   editorStore.openComponentTab(
     `account:${featureId}`,
     `${directoryTitle.value}/${accountFeatures.value.find(item => item.id === featureId)?.label || '详情'}`,
+    currentPlugin.value.component,
+    { activeSection: featureId }
+  )
+}
+
+function handleCampusFeatureSelect(featureId: string) {
+  if (!currentPlugin.value) {
+    return
+  }
+  const index = campusFeatures.findIndex(item => item.id === featureId)
+  if (index >= 0) {
+    activeCampusIndex.value = index
+  }
+  editorStore.openComponentTab(
+    `campus:${featureId}`,
+    `${directoryTitle.value}/${campusFeatures.find(item => item.id === featureId)?.label || '详情'}`,
     currentPlugin.value.component,
     { activeSection: featureId }
   )
@@ -113,6 +155,29 @@ function handleAccountFeatureSelect(featureId: string) {
           <span class="text-sm text-vscode-text">{{ feature.label }}</span>
           <span class="ml-auto text-xs text-vscode-text-secondary">{{ feature.id === accountFeatures[activeAccountIndex]?.id ? '正在查看' : '' }}</span>
         </div>
+        </div>
+      </div>
+
+      <div v-else-if="currentPlugin?.id === 'campusRecruitment'" class="p-2">
+        <div class="text-xs font-medium text-vscode-text-secondary mb-2">专区目录</div>
+        <div
+          class="max-h-72 overflow-y-auto pr-1"
+          tabindex="0"
+          role="list"
+          aria-label="校招专区目录"
+        >
+          <div
+            v-for="feature in campusFeatures"
+            :key="feature.id"
+            class="flex items-center px-2 py-1.5 rounded cursor-pointer transition-colors"
+            :class="feature.id === campusFeatures[activeCampusIndex]?.id ? 'bg-vscode-selected/60' : 'hover:bg-vscode-selected/20'"
+            role="button"
+            @click="handleCampusFeatureSelect(feature.id)"
+          >
+            <component :is="feature.icon" class="w-4 h-4 mr-2 text-vscode-icon" />
+            <span class="text-sm text-vscode-text">{{ feature.label }}</span>
+            <span class="ml-auto text-xs text-vscode-text-secondary">{{ feature.id === campusFeatures[activeCampusIndex]?.id ? '正在查看' : '' }}</span>
+          </div>
         </div>
       </div>
 

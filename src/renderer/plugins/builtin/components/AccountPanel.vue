@@ -753,17 +753,15 @@ watch(activeSection, () => {
             @mouseleave="hoveredHeatPoint = null"
           ></div>
         </div>
-        <div class="min-h-[56px] rounded border border-vscode-border bg-vscode-active px-3 py-2 text-xs">
-          <template v-if="hoveredHeatPoint">
-            <p class="font-medium text-vscode-text">{{ hoveredHeatPoint.date }}</p>
-            <p
-              v-for="line in hoveredHeatPointLines"
-              :key="line"
-              class="text-vscode-text-secondary"
-            >
-              {{ line }}
-            </p>
-          </template>
+        <div v-if="hoveredHeatPoint" class="rounded border border-vscode-border bg-vscode-active px-3 py-2 text-xs">
+          <p class="font-medium text-vscode-text">{{ hoveredHeatPoint.date }}</p>
+          <p
+            v-for="line in hoveredHeatPointLines"
+            :key="line"
+            class="text-vscode-text-secondary"
+          >
+            {{ line }}
+          </p>
         </div>
         <p class="text-xs text-vscode-text-secondary">
           <Flame class="w-4 h-4 inline" /> 活跃度基于近期发帖、评论和 offer 记录

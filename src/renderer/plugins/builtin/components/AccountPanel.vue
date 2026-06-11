@@ -7,6 +7,14 @@ import type { ChsiVerificationStatus } from '@/types'
 
 const authStore = useAuthStore()
 
+type HeatPoint = {
+  date: string
+  count: number
+  postCount: number
+  commentCount: number
+  offerCount: number
+}
+
 const props = withDefaults(defineProps<{
   activeSection?: 'all' | 'profile' | 'avatar' | 'password' | 'chsi' | 'activity' | 'chsi-review'
 }>(), {
@@ -40,6 +48,7 @@ const pendingChsiReviews = ref<ChsiVerificationStatus[]>([])
 const reviewActionLoadingId = ref('')
 const pendingReviewLoading = ref(false)
 const rejectReasonDrafts = ref<Record<string, string>>({})
+const hoveredHeatPoint = ref<HeatPoint | null>(null)
 
 const chsiStatusText = computed(() => {
   const status = authStore.chsiVerification?.status
@@ -54,7 +63,7 @@ const heatDays = ref(30)
 const heatMap = computed(() => {
   const today = new Date()
   const source = new Map(authStore.activity.map(item => [item.date, item]))
-  const points = [] as { date: string; count: number; postCount: number; commentCount: number; offerCount: number }[]
+  const points = [] as HeatPoint[]
 
   for (let i = heatDays.value - 1; i >= 0; i -= 1) {
     const d = new Date(today)
@@ -91,19 +100,22 @@ const heatIntensity = (count: number) => {
   return 'bg-emerald-300'
 }
 
-const getHeatPointTitle = (point: { date: string; count: number; postCount: number; commentCount: number; offerCount: number }) => {
-  if (point.count <= 0) {
-    return `${point.date}\n暂无活跃记录`
+const hoveredHeatPointLines = computed(() => {
+  const point = hoveredHeatPoint.value
+  if (!point) {
+    return []
   }
 
-  const parts = [
-    point.postCount > 0 ? `帖子 ${point.postCount}` : '',
-    point.commentCount > 0 ? `评论 ${point.commentCount}` : '',
-    point.offerCount > 0 ? `Offer ${point.offerCount}` : ''
-  ].filter(Boolean)
+  if (point.count <= 0) {
+    return ['暂无活跃记录']
+  }
 
-  return `${point.date}\n总计 ${point.count}\n${parts.join('，')}`
-}
+  const lines = [`总计 ${point.count}`]
+  if (point.postCount > 0) lines.push(`帖子 ${point.postCount}`)
+  if (point.commentCount > 0) lines.push(`评论 ${point.commentCount}`)
+  if (point.offerCount > 0) lines.push(`Offer ${point.offerCount}`)
+  return lines
+})
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 
@@ -491,6 +503,7 @@ watch(activeSection, () => {
   clearAuthMessage()
   clearSettingsMessage()
   clearReviewMessage()
+  hoveredHeatPoint.value = null
   resetProfileForm()
   resetPasswordForm()
   resetAvatarForm()
@@ -735,9 +748,22 @@ watch(activeSection, () => {
           <div
             v-for="point in heatMap"
             :key="point.date"
-            :title="getHeatPointTitle(point)"
             :class="[heatIntensity(point.count), 'h-4 rounded-sm']"
+            @mouseenter="hoveredHeatPoint = point"
+            @mouseleave="hoveredHeatPoint = null"
           ></div>
+        </div>
+        <div class="min-h-[56px] rounded border border-vscode-border bg-vscode-active px-3 py-2 text-xs">
+          <template v-if="hoveredHeatPoint">
+            <p class="font-medium text-vscode-text">{{ hoveredHeatPoint.date }}</p>
+            <p
+              v-for="line in hoveredHeatPointLines"
+              :key="line"
+              class="text-vscode-text-secondary"
+            >
+              {{ line }}
+            </p>
+          </template>
         </div>
         <p class="text-xs text-vscode-text-secondary">
           <Flame class="w-4 h-4 inline" /> 活跃度基于近期发帖、评论和 offer 记录

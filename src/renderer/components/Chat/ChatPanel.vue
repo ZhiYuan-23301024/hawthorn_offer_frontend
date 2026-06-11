@@ -39,10 +39,21 @@ watch(() => authStore.isAuthenticated, (authed) => {
 
 // 会话列表：空搜索显示非隐藏会话，有搜索词显示后端搜索结果
 const displayConversations = computed(() => {
+  const source = searchQuery.value.trim()
+    ? store.searchedConversations
+    : store.conversations.filter(c => !c.isHidden)
+
   if (!searchQuery.value.trim()) {
-    return store.conversations.filter(c => !c.isHidden)
+    // Pin notification conversations to top (always visible, never hidden)
+    const notif = store.conversations.filter(
+      c => c.type === 'SYSTEM_NOTIFY' || c.type === 'BEAN_NOTIFY'
+    )
+    const others = source.filter(
+      c => c.type !== 'SYSTEM_NOTIFY' && c.type !== 'BEAN_NOTIFY'
+    )
+    return [...notif, ...others]
   }
-  return store.searchedConversations
+  return source
 })
 
 // 防抖后端搜索

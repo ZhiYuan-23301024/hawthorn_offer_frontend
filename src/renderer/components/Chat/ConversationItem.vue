@@ -41,6 +41,14 @@ function highlightText(text: string, query: string): HighlightSegment[] {
 const highlightedName = computed(() => highlightText(props.conversation.name || '', props.searchQuery || ''))
 const highlightedPreview = computed(() => highlightText(props.conversation.lastMessageText || '', props.searchQuery || ''))
 
+const isNotificationCard = computed(() => {
+  return props.conversation.type === 'SYSTEM_NOTIFY' || props.conversation.type === 'BEAN_NOTIFY'
+})
+
+const isBeanNotify = computed(() => {
+  return props.conversation.type === 'BEAN_NOTIFY'
+})
+
 function handleToggleMute(e: Event) {
   e.stopPropagation()
   store.toggleMute(props.conversation.id)
@@ -99,14 +107,53 @@ function onHideClick(e: Event) {
 </script>
 
 <template>
-  <div
-    class="flex items-center px-3 py-2.5 cursor-pointer transition-colors group border-l-2"
-    :class="isActive
-      ? 'bg-vscode-active border-l-vscode-info'
-      : 'border-l-transparent hover:bg-vscode-selected/40'"
-    @contextmenu.prevent="handleContextMenu"
-    @click="$emit('click', $event)"
-  >
+    <!-- Notification card style -->
+    <div
+      v-if="isNotificationCard"
+      class="flex items-center px-3 py-2.5 cursor-pointer transition-colors group border-l-2"
+      :class="isActive
+        ? 'bg-vscode-active border-l-vscode-info'
+        : 'border-l-transparent hover:bg-vscode-selected/40'"
+      @click="$emit('click', $event)"
+    >
+      <div class="flex-shrink-0 mr-3">
+        <span class="text-xl">{{ conversation.type === 'SYSTEM_NOTIFY' ? '🔔' : '💎' }}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between">
+          <span
+            class="text-sm font-medium truncate"
+            :class="isBeanNotify ? 'text-red-400' : 'text-vscode-text'"
+          >
+            {{ conversation.name }}
+          </span>
+          <span class="text-xs text-vscode-text-secondary flex-shrink-0 ml-2">
+            {{ formatTime(conversation.lastMessageAt) }}
+          </span>
+        </div>
+        <div class="flex items-center justify-between mt-0.5">
+          <span class="text-xs text-vscode-text-secondary truncate">
+            {{ getPreview(conversation.lastMessageText) || '暂无通知' }}
+          </span>
+          <span
+            v-if="conversation.unreadCount > 0"
+            class="px-1.5 py-0.5 text-xs font-medium rounded-full min-w-[18px] text-center"
+            :class="isBeanNotify ? 'bg-red-400/30 text-red-400' : 'bg-vscode-info/30 text-vscode-info'"
+          >
+            {{ conversation.unreadCount > 99 ? '99+' : conversation.unreadCount }}
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- Normal conversation card -->
+    <div v-else
+      class="flex items-center px-3 py-2.5 cursor-pointer transition-colors group border-l-2"
+      :class="isActive
+        ? 'bg-vscode-active border-l-vscode-info'
+        : 'border-l-transparent hover:bg-vscode-selected/40'"
+      @contextmenu.prevent="handleContextMenu"
+      @click="$emit('click', $event)"
+    >
     <!-- Avatar -->
     <div class="flex-shrink-0 mr-3 relative">
       <div class="w-10 h-10 rounded-full bg-vscode-active flex items-center justify-center text-sm text-vscode-text overflow-hidden">
@@ -181,6 +228,7 @@ function onHideClick(e: Event) {
   </div>
 
   <!-- 右键上下文菜单 -->
+  <template v-if="!isNotificationCard">
   <Teleport to="body">
     <div
       v-if="contextMenu.show"
@@ -211,4 +259,5 @@ function onHideClick(e: Event) {
       @contextmenu.prevent="closeContextMenu"
     ></div>
   </Teleport>
+  </template>
 </template>

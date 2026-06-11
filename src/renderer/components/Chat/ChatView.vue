@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onUnmounted, nextTick, defineAsyncComponent } from 'vue'
 import { MoreVertical, Bell, BellOff, EyeOff, LogOut, Users, UserPlus, Info } from 'lucide-vue-next'
 import { useSocialStore } from '@/stores/social'
 import { useEditorStore } from '@/stores/editor'
 import { useAuthStore } from '@/stores/auth'
+import { usePostStore } from '@/stores/post'
 import { API_BASE_URL } from '@/api/http'
 import MessageBubble from './MessageBubble.vue'
 import ChatInput from './ChatInput.vue'
 import GroupJoinRequestsPanel from './GroupJoinRequestsPanel.vue'
 import GroupInfoPanel from './GroupInfoPanel.vue'
 import FriendInfoPanel from './FriendInfoPanel.vue'
+import NotificationBar from './NotificationBar.vue'
+import BeanDetailCard from './BeanDetailCard.vue'
 
 const props = defineProps<{
   conversationId: string
@@ -23,6 +26,51 @@ const showMenu = ref(false)
 const showJoinRequests = ref(false)
 const showGroupInfo = ref(false)
 const showFriendInfo = ref(false)
+
+const postStore = usePostStore()
+
+const isNotificationConversation = computed(() => {
+  return store.activeConversation?.type === 'SYSTEM_NOTIFY' ||
+         store.activeConversation?.type === 'BEAN_NOTIFY'
+})
+
+const isBeanNotify = computed(() => {
+  return store.activeConversation?.type === 'BEAN_NOTIFY'
+})
+
+const beanDetail = ref<{ show: boolean; message: any }>({ show: false, message: null })
+
+function handleNotificationClick(msg: any) {
+  if (isBeanNotify.value) {
+    beanDetail.value = { show: true, message: msg }
+    return
+  }
+  if (msg.targetType && msg.targetId) {
+    jumpToTarget(msg.targetType, msg.targetId)
+  }
+}
+
+function jumpToTarget(targetType: string, targetId: string) {
+  if (targetType === 'POST') {
+    postStore.selectPost(targetId, 'regular')
+    editorStore.openComponentTab(
+      `post:detail:${targetId}`,
+      '帖子详情',
+      defineAsyncComponent(() => import('@/components/Editor/PostDetail.vue')),
+      { postId: targetId }
+    )
+  }
+  // OFFER type: no dedicated detail component yet, skip navigation
+}
+
+function handleBeanNavigate(targetType: string, targetId: string) {
+  beanDetail.value.show = false
+  jumpToTarget(targetType, targetId)
+}
+
+function closeBeanDetail() {
+  beanDetail.value.show = false
+}
 
 const currentUser = computed(() => authStore.user as Record<string, unknown> | null)
 
@@ -240,48 +288,91 @@ onUnmounted(() => {
       @close="showFriendInfo = false"
     />
 
-    <!-- 消息列表 -->
+    <!-- 消息/通知列表 -->
     <div
       ref="messageListRef"
-      class="flex-1 overflow-y-auto py-2"
+      class="flex-1 overflow-y-auto"
+      :class="{ 'py-2': !isNotificationConversation }"
       @scroll="handleScroll"
     >
-      <!-- 加载提示 -->
-      <div
-        v-if="store.loadingMessages && store.messagePage > 1"
-        class="text-center py-3 text-xs text-vscode-text-secondary"
-      >
-        加载中...
-      </div>
+      <!-- Notification list mode -->
+      <template v-if="isNotificationConversation">
+        <div
+          v-if="store.loadingMessages && store.messagePage > 1"
+          class="text-center py-3 text-xs text-vscode-text-secondary"
+        >
+          加载中...
+        </div>
 
-      <!-- 无更多消息 -->
-      <div
-        v-if="!store.hasMoreMessages && store.messages.length > 0"
-        class="text-center py-3 text-xs text-vscode-text-secondary"
-      >
-        — 没有更多消息了 —
-      </div>
+        <div
+          v-if="!store.hasMoreMessages && store.messages.length > 0"
+          class="text-center py-3 text-xs text-vscode-text-secondary"
+        >
+          — 没有更多通知了 —
+        </div>
 
-      <!-- 空态 -->
-      <div
-        v-if="!store.loadingMessages && store.messages.length === 0"
-        class="h-full flex flex-col items-center justify-center text-vscode-text-secondary"
-      >
-        <div class="text-4xl mb-3 opacity-30">💬</div>
-        <div class="text-sm">暂无消息，开始聊天吧</div>
-      </div>
+        <div
+          v-if="!store.loadingMessages && store.messages.length === 0"
+          class="h-full flex flex-col items-center justify-center text-vscode-text-secondary"
+        >
+          <div class="text-4xl mb-3 opacity-30">{{ isBeanNotify ? '💎' : '🔔' }}</div>
+          <div class="text-sm">暂无通知</div>
+        </div>
 
-      <!-- 消息列表 -->
-      <MessageBubble
-        v-for="(msg, idx) in store.messages"
-        :key="msg.id"
-        :message="msg"
-        :is-own="isOwnMessage(msg.senderId)"
-        :show-sender="shouldShowSender(msg, idx)"
-      />
+        <NotificationBar
+          v-for="msg in store.messages"
+          :key="msg.id"
+          :message="msg"
+          @click="handleNotificationClick"
+        />
+      </template>
+
+      <!-- Normal message list mode -->
+      <template v-else>
+        <!-- 加载提示 -->
+        <div
+          v-if="store.loadingMessages && store.messagePage > 1"
+          class="text-center py-3 text-xs text-vscode-text-secondary"
+        >
+          加载中...
+        </div>
+
+        <!-- 无更多消息 -->
+        <div
+          v-if="!store.hasMoreMessages && store.messages.length > 0"
+          class="text-center py-3 text-xs text-vscode-text-secondary"
+        >
+          — 没有更多消息了 —
+        </div>
+
+        <!-- 空态 -->
+        <div
+          v-if="!store.loadingMessages && store.messages.length === 0"
+          class="h-full flex flex-col items-center justify-center text-vscode-text-secondary"
+        >
+          <div class="text-4xl mb-3 opacity-30">💬</div>
+          <div class="text-sm">暂无消息，开始聊天吧</div>
+        </div>
+
+        <!-- 消息列表 -->
+        <MessageBubble
+          v-for="(msg, idx) in store.messages"
+          :key="msg.id"
+          :message="msg"
+          :is-own="isOwnMessage(msg.senderId)"
+          :show-sender="shouldShowSender(msg, idx)"
+        />
+      </template>
     </div>
 
     <!-- 输入区域 -->
-    <ChatInput />
+    <ChatInput v-if="!isNotificationConversation" />
+
+    <BeanDetailCard
+      :show="beanDetail.show"
+      :message="beanDetail.message"
+      @close="closeBeanDetail"
+      @navigate="handleBeanNavigate"
+    />
   </div>
 </template>

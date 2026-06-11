@@ -28,7 +28,7 @@ export interface MemberVO {
 
 export interface ConversationVO {
   id: string
-  type: 'PRIVATE' | 'GROUP'
+  type: 'PRIVATE' | 'GROUP' | 'SYSTEM_NOTIFY' | 'BEAN_NOTIFY'
   name: string
   avatar: string
   groupCode: string
@@ -62,6 +62,9 @@ export interface MessageVO {
   messageType: 'TEXT' | 'IMAGE' | 'FILE' | 'SYSTEM'
   attachments?: MessageAttachmentVO[]
   createdAt: string
+  notificationType?: string  // 'LIKE' | 'REPLY' | 'BEAN_EARN' | 'BEAN_SPEND'
+  targetType?: string        // 'POST' | 'COMMENT' | 'OFFER'
+  targetId?: string          // target entity UUID for jump navigation
 }
 
 export interface PageResponse<T> {

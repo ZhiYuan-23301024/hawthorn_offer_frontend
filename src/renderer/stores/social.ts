@@ -78,6 +78,30 @@ export const useSocialStore = defineStore('social', () => {
     pendingFriendRequests.value.length
   )
 
+  /** Whether the active conversation is a system notification conversation */
+  const isSystemNotifyConversation = computed(() => {
+    const conv = conversations.value.find(c => c.id === activeConversationId.value)
+    return conv?.type === 'SYSTEM_NOTIFY'
+  })
+
+  /** Whether the active conversation is a bean notification conversation */
+  const isBeanNotifyConversation = computed(() => {
+    const conv = conversations.value.find(c => c.id === activeConversationId.value)
+    return conv?.type === 'BEAN_NOTIFY'
+  })
+
+  /** Whether the active conversation is any notification type */
+  const isNotificationConversation = computed(() => {
+    return isSystemNotifyConversation.value || isBeanNotifyConversation.value
+  })
+
+  /** Notification conversations (for pin-to-top display) */
+  const notificationConversations = computed(() => {
+    return conversations.value.filter(
+      c => c.type === 'SYSTEM_NOTIFY' || c.type === 'BEAN_NOTIFY'
+    )
+  })
+
   // ============================================================
   // Phase 1 — 核心聊天动作
   // ============================================================
@@ -129,11 +153,16 @@ export const useSocialStore = defineStore('social', () => {
       if (res.code === 200) {
         messageTotal.value = res.data.total
         messagePage.value = page
-        // 后端返回正序（旧→新），第一页直接设置，后续页 prepend
         if (page === 1) {
           messages.value = res.data.items || []
         } else {
-          messages.value = [...(res.data.items || []), ...messages.value]
+          // 通知会话（新→旧）：旧消息追加到底部；普通聊天（旧→新）：旧消息插入到顶部
+          const conv = conversations.value.find(c => c.id === conversationId)
+          if (conv?.type === 'SYSTEM_NOTIFY' || conv?.type === 'BEAN_NOTIFY') {
+            messages.value = [...messages.value, ...(res.data.items || [])]
+          } else {
+            messages.value = [...(res.data.items || []), ...messages.value]
+          }
         }
       }
     } finally {
@@ -162,7 +191,13 @@ export const useSocialStore = defineStore('social', () => {
         const existingIds = new Set(messages.value.map(m => m.id))
         const newMsgs = serverMessages.filter(m => !existingIds.has(m.id))
         if (newMsgs.length > 0) {
-          messages.value = [...messages.value, ...newMsgs]
+          // 通知会话：新消息插入到顶部；普通聊天：追加到底部
+          const conv = conversations.value.find(c => c.id === convId)
+          if (conv?.type === 'SYSTEM_NOTIFY' || conv?.type === 'BEAN_NOTIFY') {
+            messages.value = [...newMsgs, ...messages.value]
+          } else {
+            messages.value = [...messages.value, ...newMsgs]
+          }
           await fetchConversations()
           if (activeConversationId.value === convId) {
             socialApi.markConversationAsRead(convId).catch(() => {})
@@ -176,6 +211,11 @@ export const useSocialStore = defineStore('social', () => {
 
   /** 发送消息（乐观更新） */
   async function sendMessage(content: string) {
+    // Notification conversations cannot send messages
+    const conv = conversations.value.find(c => c.id === activeConversationId.value)
+    if (conv?.type === 'SYSTEM_NOTIFY' || conv?.type === 'BEAN_NOTIFY') {
+      return
+    }
     if (!activeConversationId.value || !content.trim()) return
     sendingMessage.value = true
 
@@ -529,6 +569,8 @@ export const useSocialStore = defineStore('social', () => {
     // 会话
     conversations, activeConversationId, loadingConversations,
     activeConversation, totalUnread,
+    isSystemNotifyConversation, isBeanNotifyConversation,
+    isNotificationConversation, notificationConversations,
     fetchConversations, selectConversation, clearActiveConversation,
     // 消息
     messages, messagePage, messageTotal, loadingMessages, sendingMessage, hasMoreMessages,

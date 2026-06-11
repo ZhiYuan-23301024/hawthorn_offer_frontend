@@ -18,7 +18,7 @@ onMounted(() => {
     if (authStore.isAuthenticated) {
       socialStore.fetchConversations()
     }
-  }, 30000)
+  }, 10000)
 })
 
 onUnmounted(() => {

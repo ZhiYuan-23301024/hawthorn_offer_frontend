@@ -522,8 +522,10 @@ watch(() => authStore.message, (next) => {
             :class="[heatIntensity(point.count), 'h-4 rounded-sm']"
           ></div>
         </div>
+        <p class="text-xs text-vscode-text-secondary">
+          <Flame class="w-4 h-4 inline" /> 活跃度基于近期发帖、评论和 offer 记录
+        </p>
       </section>
-      <p class="text-xs text-vscode-text-secondary"><Flame class="w-4 h-4 inline" /> 活跃度基于近期发帖/评论/offer/简历记录</p>
     </template>
   </div>
 </template>

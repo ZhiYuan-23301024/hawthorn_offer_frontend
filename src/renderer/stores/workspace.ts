@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import type { TreeNode } from '@/types'
 
 export const useWorkspaceStore = defineStore('workspace', () => {
-  const activePanel = ref('explorer')
+  const activePanel = ref('chat')
   const selectedNode = ref<string | null>(null)
   const treeData = ref<TreeNode[]>([])
 

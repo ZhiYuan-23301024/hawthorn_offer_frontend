@@ -421,11 +421,19 @@ function onVisibilityChange() {
           <div
             v-for="item in postStore.myOwnDisplayLikes"
             :key="`${item.targetId}-${item.targetType}`"
-            class="py-3 border-b border-[#333] last:border-0 cursor-pointer hover:bg-[#2a2a2a] transition-colors rounded px-2 -mx-2"
+            class="py-3 border-b border-[#333] last:border-0 transition-colors rounded px-2 -mx-2"
+            :class="item.targetType === 'post' && item.targetId
+              ? 'cursor-pointer hover:bg-[#2a2a2a]'
+              : 'cursor-default opacity-70'"
             @click="item.targetType === 'post' && item.targetId && onOpenPostFromComment(item.targetId)"
           >
             <div class="flex items-center gap-2">
-              <span class="text-xs px-1.5 py-0.5 rounded" :class="item.targetType === 'post' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'">
+              <span
+                class="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 whitespace-nowrap"
+                :class="item.targetType === 'post'
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'bg-green-500/20 text-green-400'"
+              >
                 {{ item.targetType === 'post' ? '帖子' : '回复' }}
               </span>
               <span class="text-sm text-[#bbb] line-clamp-1">{{ item.targetText || '(内容已删除)' }}</span>

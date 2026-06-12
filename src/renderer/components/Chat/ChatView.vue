@@ -57,7 +57,7 @@ function jumpToTarget(targetType: string, targetId: string) {
       `post:detail:${targetId}`,
       '帖子详情',
       defineAsyncComponent(() => import('@/components/Editor/PostDetail.vue')),
-      { postId: targetId }
+      { postId: targetId, postType: 'regular' }
     )
   }
   // OFFER type: no dedicated detail component yet, skip navigation

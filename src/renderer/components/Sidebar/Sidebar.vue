@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
-import { FolderOpen, Search, GitBranch, Puzzle, UserCircle, MessageSquare, MessageCircle, CalendarCheck, Briefcase, ScrollText } from 'lucide-vue-next'
+import { UserCircle, MessageSquare, MessageCircle, CalendarCheck, Briefcase, ScrollText } from 'lucide-vue-next'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useSocialStore } from '@/stores/social'
@@ -26,10 +26,6 @@ onUnmounted(() => {
 })
 
 const iconComponents: Record<string, any> = {
-  'folder-open': FolderOpen,
-  'search': Search,
-  'git-branch': GitBranch,
-  'puzzle': Puzzle,
   'user-circle': UserCircle,
   'message-square': MessageSquare,
   'message-circle': MessageCircle,
@@ -57,7 +53,7 @@ function handleItemClick(itemId: string) {
         @click="handleItemClick(item.id)"
       >
         <component
-          :is="iconComponents[item.icon] || FolderOpen"
+          :is="iconComponents[item.icon] || MessageCircle"
           class="w-5 h-5 transition-colors"
           :class="{
             'text-vscode-icon-hover': sidebarStore.activeItem === item.id,
@@ -72,11 +68,6 @@ function handleItemClick(itemId: string) {
         <span class="absolute left-full ml-2 px-2 py-1 bg-vscode-active text-vscode-text text-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
           {{ item.label }}
         </span>
-      </button>
-    </div>
-    <div class="mt-auto flex flex-col items-center space-y-1">
-      <button class="w-10 h-10 flex items-center justify-center rounded text-vscode-icon hover:text-vscode-icon-hover hover:bg-vscode-active transition-all">
-        <span class="text-xs font-bold text-vscode-icon-hover">H</span>
       </button>
     </div>
   </aside>

@@ -3,12 +3,13 @@ import { ref, computed } from 'vue'
 import { pluginManager } from '@/plugins/pluginManager'
 
 export const useSidebarStore = defineStore('sidebar', () => {
-  const activeItem = ref('explorer')
+  const activeItem = ref('chat')
 
   const items = computed(() => {
     const bottomIds = ['account']
+    const removedIds = ['explorer', 'search', 'git', 'extensions']
     const sorted = pluginManager.getAllPlugins()
-      .filter(p => !bottomIds.includes(p.id))
+      .filter(p => !bottomIds.includes(p.id) && !removedIds.includes(p.id))
       .map(plugin => ({
         id: plugin.id,
         icon: plugin.icon,

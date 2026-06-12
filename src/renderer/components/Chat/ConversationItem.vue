@@ -51,7 +51,7 @@ function onHideClick(e: Event) { e.stopPropagation(); handleToggleHide(e); close
 
 <template>
   <!-- Notification card -->
-  <div v-if="isNotificationCard" class="flex items-center px-3 py-2.5 cursor-pointer transition-colors group border-l-2"
+  <div v-if="isNotificationCard" class="flex items-center px-3 py-2.5 cursor-pointer transition-colors group border-l-2 animate-fade-in-up"
     :style="{ backgroundColor: isActive ? 'var(--color-primary-subtle)' : 'transparent', borderLeftColor: isActive ? 'var(--color-primary)' : 'transparent' }"
     @click="$emit('click', $event)" @mouseenter="(e: MouseEvent) => { if (!isActive) (e.target as HTMLElement).style.backgroundColor = 'var(--color-surface-hover)' }" @mouseleave="(e: MouseEvent) => { if (!isActive) (e.target as HTMLElement).style.backgroundColor = 'transparent' }">
     <div class="flex-shrink-0 mr-3 w-9 h-9 rounded-full flex items-center justify-center" :style="{ backgroundColor: isBeanNotify ? 'var(--color-cta-subtle)' : 'var(--color-primary-subtle)' }">
@@ -74,7 +74,7 @@ function onHideClick(e: Event) { e.stopPropagation(); handleToggleHide(e); close
   </div>
 
   <!-- Normal conversation card -->
-  <div v-else class="flex items-center px-3 py-2.5 cursor-pointer transition-colors group border-l-2"
+  <div v-else class="flex items-center px-3 py-2.5 cursor-pointer transition-colors group border-l-2 animate-fade-in-up"
     :style="{ backgroundColor: isActive ? 'var(--color-primary-subtle)' : 'transparent', borderLeftColor: isActive ? 'var(--color-primary)' : 'transparent' }"
     @contextmenu.prevent="handleContextMenu" @click="$emit('click', $event)"
     @mouseenter="(e: MouseEvent) => { if (!isActive) (e.target as HTMLElement).style.backgroundColor = 'var(--color-surface-hover)' }" @mouseleave="(e: MouseEvent) => { if (!isActive) (e.target as HTMLElement).style.backgroundColor = 'transparent' }">

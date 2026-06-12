@@ -29,10 +29,12 @@ function computeRemaining(expiresAt: string | null): string {
 
 <template>
   <div
-    class="px-3 py-2.5 rounded-lg cursor-pointer transition-colors border border-transparent relative"
+    class="px-3 py-2.5 rounded-lg cursor-pointer border border-transparent relative post-card"
     :style="{
       backgroundColor: isSelected ? 'var(--color-primary-subtle)' : (post.isPinned ? 'var(--color-warning-subtle)' : 'transparent'),
       borderColor: isSelected ? 'var(--color-primary)' : (post.isPinned ? 'rgba(168,144,108,0.15)' : 'transparent'),
+      boxShadow: isSelected ? 'inset 0 1px 3px rgba(123,143,166,0.12), 0 2px 8px rgba(30,28,26,0.06)' : 'none',
+      transform: isSelected ? 'translateY(-1px)' : 'none',
     }"
     @click="emit('select', post.id)"
     @mouseenter="(e: MouseEvent) => { if (!isSelected) (e.currentTarget as HTMLElement).style.backgroundColor = post.isPinned ? 'var(--color-warning-subtle)' : 'var(--color-surface-hover)' }"
@@ -94,3 +96,17 @@ function computeRemaining(expiresAt: string | null): string {
     </div>
   </div>
 </template>
+
+<style scoped>
+.post-card {
+  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 180ms ease, background 150ms ease, border-color 150ms ease;
+}
+.post-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(30, 28, 26, 0.08);
+}
+.post-card:active {
+  transform: scale(0.985);
+  transition: transform 80ms ease;
+}
+</style>

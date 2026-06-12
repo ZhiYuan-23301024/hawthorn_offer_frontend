@@ -67,7 +67,7 @@ function closePlusMenu() { showPlusMenu.value = false }
     <!-- Tabs -->
     <div class="flex" style="border-bottom: 1px solid var(--color-divider);">
       <button v-for="tab in [{id:'conversations' as const,label:'会话',icon:MessageSquare},{id:'contacts' as const,label:'通讯录',icon:BookUser},{id:'requests' as const,label:'好友请求',icon:UserCheck}]" :key="tab.id"
-        class="flex-1 py-2 text-sm font-medium transition-colors relative"
+        class="flex-1 py-2 text-sm font-medium relative chat-tab"
         :style="{ color: activeTab === tab.id ? 'var(--color-primary-dark)' : 'var(--color-text-tertiary)', borderBottom: activeTab === tab.id ? '2px solid var(--color-primary)' : '2px solid transparent' }"
         @click="activeTab = tab.id">
         <component :is="tab.icon" class="w-3.5 h-3.5 inline mr-1" />{{ tab.label }}
@@ -93,7 +93,7 @@ function closePlusMenu() { showPlusMenu.value = false }
         <div v-else-if="store.searchingConversations" class="flex items-center justify-center py-8"><Loader class="w-5 h-5 animate-spin" style="color: var(--color-text-tertiary);" /></div>
         <div v-else-if="displayConversations.length === 0" class="flex flex-col items-center justify-center py-12" style="color: var(--color-text-tertiary);"><Search class="w-8 h-8 mb-3 opacity-30" /><div class="text-sm">未找到匹配的会话</div></div>
         <div v-else>
-          <ConversationItem v-for="conv in displayConversations" :key="conv.id" :conversation="conv" :is-active="conv.id === store.activeConversationId" :search-query="searchQuery" @click="handleSelectConversation(conv.id)" />
+          <ConversationItem v-for="(conv, ci) in displayConversations" :key="conv.id" :conversation="conv" :is-active="conv.id === store.activeConversationId" :search-query="searchQuery" :style="{ animationDelay: `${ci * 25}ms` }" @click="handleSelectConversation(conv.id)" />
         </div>
       </div>
     </template>
@@ -107,3 +107,12 @@ function closePlusMenu() { showPlusMenu.value = false }
     <div v-if="showPlusMenu" class="fixed inset-0 z-20" @click="closePlusMenu"></div>
   </div>
 </template>
+
+<style scoped>
+.chat-tab {
+  transition: color 150ms ease, border-color 150ms ease;
+}
+.chat-tab:hover {
+  color: var(--color-text-primary);
+}
+</style>

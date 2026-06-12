@@ -380,271 +380,276 @@ defineExpose({ cancelReply })
 </script>
 
 <template>
-  <div class="flex flex-col h-full">
+  <div class="comment-section flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between py-3 border-t border-vscode-border">
-      <span class="text-sm text-vscode-text-secondary font-medium">
+    <div class="comment-header">
+      <span class="comment-header-title">
         评论 ({{ totalCommentCount }})
       </span>
-      <div class="flex gap-3 text-xs">
-        <button :class="sortMode === 'hot' ? 'text-primary' : 'text-vscode-text-secondary hover:text-vscode-text'" @click="sortMode = 'hot'">热门</button>
-        <button :class="sortMode === 'latest' ? 'text-primary' : 'text-vscode-text-secondary hover:text-vscode-text'" @click="sortMode = 'latest'">最新</button>
+      <div class="comment-sort">
+        <button :class="sortMode === 'hot' ? 'is-active' : ''" @click="sortMode = 'hot'">热门</button>
+        <button :class="sortMode === 'latest' ? 'is-active' : ''" @click="sortMode = 'latest'">最新</button>
       </div>
     </div>
 
     <!-- Comment list -->
-    <div class="flex-1 overflow-y-auto space-y-3 pb-2">
-      <div v-if="sortedComments.length === 0" class="text-xs text-vscode-text-secondary py-4 text-center">
+    <div class="comment-list">
+      <div v-if="sortedComments.length === 0" class="comment-empty">
         暂无评论，来发表第一条吧
       </div>
 
-      <template v-for="entry in allComments" :key="entry.comment.id">
-        <!-- Clickable comment row -->
+      <template v-for="(entry, ci) in allComments" :key="entry.comment.id">
         <div
-          class="flex gap-2.5 rounded-md -mx-1 px-1 py-1 transition-colors"
+          class="comment-row list-item-enter"
           :class="[
-            entry.depth > 0 ? 'ml-9 pl-2 border-l-2 border-vscode-border' : '',
-            entry.comment.content ? 'cursor-pointer hover:bg-vscode-active' : 'cursor-default opacity-60'
+            entry.depth > 0 ? 'is-nested' : '',
+            entry.comment.content ? 'is-clickable' : 'is-deleted'
           ]"
+          :style="{ animationDelay: `${ci * 30}ms` }"
           @click="entry.comment.content && onCommentClick(entry.comment.id, entry.comment.nickname)"
         >
           <!-- Avatar -->
           <div
-            class="rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 mt-0.5 overflow-hidden"
-            :class="[entry.depth > 0 ? 'w-6 h-6' : 'w-8 h-8', !entry.comment.isAnonymous ? 'cursor-pointer hover:opacity-80 transition-opacity' : '']"
+            class="comment-avatar"
+            :class="[
+              entry.depth > 0 ? 'is-sm' : '',
+              !entry.comment.isAnonymous ? 'is-interactive' : ''
+            ]"
             :style="{ backgroundColor: avatarColor(entry.comment.userId) }"
             @mouseenter="!entry.comment.isAnonymous && onAvatarMouseEnter($event, entry.comment.userId)"
             @mouseleave="onAvatarMouseLeave"
             @click.stop="!entry.comment.isAnonymous && onAvatarClick(entry.comment.userId)"
           >
             <img v-if="avatarUrl(entry.comment.avatarUrl) && !avatarImgErrors.has(entry.comment.id)" :src="avatarUrl(entry.comment.avatarUrl)" class="w-full h-full object-cover" @error="avatarImgErrors.add(entry.comment.id)" />
-            <span v-else>{{ entry.comment.nickname?.charAt(0) || '?' }}</span>
+            <span v-else class="avatar-fallback">{{ entry.comment.nickname?.charAt(0) || '?' }}</span>
           </div>
 
           <!-- Body -->
-          <div class="flex-1 min-w-0">
-            <div v-if="entry.comment.content" class="text-xs">
+          <div class="comment-body">
+            <!-- Meta line -->
+            <div v-if="entry.comment.content" class="comment-meta">
               <span
-                class="font-semibold"
-                :class="!entry.comment.isAnonymous ? 'text-vscode-text cursor-pointer hover:text-primary transition-colors' : 'text-vscode-text'"
+                class="comment-nickname"
+                :class="!entry.comment.isAnonymous ? 'is-link' : ''"
                 @mouseenter="!entry.comment.isAnonymous && onAvatarMouseEnter($event, entry.comment.userId)"
                 @mouseleave="onAvatarMouseLeave"
                 @click.stop="!entry.comment.isAnonymous && onAvatarClick(entry.comment.userId)"
               >{{ entry.comment.nickname }}</span>
-              <span v-if="entry.comment.isAnonymous && entry.comment.isPostAuthor" class="ml-1 text-xs px-1.5 py-0.5 rounded bg-primary/20 text-primary font-medium">楼主</span>
-              <span v-else-if="entry.comment.isAnonymous && isSelfComment(entry.comment)" class="ml-1 text-xs px-1.5 py-0.5 rounded bg-success/20 text-success font-medium">本人</span>
-              <span v-if="(entry.comment.bountyBeans ?? 0) > 0" class="ml-1 text-xs text-warning">+{{ entry.comment.bountyBeans  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></span>
-              <span v-if="entry.comment.isAdopted" class="ml-1 text-xs px-1.5 py-0.5 rounded bg-success/20 text-success font-medium"><CheckCircle2 class="w-3.5 h-3.5 inline-block" style="color:var(--color-success);" /> 已采纳</span>
-              <span v-if="entry.replyToName" class="text-primary ml-1">回复 @{{ entry.replyToName }}</span>
-              <span class="text-vscode-text-secondary ml-2">{{ formatTimeAgo(entry.comment.createdAt) }}</span>
+              <span v-if="entry.comment.isAnonymous && entry.comment.isPostAuthor" class="comment-badge badge-author">楼主</span>
+              <span v-else-if="entry.comment.isAnonymous && isSelfComment(entry.comment)" class="comment-badge badge-self">本人</span>
+              <span v-if="(entry.comment.bountyBeans ?? 0) > 0" class="comment-bounty">+{{ entry.comment.bountyBeans }} <Bean class="w-3 h-3 inline-block align-text-bottom" /></span>
+              <span v-if="entry.comment.isAdopted" class="comment-badge badge-adopted"><CheckCircle2 class="w-3 h-3 inline-block" /> 已采纳</span>
+              <span v-if="entry.replyToName" class="comment-reply-to">回复 @{{ entry.replyToName }}</span>
+              <span class="comment-time">{{ formatTimeAgo(entry.comment.createdAt) }}</span>
             </div>
-            <div v-if="entry.comment.content" class="text-xs text-vscode-text-secondary mt-1 leading-relaxed whitespace-pre-wrap">
+
+            <!-- Content -->
+            <div v-if="entry.comment.content" class="comment-content">
               {{ entry.comment.content }}
             </div>
-            <div v-else class="text-xs text-vscode-text-secondary italic mt-1">
+            <div v-else class="comment-content is-deleted">
               该评论已被删除
             </div>
 
-            <!-- Reply toggle (any comment with children) -->
+            <!-- Reply toggle -->
             <div
               v-if="entry.comment.children?.length"
-              class="mt-2 text-xs text-vscode-text-secondary cursor-pointer hover:text-vscode-text-secondary inline-flex items-center gap-1"
+              class="comment-toggle-replies"
               @click.stop="toggleReplies(entry.comment.id)"
             >
-              <span v-if="expandedReplies.has(entry.comment.id)">
-                <ChevronUp class="w-3 h-3 inline" /> 收起回复
-              </span>
-              <span v-else>
-                <ChevronDown class="w-3 h-3 inline" /> 展开 {{ countAll(entry.comment.children) }} 条回复
-              </span>
+              <template v-if="expandedReplies.has(entry.comment.id)">
+                <ChevronUp class="w-3.5 h-3.5 inline" /> 收起回复
+              </template>
+              <template v-else>
+                <ChevronDown class="w-3.5 h-3.5 inline" /> 展开 {{ countAll(entry.comment.children) }} 条回复
+              </template>
             </div>
           </div>
 
-          <!-- Delete button (own, non-deleted comments only) -->
-          <button
-            v-if="entry.comment.content && authStore.user?.id && entry.comment.userId === authStore.user.id"
-            class="flex items-center gap-0.5 text-xs flex-shrink-0 self-center text-vscode-text-secondary hover:text-danger transition-colors"
-            @click.stop="handleDeleteComment(entry.comment.id)"
-          >
-            <Trash2 class="w-3.5 h-3.5" />
-          </button>
-
-          <!-- Like button (non-deleted comments only) -->
-          <button
-            v-if="entry.comment.content"
-            class="flex items-center gap-0.5 text-xs flex-shrink-0 self-center transition-colors"
-            :class="commentLikedIds.has(entry.comment.id) ? 'text-danger' : 'text-vscode-text-secondary hover:text-danger'"
-            @click.stop="handleLikeComment(entry.comment)"
-          >
-            <Heart class="w-3.5 h-3.5" :fill="commentLikedIds.has(entry.comment.id) ? 'currentColor' : 'none'" />
-            <span>{{ entry.comment.likeCount || 0 }}</span>
-          </button>
-
-          <!-- Bounty action buttons (QA posts only) -->
-          <template v-if="props.postType === 'qa' && entry.comment.content">
+          <!-- Actions (right side) -->
+          <div class="comment-actions">
+            <!-- Delete -->
             <button
-              v-if="isOwner && props.bountyStatus === 'active' && !entry.comment.isAdopted && entry.comment.userId !== authStore.user?.id"
-              class="text-xs px-2 py-0.5 rounded border border-warning/50 text-warning hover:bg-cta/10 transition-colors flex-shrink-0 self-center"
-              @click.stop="openBountyDialog('adopt', entry.comment)"
-            >采纳</button>
+              v-if="entry.comment.content && authStore.user?.id && entry.comment.userId === authStore.user.id"
+              class="comment-action-btn btn-delete"
+              @click.stop="handleDeleteComment(entry.comment.id)"
+              title="删除"
+            >
+              <Trash2 class="w-4 h-4" />
+            </button>
+
+            <!-- Like -->
             <button
-              v-if="entry.comment.userId !== authStore.user?.id"
-              class="text-xs px-2 py-0.5 rounded border border-primary/50 text-primary hover:bg-primary/10 transition-colors flex-shrink-0 self-center"
-              @click.stop="openBountyDialog('reward', entry.comment)"
-            >打赏</button>
-          </template>
+              v-if="entry.comment.content"
+              class="comment-action-btn btn-like"
+              :class="commentLikedIds.has(entry.comment.id) ? 'is-active' : ''"
+              @click.stop="handleLikeComment(entry.comment)"
+            >
+              <Heart class="w-4 h-4" :fill="commentLikedIds.has(entry.comment.id) ? 'currentColor' : 'none'" />
+              <span v-if="entry.comment.likeCount">{{ entry.comment.likeCount }}</span>
+            </button>
+
+            <!-- Bounty: adopt / reward -->
+            <template v-if="props.postType === 'qa' && entry.comment.content">
+              <button
+                v-if="isOwner && props.bountyStatus === 'active' && !entry.comment.isAdopted && entry.comment.userId !== authStore.user?.id"
+                class="comment-action-btn btn-adopt"
+                @click.stop="openBountyDialog('adopt', entry.comment)"
+              >采纳</button>
+              <button
+                v-if="entry.comment.userId !== authStore.user?.id"
+                class="comment-action-btn btn-reward"
+                @click.stop="openBountyDialog('reward', entry.comment)"
+              >打赏</button>
+            </template>
+          </div>
         </div>
       </template>
     </div>
 
     <!-- Reply bar -->
-    <div v-if="replyToId" class="flex flex-col gap-2 py-2 border-t border-vscode-border">
-      <div class="flex items-end gap-2">
-        <span class="text-xs text-primary flex-shrink-0 pt-1.5">回复 @{{ replyToName }}:</span>
+    <div v-if="replyToId" class="reply-bar">
+      <div class="reply-bar-row">
+        <span class="reply-bar-label">回复 @{{ replyToName }}:</span>
         <textarea
           ref="replyTextarea"
           v-model="replyContent"
           rows="1"
           placeholder="写下回复... (Enter 发送, Shift+Enter 换行)"
-          class="flex-1 bg-vscode-active border border-vscode-border rounded-md px-2.5 py-1.5 text-xs text-vscode-text outline-none focus:border-primary placeholder:text-vscode-text-secondary resize-none overflow-y-auto transition-all"
+          class="comment-textarea"
           :style="replyExpanded ? { height: '50vh' } : {}"
           @input="autoResizeReply"
           @keydown.enter.exact.prevent="handleSendReply"
         />
-        <div class="flex flex-col gap-1 flex-shrink-0">
-          <button
-            class="text-vscode-text-secondary hover:text-vscode-text transition-colors"
-            @click="replyExpanded = !replyExpanded"
-          >
+        <div class="reply-bar-actions">
+          <button class="icon-btn" @click="replyExpanded = !replyExpanded" title="展开">
             <Minimize2 v-if="replyExpanded" class="w-4 h-4" />
             <Maximize2 v-else class="w-4 h-4" />
           </button>
-          <button class="text-primary hover:text-primary-dark" @click="handleSendReply">
+          <button class="icon-btn btn-send" @click="handleSendReply" title="发送">
             <Send class="w-4 h-4" />
           </button>
         </div>
-        <button class="text-xs text-vscode-text-secondary hover:text-vscode-text flex-shrink-0 mb-0.5" @click="cancelReply">取消</button>
+        <button class="btn-cancel" @click="cancelReply">取消</button>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="checkbox-row">
         <input
           id="anonymous-reply"
           v-model="isAnonymousReply"
           type="checkbox"
-          class="w-4 h-4 rounded border-vscode-border bg-vscode-active accent-primary"
+          class="comment-checkbox"
         />
-        <label for="anonymous-reply" class="text-xs text-vscode-text-secondary cursor-pointer">匿名回复</label>
+        <label for="anonymous-reply" class="checkbox-label">匿名回复</label>
       </div>
     </div>
 
     <!-- New comment input -->
-    <div v-else class="flex flex-col gap-2 pt-3 border-t border-vscode-border">
-      <div class="flex items-end gap-2">
+    <div v-else class="new-comment-bar">
+      <div class="new-comment-row">
         <textarea
           ref="commentTextarea"
           v-model="newComment"
           rows="2"
           placeholder="留下你的评论... (Enter 发送, Shift+Enter 换行)"
-          class="flex-1 bg-vscode-active border border-vscode-border rounded-md px-3 py-2 text-sm text-vscode-text outline-none focus:border-primary placeholder:text-vscode-text-secondary resize-none overflow-y-auto transition-all"
+          class="comment-textarea"
           :style="commentExpanded ? { height: '50vh' } : {}"
           @input="autoResizeComment"
           @keydown.enter.exact.prevent="handleSendComment"
         />
-        <div class="flex flex-col gap-1 flex-shrink-0">
-          <button
-            class="text-vscode-text-secondary hover:text-vscode-text transition-colors"
-            @click="toggleCommentExpand"
-          >
+        <div class="reply-bar-actions">
+          <button class="icon-btn" @click="toggleCommentExpand" title="展开">
             <Minimize2 v-if="commentExpanded" class="w-4 h-4" />
             <Maximize2 v-else class="w-4 h-4" />
           </button>
-          <button
-            class="bg-primary text-white text-sm px-4 py-2 rounded-md hover:bg-primary-dark transition-colors"
-            @click="handleSendComment"
-          >发送</button>
+          <button class="btn-send-main" @click="handleSendComment">发送</button>
         </div>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="checkbox-row">
         <input
           id="anonymous-comment"
           v-model="isAnonymousComment"
           type="checkbox"
-          class="w-4 h-4 rounded border-vscode-border bg-vscode-active accent-primary"
+          class="comment-checkbox"
         />
-        <label for="anonymous-comment" class="text-xs text-vscode-text-secondary cursor-pointer">匿名评论</label>
+        <label for="anonymous-comment" class="checkbox-label">匿名评论</label>
       </div>
     </div>
 
     <!-- Bounty dialog -->
-    <div v-if="showBountyDialog" class="fixed inset-0 z-50 flex items-center justify-center " @click.self="showBountyDialog = false">
-      <div class="bg-vscode-bg border border-vscode-border rounded-lg p-6 w-[400px]">
-        <template v-if="!showBountyConfirm">
-          <h3 class="text-lg font-semibold text-vscode-text mb-4">
-            {{ bountyDialogType === 'adopt' ? '采纳回答' : '打赏回答' }}
-          </h3>
-          <div class="text-sm text-vscode-text-secondary mb-3">
-            {{ bountyDialogType === 'adopt' ? '采纳后将标记为已采纳，豆子立即发放' : '直接打赏豆子给回答者' }}
-          </div>
-          <div v-if="bountyDialogType === 'adopt' && props.bountyRemaining && props.bountyRemaining > 0" class="text-xs text-vscode-text-secondary mb-3">
-            求助剩余：{{ props.bountyRemaining  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" />
-          </div>
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showBountyDialog" class="modal-overlay" @click.self="showBountyDialog = false">
+          <div class="modal-card glass-float">
+            <template v-if="!showBountyConfirm">
+              <h3 class="modal-title">
+                {{ bountyDialogType === 'adopt' ? '采纳回答' : '打赏回答' }}
+              </h3>
+              <p class="modal-desc">
+                {{ bountyDialogType === 'adopt' ? '采纳后将标记为已采纳，豆子立即发放' : '直接打赏豆子给回答者' }}
+              </p>
+              <p v-if="bountyDialogType === 'adopt' && props.bountyRemaining && props.bountyRemaining > 0" class="modal-balance">
+                求助剩余：{{ props.bountyRemaining }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" />
+              </p>
 
-          <!-- Presets -->
-          <div class="flex flex-wrap gap-2 mb-4">
-            <button
-              v-for="preset in bountyPresets"
-              :key="preset"
-              class="px-4 py-2 text-sm rounded-md border transition-colors"
-              :class="bountyDialogBeans === preset && !bountyCustomInput ? 'bg-primary/20 border-primary text-primary' : 'border-vscode-border text-vscode-text-secondary hover:border-primary hover:text-primary'"
-              @click="selectBountyPreset(preset)"
-            >{{ preset  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></button>
-          </div>
+              <!-- Presets -->
+              <div class="preset-group">
+                <button
+                  v-for="preset in bountyPresets"
+                  :key="preset"
+                  class="preset-btn"
+                  :class="bountyDialogBeans === preset && !bountyCustomInput ? 'preset-active' : ''"
+                  @click="selectBountyPreset(preset)"
+                >{{ preset }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></button>
+              </div>
 
-          <!-- Custom input -->
-          <div class="mb-4">
-            <label class="block text-sm text-vscode-text-secondary mb-1.5">自定义金额</label>
-            <input
-              v-model.number="bountyCustomInput"
-              type="number"
-              min="1"
-              step="1"
-              placeholder="输入豆子数"
-              class="w-full bg-vscode-active border border-vscode-border rounded-md px-3 py-2 text-sm text-vscode-text outline-none focus:border-primary placeholder:text-vscode-text-secondary"
-              :class="[bountyCustomInput && !Number.isInteger(bountyCustomInput) ? '!border-danger' : '']"
-              @input="applyBountyCustom"
-            />
-            <div v-if="bountyDialogType === 'adopt' && props.bountyRemaining && bountyDialogBeans > (props.bountyRemaining || 0)" class="text-xs text-danger mt-1">
-              超出求助余额 {{ bountyDialogBeans - (props.bountyRemaining || 0) }} 豆子，将继续从账户扣除
-            </div>
-          </div>
+              <!-- Custom input -->
+              <div class="modal-section">
+                <label class="modal-label">自定义金额</label>
+                <input
+                  v-model.number="bountyCustomInput"
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="输入豆子数"
+                  class="modal-input w-full"
+                  :class="[bountyCustomInput && !Number.isInteger(bountyCustomInput) ? 'input-error' : '']"
+                  @input="applyBountyCustom"
+                />
+                <p v-if="bountyDialogType === 'adopt' && props.bountyRemaining && bountyDialogBeans > (props.bountyRemaining || 0)" class="input-hint">
+                  超出求助余额 {{ bountyDialogBeans - (props.bountyRemaining || 0) }} 豆子，将继续从账户扣除
+                </p>
+              </div>
 
-          <p v-if="bountyError" class="text-xs text-danger mb-3">{{ bountyError }}</p>
+              <p v-if="bountyError" class="modal-error">{{ bountyError }}</p>
 
-          <div class="flex gap-3 justify-end">
-            <button class="px-4 py-2 border border-vscode-border text-vscode-text-secondary rounded-md text-sm hover:bg-vscode-active" @click="showBountyDialog = false">取消</button>
-            <button class="px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary-dark disabled:opacity-50" :disabled="bountyDialogBeans < 1" @click="goToBountyConfirm">
-              确认{{ bountyDialogType === 'adopt' ? '采纳' : '打赏' }} {{ bountyDialogBeans  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" />
-            </button>
-          </div>
-        </template>
+              <div class="modal-actions">
+                <button class="btn-ghost" @click="showBountyDialog = false">取消</button>
+                <button class="btn-primary" :disabled="bountyDialogBeans < 1" @click="goToBountyConfirm">
+                  确认{{ bountyDialogType === 'adopt' ? '采纳' : '打赏' }} {{ bountyDialogBeans }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" />
+                </button>
+              </div>
+            </template>
 
-        <!-- Confirm step -->
-        <template v-else>
-          <h3 class="text-lg font-semibold text-vscode-text mb-4">确认支付</h3>
-          <div class="text-sm text-vscode-text-secondary mb-2">是否支付 {{ bountyDialogBeans  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 百斩豆？</div>
-          <div class="text-xs text-vscode-text-secondary mb-4">
-            {{ bountyDialogType === 'adopt' ? '采纳该回答，豆子将立即发放给回答者' : '打赏给回答者，豆子将从你的账户扣除' }}
-            <span v-if="bountyDialogType === 'adopt' && props.bountyRemaining && bountyDialogBeans > (props.bountyRemaining || 0)" class="text-danger">（超出求助余额部分将从账户扣除）</span>
+            <!-- Confirm step -->
+            <template v-else>
+              <h3 class="modal-title">确认支付</h3>
+              <p class="modal-desc">是否支付 {{ bountyDialogBeans }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 百斩豆？</p>
+              <p class="modal-hint">
+                {{ bountyDialogType === 'adopt' ? '采纳该回答，豆子将立即发放给回答者' : '打赏给回答者，豆子将从你的账户扣除' }}
+                <span v-if="bountyDialogType === 'adopt' && props.bountyRemaining && bountyDialogBeans > (props.bountyRemaining || 0)" class="text-danger">（超出求助余额部分将从账户扣除）</span>
+              </p>
+              <p v-if="bountyError" class="modal-error">{{ bountyError }}</p>
+              <div class="modal-actions">
+                <button class="btn-ghost" @click="showBountyConfirm = false">取消</button>
+                <button class="btn-primary" :disabled="bountySubmitting" @click="handleBountyConfirm">
+                  {{ bountySubmitting ? '处理中...' : '确认支付' }}
+                </button>
+              </div>
+            </template>
           </div>
-          <p v-if="bountyError" class="text-xs text-danger mb-3">{{ bountyError }}</p>
-          <div class="flex gap-3 justify-end">
-            <button class="px-4 py-2 border border-vscode-border text-vscode-text-secondary rounded-md text-sm hover:bg-vscode-active" @click="showBountyConfirm = false">取消</button>
-            <button class="px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary-dark disabled:opacity-50" :disabled="bountySubmitting" @click="handleBountyConfirm">
-              {{ bountySubmitting ? '处理中...' : '确认支付' }}
-            </button>
-          </div>
-        </template>
-      </div>
-    </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 
   <UserHoverCard
@@ -657,3 +662,530 @@ defineExpose({ cancelReply })
     @mouseleave="onHoverCardMouseLeave"
   />
 </template>
+
+<style scoped>
+/* ══════════════════════════════════════════════════════════════
+   CommentSection · Scoped Styles
+   Morandi + Oatmeal · Clean Discussion Thread
+   ══════════════════════════════════════════════════════════════ */
+
+.comment-section {
+  color: var(--color-text-primary);
+}
+
+/* ── Header ── */
+.comment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  border-top: 1px solid var(--color-divider);
+  flex-shrink: 0;
+}
+
+.comment-header-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.comment-sort {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+}
+.comment-sort button {
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  padding: 0;
+}
+.comment-sort button:hover { color: var(--color-text-primary); }
+.comment-sort button.is-active { color: var(--color-primary); font-weight: 500; }
+
+/* ── Comment list ── */
+.comment-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 24px 8px;
+}
+
+.comment-empty {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  padding: 24px 0;
+  text-align: center;
+}
+
+/* ── Comment row ── */
+.comment-row {
+  display: flex;
+  gap: 10px;
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+.comment-row.is-clickable {
+  cursor: pointer;
+}
+.comment-row.is-clickable:hover {
+  background: var(--color-surface-hover);
+}
+.comment-row.is-nested {
+  margin-left: 36px;
+  padding-left: 10px;
+  border-left: 2px solid var(--color-divider);
+}
+.comment-row.is-deleted {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* ── Avatar ── */
+.comment-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+  overflow: hidden;
+  margin-top: 1px;
+  user-select: none;
+}
+.comment-avatar.is-sm {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+.comment-avatar.is-interactive {
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+.comment-avatar.is-interactive:hover { opacity: 0.85; }
+
+.avatar-fallback {
+  line-height: 1;
+}
+
+/* ── Comment body ── */
+.comment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.comment-nickname {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.comment-nickname.is-link {
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+.comment-nickname.is-link:hover { color: var(--color-primary); }
+
+.comment-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.badge-author {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-dark);
+}
+.badge-self {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+}
+.badge-adopted {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.comment-bounty {
+  font-size: 11px;
+  color: var(--color-warning);
+  font-weight: 500;
+}
+
+.comment-reply-to {
+  color: var(--color-primary);
+}
+
+.comment-time {
+  color: var(--color-text-tertiary);
+}
+
+.comment-content {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.comment-content.is-deleted {
+  font-style: italic;
+  color: var(--color-text-tertiary);
+  margin-top: 0;
+}
+
+.comment-toggle-replies {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  transition: color var(--transition-fast);
+}
+.comment-toggle-replies:hover {
+  color: var(--color-text-secondary);
+}
+
+/* ── Comment actions ── */
+.comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.comment-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-delete {
+  color: var(--color-text-tertiary);
+}
+.btn-delete:hover {
+  color: var(--color-danger);
+}
+
+.btn-like {
+  color: var(--color-text-tertiary);
+}
+.btn-like:hover {
+  color: var(--color-danger);
+}
+.btn-like.is-active {
+  color: var(--color-danger);
+}
+
+.btn-adopt {
+  color: var(--color-warning);
+  border-color: var(--color-warning);
+}
+.btn-adopt:hover {
+  background: var(--color-cta-subtle);
+}
+
+.btn-reward {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.btn-reward:hover {
+  background: var(--color-primary-subtle);
+}
+
+/* ── Reply bar ── */
+.reply-bar {
+  padding: 12px 24px;
+  border-top: 1px solid var(--color-divider);
+  background: var(--color-surface);
+  flex-shrink: 0;
+}
+
+.reply-bar-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.reply-bar-label {
+  font-size: 12px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+  padding-bottom: 7px;
+}
+
+.reply-bar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.btn-cancel {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 4px 7px;
+  transition: color var(--transition-fast);
+}
+.btn-cancel:hover { color: var(--color-text-primary); }
+
+/* ── New comment bar ── */
+.new-comment-bar {
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-divider);
+  flex-shrink: 0;
+}
+
+.new-comment-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* ── Shared textarea ── */
+.comment-textarea {
+  flex: 1;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 15px;
+  color: var(--color-text-primary);
+  outline: none;
+  resize: none;
+  overflow-y: auto;
+  transition: border-color var(--transition-fast);
+  font-family: inherit;
+  line-height: 1.5;
+}
+.comment-textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+.comment-textarea:focus {
+  border-color: var(--color-border-focus);
+}
+
+/* ── Icon buttons ── */
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  display: flex;
+}
+.icon-btn:hover { color: var(--color-text-primary); }
+.icon-btn.btn-send { color: var(--color-primary); }
+.icon-btn.btn-send:hover { color: var(--color-primary-dark); }
+
+.btn-send-main {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  padding: 7px 16px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+}
+.btn-send-main:hover { background: var(--color-primary-dark); }
+
+/* ── Checkbox ── */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.comment-checkbox {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.checkbox-label {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ── Modal (shared with PostDetail) ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 28, 26, 0.35);
+  backdrop-filter: blur(4px);
+}
+
+.modal-card {
+  width: 400px;
+  max-width: 92vw;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 16px;
+}
+
+.modal-desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.modal-balance {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 12px;
+}
+
+.modal-hint {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+.modal-hint .text-danger { color: var(--color-danger); }
+
+.modal-section {
+  margin-bottom: 12px;
+}
+
+.modal-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.modal-error {
+  font-size: 12px;
+  color: var(--color-danger);
+  margin-bottom: 12px;
+}
+
+.modal-input {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color var(--transition-fast);
+  width: 80px;
+}
+.modal-input:focus { border-color: var(--color-border-focus); }
+.modal-input.w-full { width: 100%; }
+.modal-input.input-error { border-color: var(--color-danger); }
+
+.input-hint {
+  font-size: 11px;
+  color: var(--color-danger);
+  margin-top: 6px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ── Preset buttons ── */
+.preset-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.preset-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.preset-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.preset-btn.preset-active {
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+/* ── Modal transitions ── */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 180ms ease;
+}
+.modal-enter-active .modal-card,
+.modal-leave-active .modal-card {
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+.modal-enter-from .modal-card {
+  transform: translateY(12px) scale(0.97);
+  opacity: 0;
+}
+.modal-leave-to .modal-card {
+  transform: translateY(-8px) scale(0.98);
+  opacity: 0;
+}
+</style>

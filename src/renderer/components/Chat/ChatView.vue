@@ -88,9 +88,14 @@ function shouldShowSender(msg: any, index: number): boolean {
   return prev.senderId !== msg.senderId
 }
 
-function scrollToBottom() {
+function scrollToLatest() {
   nextTick(() => {
-    if (messageListRef.value) {
+    if (!messageListRef.value) return
+    if (isNotificationConversation.value) {
+      // 通知会话：最新在上，滚动到顶部
+      messageListRef.value.scrollTop = 0
+    } else {
+      // 普通聊天：最新在下，滚动到底部
       messageListRef.value.scrollTop = messageListRef.value.scrollHeight
     }
   })
@@ -98,30 +103,40 @@ function scrollToBottom() {
 
 function handleScroll() {
   if (!messageListRef.value) return
-  // 滚动到顶部时加载更多
-  if (messageListRef.value.scrollTop < 50 && store.hasMoreMessages && !store.loadingMessages) {
-    const prevScrollHeight = messageListRef.value.scrollHeight
-    store.loadMoreMessages().then(() => {
-      nextTick(() => {
-        if (messageListRef.value) {
-          messageListRef.value.scrollTop = messageListRef.value.scrollHeight - prevScrollHeight
-        }
+  if (isNotificationConversation.value) {
+    // 通知会话：最新在上，滚动到底部时加载更早的消息
+    const el = messageListRef.value
+    const distToBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    if (distToBottom < 50 && store.hasMoreMessages && !store.loadingMessages) {
+      store.loadMoreMessages()
+    }
+  } else {
+    // 普通聊天：最新在下，滚动到顶部时加载更早的消息
+    if (messageListRef.value.scrollTop < 50 && store.hasMoreMessages && !store.loadingMessages) {
+      const prevScrollHeight = messageListRef.value.scrollHeight
+      store.loadMoreMessages().then(() => {
+        nextTick(() => {
+          if (messageListRef.value) {
+            messageListRef.value.scrollTop = messageListRef.value.scrollHeight - prevScrollHeight
+          }
+        })
       })
-    })
+    }
   }
 }
 
 // 监听消息变化自动滚动
 watch(() => store.messages.length, () => {
-  // 仅在消息数量增加时滚动（发送新消息或加载历史）
-  scrollToBottom()
+  scrollToLatest()
 })
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 watch(() => props.conversationId, (newId) => {
   if (newId) {
-    store.selectConversation(newId)
+    store.selectConversation(newId).then(() => {
+      scrollToLatest()
+    })
     if (pollTimer) { clearInterval(pollTimer) }
     pollTimer = setInterval(() => store.pollNewMessages(), 5000)
   }
@@ -162,7 +177,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-vscode-bg">
+  <div class="h-full flex flex-col bg-vscode-bg animate-fade-in-up">
     <!-- 头部栏 -->
     <div class="flex items-center justify-between px-4 py-2.5 border-b border-vscode-border bg-vscode-bg">
       <div class="flex items-center gap-3">

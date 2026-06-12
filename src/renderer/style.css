@@ -202,11 +202,12 @@ textarea {
   padding: 8px 18px;
   font-size: 14px;
   font-weight: 500;
-  transition: background var(--transition-fast);
+  transition: background var(--transition-fast), transform var(--transition-fast);
   cursor: pointer;
   border: none;
 }
 .btn-primary:hover { background: var(--color-primary-dark); }
+.btn-primary:active { transform: scale(0.97); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── CTA 按钮 ── */
@@ -217,11 +218,12 @@ textarea {
   padding: 8px 18px;
   font-size: 14px;
   font-weight: 500;
-  transition: background var(--transition-fast);
+  transition: background var(--transition-fast), transform var(--transition-fast);
   cursor: pointer;
   border: none;
 }
 .btn-cta:hover { background: var(--color-cta-dark); }
+.btn-cta:active { transform: scale(0.97); }
 .btn-cta:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── 幽灵按钮 ── */
@@ -233,12 +235,13 @@ textarea {
   padding: 8px 18px;
   font-size: 14px;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all var(--transition-fast), transform var(--transition-fast);
 }
 .btn-ghost:hover {
   background: var(--color-surface-hover);
   color: var(--color-text-primary);
 }
+.btn-ghost:active { transform: scale(0.97); }
 
 /* ── 标签 / Badge ── */
 .badge {
@@ -263,12 +266,12 @@ textarea {
   padding: 8px 14px;
   font-size: 14px;
   color: var(--color-text-primary);
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   outline: none;
   width: 100%;
 }
 .input-base::placeholder { color: var(--color-text-tertiary); }
-.input-base:focus { border-color: var(--color-border-focus); }
+.input-base:focus { border-color: var(--color-border-focus); box-shadow: 0 0 0 3px rgba(123, 143, 166, 0.12); }
 
 /* ── 分割线 ── */
 .divider {
@@ -283,6 +286,37 @@ textarea {
   .glass-card::after { display: none; }
   .glass-sidebar { background: var(--color-surface); }
   .glass-float   { background: var(--color-surface-raised); }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   全局动效 · Refined Micro-interactions
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 页面入场：内容区淡入 ── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 280ms ease-out both;
+}
+
+/* ── 列表项交错入场（评论等） ── */
+@keyframes list-item-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.list-item-enter {
+  animation: list-item-in 200ms ease-out both;
+}
+
+/* ── 消息气泡入场 ── */
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.msg-enter {
+  animation: msg-in 200ms ease-out both;
 }
 
 /* ── 减少动效（可访问性） ── */

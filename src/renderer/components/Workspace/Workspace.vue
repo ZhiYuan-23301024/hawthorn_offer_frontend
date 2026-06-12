@@ -142,13 +142,10 @@ function handleCampusFeatureSelect(featureId: string) {
   >
     <div
       v-if="currentPlugin?.id !== 'chat'"
-      class="px-4 py-3"
-      style="border-bottom: 1px solid var(--color-divider);"
+      class="px-4 py-2"
+      style="background-color: var(--color-surface); border-bottom: 1px solid var(--color-divider);"
     >
-      <span
-        class="text-xs font-semibold tracking-wider uppercase"
-        style="color: var(--color-text-tertiary); font-family: var(--font-display);"
-      >
+      <span class="text-sm font-semibold tracking-wider" style="color: var(--color-text-secondary);">
         {{ directoryTitle }}
       </span>
     </div>
@@ -157,16 +154,17 @@ function handleCampusFeatureSelect(featureId: string) {
       <ExplorerPanel v-if="showExplorer" />
 
       <div v-else-if="currentPlugin?.id === 'account'" class="p-3">
-        <div class="text-xs font-medium mb-2" style="color: var(--color-text-tertiary);">功能目录</div>
+        <div class="text-xs font-medium mb-2" style="color: var(--color-text-secondary);">功能目录</div>
         <div class="space-y-0.5" tabindex="0" role="list" aria-label="个人设置目录">
           <div
             v-for="(feature, idx) in accountFeatures"
             :key="feature.id"
-            class="flex items-center px-3 py-2 rounded-md cursor-pointer transition-colors text-sm"
+            class="flex items-center px-3 py-2 rounded-md cursor-pointer text-sm nav-card"
             :class="idx === activeAccountIndex ? 'nav-active' : ''"
             :style="{
               backgroundColor: idx === activeAccountIndex ? 'var(--color-primary-subtle)' : 'transparent',
-              color: idx === activeAccountIndex ? 'var(--color-primary-dark)' : 'var(--color-text-secondary)',
+              color: idx === activeAccountIndex ? 'var(--color-primary-dark)' : 'var(--color-text-primary)',
+              animationDelay: `${idx * 40}ms`
             }"
             role="button"
             @click="handleAccountFeatureSelect(feature.id)"
@@ -181,15 +179,16 @@ function handleCampusFeatureSelect(featureId: string) {
       </div>
 
       <div v-else-if="currentPlugin?.id === 'campusRecruitment'" class="p-3">
-        <div class="text-xs font-medium mb-2" style="color: var(--color-text-tertiary);">专区目录</div>
+        <div class="text-xs font-medium mb-2" style="color: var(--color-text-secondary);">专区目录</div>
         <div class="space-y-0.5" tabindex="0" role="list" aria-label="校招专区目录">
           <div
             v-for="(feature, idx) in campusFeatures"
             :key="feature.id"
-            class="flex items-center px-3 py-2 rounded-md cursor-pointer transition-colors text-sm"
+            class="flex items-center px-3 py-2 rounded-md cursor-pointer text-sm nav-card"
             :style="{
               backgroundColor: idx === activeCampusIndex ? 'var(--color-primary-subtle)' : 'transparent',
-              color: idx === activeCampusIndex ? 'var(--color-primary-dark)' : 'var(--color-text-secondary)',
+              color: idx === activeCampusIndex ? 'var(--color-primary-dark)' : 'var(--color-text-primary)',
+              animationDelay: `${idx * 40}ms`
             }"
             role="button"
             @click="handleCampusFeatureSelect(feature.id)"
@@ -211,3 +210,18 @@ function handleCampusFeatureSelect(featureId: string) {
     </div>
   </aside>
 </template>
+
+<style scoped>
+/* Nav card: entrance animation + hover slide */
+.nav-card {
+  animation: nav-in 280ms ease-out both;
+  transition: transform 150ms ease, background 150ms ease, color 150ms ease;
+}
+.nav-card:hover {
+  transform: translateX(3px);
+}
+@keyframes nav-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+</style>

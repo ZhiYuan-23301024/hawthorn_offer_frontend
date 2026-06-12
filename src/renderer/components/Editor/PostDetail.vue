@@ -284,7 +284,6 @@ async function handleDelete() {
   try {
     if (props.postType === 'resume') {
       await postApi.deleteResumePost(props.postId)
-      // 刷新当前分栏的列表
       const sub = postStore.resumeSubTab
       if (sub === 'purchased') postStore.fetchPurchasedResumePosts()
       else if (sub === 'mine') postStore.fetchMyResumePosts()
@@ -306,9 +305,7 @@ async function handleDelete() {
         postStore.fetchPostList(1)
       }
     }
-    // Navigate back to post browser
     workspaceStore.setActivePanel('postBrowser')
-    // Close this tab
     const tabId = `post:${props.postType}:${props.postId}`
     editorStore.closeTab(tabId)
   } catch {
@@ -334,7 +331,6 @@ const pinRemainingHours = computed(() => {
 
 const maxRenewHours = computed(() => {
   const globalMax = Math.max(0, 168 - Math.ceil(pinRemainingHours.value))
-  // 问答帖：置顶时长不能超过求助剩余时间
   if (isQaPost.value && bountyExpiresAt.value) {
     const bountyRemainingMs = new Date(bountyExpiresAt.value).getTime() - Date.now()
     const bountyRemainingHours = Math.max(0, Math.floor(bountyRemainingMs / 3600000))
@@ -419,121 +415,118 @@ function onVisibilityChange() {
 </script>
 
 <template>
-  <div v-if="detail" class="h-full flex flex-col text-vscode-text">
-    <!-- Post content: scrollable, takes up to half the height -->
-    <div class="overflow-y-auto flex-shrink-0" style="max-height: 45%">
+  <div v-if="detail" class="post-detail h-full flex flex-col">
+    <!-- Post content: scrollable, fixed proportion -->
+    <div class="post-content-area overflow-y-auto flex-shrink-0 animate-fade-in-up" style="max-height: 45%">
     <!-- Resume detail -->
     <template v-if="postType === 'resume' && resumeData">
-      <div class="flex items-center gap-3 mb-5">
-        <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+      <!-- Author header -->
+      <div class="author-header">
+        <div class="author-avatar"
               :style="{ backgroundColor: avatarColor(detailUserId) }"
-	          @mouseenter="!resumeData?.isAnonymous && onAuthorMouseEnter($event, detailUserId)"
-	          @mouseleave="onAuthorMouseLeave"
-	          @click="!resumeData?.isAnonymous && onAuthorClick(detailUserId)">
+              @mouseenter="!resumeData?.isAnonymous && onAuthorMouseEnter($event, detailUserId)"
+              @mouseleave="onAuthorMouseLeave"
+              @click="!resumeData?.isAnonymous && onAuthorClick(detailUserId)">
           <img v-if="authorAvatarUrl && !avatarImgError" :src="avatarUrl(authorAvatarUrl)" class="w-full h-full object-cover" @error="avatarImgError = true" />
-          <span v-else>{{ authorAvatar || authorName?.charAt(0) || '?' }}</span>
+          <span v-else class="avatar-fallback">{{ authorAvatar || authorName?.charAt(0) || '?' }}</span>
         </div>
-        <div class="flex-1">
-          <div class="text-lg font-semibold text-vscode-text flex items-center gap-2">
-            {{ titleOrName }}
-            <span v-if="resumeData?.deleted" class="text-xs text-danger bg-danger-subtle px-2 py-0.5 rounded font-normal">已删除</span>
+        <div class="author-info">
+          <div class="author-title-row">
+            <span class="post-title">{{ titleOrName }}</span>
+            <span v-if="resumeData?.deleted" class="badge-deleted">已删除</span>
           </div>
-          <div class="text-xs text-vscode-text-secondary mt-0.5">
+          <div class="author-meta">
             <span
               v-if="!resumeData?.isAnonymous"
-              class="cursor-pointer hover:text-primary transition-colors"
+              class="author-name"
               @mouseenter="onAuthorMouseEnter($event, detailUserId)"
               @mouseleave="onAuthorMouseLeave"
               @click="onAuthorClick(detailUserId)"
             >{{ authorName }}</span>
-            <span v-else>{{ authorName }}</span>
-            · {{ formatTime(detailCreatedAt) }}
+            <span v-else class="author-name">{{ authorName }}</span>
+            <span class="meta-sep">·</span>
+            <span>{{ formatTime(detailCreatedAt) }}</span>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="text-warning font-semibold text-sm">{{ resumeData.price  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></span>
+        <div class="author-actions">
+          <span class="price-tag">{{ resumeData.price }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></span>
           <template v-if="!resumeData.deleted">
-            <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-warning text-warning text-sm hover:bg-cta/10 transition-colors" @click="handleTipClick">
-              <Coffee class="w-3.5 h-3.5" /> 打赏
+            <button class="btn-action btn-tip" @click="handleTipClick">
+              <Coffee class="w-4 h-4" /> 打赏
             </button>
-            <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary text-primary text-sm hover:bg-primary/10 transition-colors" @click="handleEdit">
-              <Edit3 class="w-3.5 h-3.5" /> 编辑
+            <button v-if="isOwner" class="btn-action btn-edit" @click="handleEdit">
+              <Edit3 class="w-4 h-4" /> 编辑
             </button>
-            <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-danger text-danger text-sm hover:bg-danger/10 transition-colors" @click="handleDelete">
-              <Trash2 class="w-3.5 h-3.5" /> 删除
+            <button v-if="isOwner" class="btn-action btn-delete" @click="handleDelete">
+              <Trash2 class="w-4 h-4" /> 删除
             </button>
             <button
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-colors"
-              :class="resumeData.isLiked ? 'bg-danger/20 border-danger text-danger' : 'bg-vscode-active border-vscode-border text-vscode-text-secondary hover:border-danger hover:text-danger'"
+              class="btn-action btn-like"
+              :class="resumeData.isLiked ? 'is-liked' : ''"
               @click="handleResumeLike"
             >
               <Heart class="w-4 h-4" :fill="resumeData.isLiked ? 'currentColor' : 'none'" />
-              <span class="text-sm">{{ resumeData.likeCount || 0 }}</span>
+              <span>{{ resumeData.likeCount || 0 }}</span>
             </button>
           </template>
         </div>
       </div>
 
-      <div class="mb-4 p-3 bg-vscode-active rounded-md" @click="onPostContentClick">
-        <p class="text-sm text-vscode-text whitespace-pre-wrap">{{ resumeData.promoText }}</p>
+      <!-- Promo text -->
+      <div class="promo-card" @click="onPostContentClick">
+        <p class="promo-text">{{ resumeData.promoText }}</p>
       </div>
 
-      <div class="mb-4">
-        <h3 class="text-sm text-vscode-text-secondary mb-2">
+      <!-- Resume content -->
+      <div class="resume-section">
+        <h3 class="section-label">
           {{ resumeData.hasPurchased || isOwner ? '简历内容' : '简历预览（前200字）' }}
         </h3>
-        <div class="p-3 bg-vscode-active border border-vscode-border rounded-md">
-          <pre class="text-sm text-vscode-text whitespace-pre-wrap font-sans">{{ resumeData.content }}</pre>
+        <div class="resume-content-card">
+          <pre class="resume-content">{{ resumeData.content }}</pre>
         </div>
-        <div v-if="!resumeData.deleted && !resumeData.hasPurchased && !isOwner" class="mt-2 p-3 bg-cta-subtle border border-cta rounded-md text-center">
-          <p class="text-sm text-warning mb-2"><Lock class="w-4 h-4 inline-block" style="color:var(--color-warning);" /> 支付 {{ resumeData.price  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 豆查看完整简历</p>
-          <p v-if="purchaseError" class="text-xs text-danger mb-2">{{ purchaseError }}</p>
-          <button class="px-6 py-2 bg-cta text-white rounded-md text-sm font-medium hover:bg-cta-dark transition-colors disabled:opacity-50"
-            :disabled="purchasing" @click="handlePurchase">
+        <div v-if="!resumeData.deleted && !resumeData.hasPurchased && !isOwner" class="purchase-cta">
+          <p class="purchase-msg"><Lock class="w-4 h-4 inline-block" /> 支付 {{ resumeData.price }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 豆查看完整简历</p>
+          <p v-if="purchaseError" class="purchase-error">{{ purchaseError }}</p>
+          <button class="btn-purchase" :disabled="purchasing" @click="handlePurchase">
             {{ purchasing ? '处理中...' : '支付解锁' }}
           </button>
         </div>
-        <div v-else-if="resumeData.hasPurchased && !isOwner" class="mt-2 text-xs text-success">
-          <CheckCircle2 class="w-4 h-4 inline-block" style="color:var(--color-success);" /> 已购买，可查看完整内容
+        <div v-else-if="resumeData.hasPurchased && !isOwner" class="purchased-badge">
+          <CheckCircle2 class="w-4 h-4 inline-block" /> 已购买，可查看完整内容
         </div>
       </div>
     </template>
 
-    <!-- Regular post detail -->
+    <!-- Regular / QA / Referral post detail -->
     <template v-else>
       <!-- Bounty info card (QA posts only) -->
-      <div v-if="isQaPost" class="mb-4 p-4 border rounded-md"
-        :class="bountyStatus === 'active' ? 'border-primary/30 bg-primary/5' : 'border-vscode-border/30 bg-vscode-active'">
-        <div class="flex items-center gap-3 text-sm flex-wrap">
-          <span class="text-warning"><Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 求助 {{ bountyBeansTotal }} 豆子</span>
-          <span v-if="bountyStatus === 'active'" class="text-primary">| 剩余 {{ bountyRemaining }}</span>
-          <span v-if="bountyStatus === 'active' && bountyTimeLeft" class="text-vscode-text-secondary">| ⏱ 剩余 {{ bountyTimeLeft }}</span>
-          <span v-else-if="bountyStatus === 'distributed'" class="text-success">| 已分配</span>
-          <span v-else-if="bountyStatus === 'expired'" class="text-vscode-text-secondary">| 已结束</span>
+      <div v-if="isQaPost" class="info-card qa-card" :class="bountyStatus === 'active' ? 'qa-active' : 'qa-ended'">
+        <div class="qa-stats">
+          <span class="qa-beans"><Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 求助 {{ bountyBeansTotal }} 豆子</span>
+          <span v-if="bountyStatus === 'active'" class="qa-remaining">剩余 {{ bountyRemaining }}</span>
+          <span v-if="bountyStatus === 'active' && bountyTimeLeft" class="qa-time">⏱ {{ bountyTimeLeft }}</span>
+          <span v-else-if="bountyStatus === 'distributed'" class="qa-distributed">已分配</span>
+          <span v-else-if="bountyStatus === 'expired'" class="qa-expired">已结束</span>
         </div>
       </div>
 
       <!-- Referral info card (referral posts only) -->
-      <div v-if="isReferralPost" class="mb-4 p-4 border border-primary/30 rounded-md bg-primary/5">
-        <div class="flex flex-col gap-2 text-sm">
-          <div class="flex items-center gap-2">
-            <span class="text-vscode-text-secondary">内推码</span>
-            <span class="text-primary font-medium">{{ referralCode }}</span>
-          </div>
-          <div v-if="referralLink" class="flex items-center gap-2">
-            <span class="text-vscode-text-secondary">内推链接</span>
-            <a
-              :href="referralLink"
-              target="_blank"
-              class="text-primary hover:text-primary-light underline transition-colors break-all"
-            >{{ referralLink }}</a>
-          </div>
+      <div v-if="isReferralPost" class="info-card referral-card">
+        <div class="referral-row">
+          <span class="referral-label">内推码</span>
+          <span class="referral-value">{{ referralCode }}</span>
+        </div>
+        <div v-if="referralLink" class="referral-row">
+          <span class="referral-label">内推链接</span>
+          <a :href="referralLink" target="_blank" class="referral-link">{{ referralLink }}</a>
         </div>
       </div>
 
-      <div class="flex items-center gap-3 mb-5">
+      <!-- Author header -->
+      <div class="author-header">
         <div
-          class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+          class="author-avatar"
           :style="{ backgroundColor: avatarColor(detailUserId) }"
           @mouseenter="!postListItem?.isAnonymous && onAuthorMouseEnter($event, detailUserId)"
           @mouseleave="onAuthorMouseLeave"
@@ -544,188 +537,207 @@ function onVisibilityChange() {
             :src="avatarUrl(authorAvatarUrl)"
             class="w-full h-full object-cover"
             @error="avatarImgError = true" />
-          <span v-else>{{ authorAvatar || '?' }}</span>
+          <span v-else class="avatar-fallback">{{ authorAvatar || '?' }}</span>
         </div>
-        <div class="flex-1">
-          <div class="text-lg font-semibold text-vscode-text">
-            {{ titleOrName }}
+        <div class="author-info">
+          <div class="author-title-row">
+            <span class="post-title">{{ titleOrName }}</span>
           </div>
-          <div class="text-xs text-vscode-text-secondary mt-0.5">
+          <div class="author-meta">
             <span
               v-if="!postListItem?.isAnonymous"
-              class="cursor-pointer hover:text-primary transition-colors"
+              class="author-name"
               @mouseenter="onAuthorMouseEnter($event, detailUserId)"
               @mouseleave="onAuthorMouseLeave"
               @click="onAuthorClick(detailUserId)"
             >{{ authorName }}</span>
-            <span v-else>{{ authorName }}</span>
-            <span v-if="detailCreatedAt" class="ml-2">{{ formatTime(detailCreatedAt) }}</span>
-          </div>
-          <div v-if="isPostPinned && postListItem?.pinExpiresAt" class="text-xs text-danger mt-0.5">
-            <Pin class="w-3 h-3 inline-block" /> 置顶 · 剩余 {{ computeRemainingDetail(postListItem.pinExpiresAt) }}
+            <span v-else class="author-name">{{ authorName }}</span>
+            <span v-if="detailCreatedAt" class="meta-sep">·</span>
+            <span v-if="detailCreatedAt">{{ formatTime(detailCreatedAt) }}</span>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary text-primary text-sm hover:bg-primary/10 transition-colors" @click="handleEdit">
-            <Edit3 class="w-3.5 h-3.5" /> 编辑
+        <div class="author-actions">
+          <!-- Owner-only: management buttons -->
+          <template v-if="isOwner">
+            <button class="btn-action btn-edit" @click="handleEdit">
+              <Edit3 class="w-4 h-4" /> 编辑
+            </button>
+            <button class="btn-action btn-delete" @click="handleDelete">
+              <Trash2 class="w-4 h-4" /> 删除
+            </button>
+            <template v-if="postType === 'regular' || postType === 'referral'">
+              <button v-if="!isPostPinned" class="btn-action btn-pin" @click="showPinDialog = true">
+                <Pin class="w-3.5 h-3.5 inline-block" /> 置顶
+              </button>
+              <template v-else>
+                <button class="btn-action btn-pin" @click="showPinDialog = true">
+                  <Pin class="w-3.5 h-3.5 inline-block" /> 续费
+                </button>
+                <button class="btn-action btn-unpin" @click="handleUnpin">
+                  取消置顶
+                </button>
+              </template>
+            </template>
+          </template>
+          <!-- Tip button (non-owner) -->
+          <button v-if="!isOwner" class="btn-action btn-tip" @click="handleTipClick">
+            <Coffee class="w-4 h-4" /> 打赏
           </button>
-          <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-danger text-danger text-sm hover:bg-danger/10 transition-colors" @click="handleDelete">
-            <Trash2 class="w-3.5 h-3.5" /> 删除
-          </button>
-          <button v-if="isOwner && (postType === 'regular' || postType === 'referral') && !isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-danger text-danger text-sm hover:bg-danger/10 transition-colors" @click="showPinDialog = true">
-            <Pin class="w-3 h-3 inline-block" /> 置顶
-          </button>
-          <button v-if="isOwner && (postType === 'regular' || postType === 'referral') && isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-danger text-danger text-sm hover:bg-danger/10 transition-colors" @click="showPinDialog = true">
-            <Pin class="w-3 h-3 inline-block" /> 续费置顶
-          </button>
-          <button v-if="isOwner && (postType === 'regular' || postType === 'referral') && isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#888] text-vscode-text-secondary text-sm hover:bg-[#888]/10 transition-colors" @click="handleUnpin">
-            取消置顶
-          </button>
+          <!-- Like button -->
           <button
-            class="flex items-center gap-1.5 px-4 py-2 rounded-md border transition-colors"
-            :class="isLiked ? 'bg-danger/20 border-danger text-danger' : 'bg-vscode-active border-vscode-border text-vscode-text-secondary hover:border-danger hover:text-danger'"
+            class="btn-action btn-like"
+            :class="isLiked ? 'is-liked' : ''"
             @click="handleLike"
           >
             <Heart class="w-4 h-4" :fill="isLiked ? 'currentColor' : 'none'" />
-            <span class="text-sm">{{ detailLikeCount }}</span>
+            <span>{{ detailLikeCount }}</span>
           </button>
         </div>
       </div>
 
-      <div class="text-sm leading-relaxed whitespace-pre-wrap text-vscode-text-secondary" @click="onPostContentClick">
+      <!-- Post body -->
+      <div class="post-body" @click="onPostContentClick">
         {{ bodyContent }}
       </div>
     </template>
 
     </div>
 
-    <!-- Comments (regular / QA posts only) -->
+    <!-- Divider -->
+    <div class="content-divider"></div>
+
+    <!-- Comments section -->
     <CommentSection v-if="!resumeData?.deleted" ref="commentSectionRef" :target-id="postId" target-type="post" :post-type="isQaPost ? 'qa' : (postType === 'resume' ? 'resume' : 'normal')" :bounty-remaining="bountyRemaining" :bounty-status="bountyStatus" :post-author-id="detailUserId" class="flex-1 min-h-0" />
-    <div v-else class="flex-1 flex items-center justify-center text-sm text-vscode-text-secondary">帖子已删除，评论已关闭</div>
+    <div v-else class="flex-1 flex items-center justify-center text-sm" style="color: var(--color-text-secondary);">帖子已删除，评论已关闭</div>
   </div>
 
+  <!-- Empty states -->
   <div v-else-if="postStore.loadingDetail" class="h-full flex items-center justify-center">
-    <div class="text-sm text-vscode-text-secondary">加载中...</div>
+    <div class="text-sm" style="color: var(--color-text-secondary);">加载中...</div>
   </div>
 
   <div v-else class="h-full flex items-center justify-center">
-    <div class="text-sm text-vscode-text-secondary">请选择一篇帖子查看详情</div>
+    <div class="text-sm" style="color: var(--color-text-secondary);">请选择一篇帖子查看详情</div>
   </div>
 
-  <!-- 置顶弹窗 -->
-  <div v-if="showPinDialog" class="fixed inset-0 z-50 flex items-center justify-center " @click.self="showPinDialog = false">
-    <div class="bg-vscode-bg border border-vscode-border rounded-lg p-6 w-[400px]">
-      <h3 class="text-lg font-semibold text-vscode-text mb-4">{{ isPostPinned ? '续费置顶' : '帖子置顶' }}</h3>
+  <!-- Pin dialog -->
+  <Teleport to="body">
+    <Transition name="modal">
+      <div v-if="showPinDialog" class="modal-overlay" @click.self="showPinDialog = false">
+        <div class="modal-card glass-float">
+          <h3 class="modal-title">{{ isPostPinned ? '续费置顶' : '帖子置顶' }}</h3>
 
-      <div v-if="isPostPinned && postListItem?.pinExpiresAt" class="text-xs text-vscode-text-secondary mb-3">
-        当前剩余：{{ computeRemainingDetail(postListItem.pinExpiresAt) }}
-        <span v-if="maxRenewHours <= 0 && isQaPost" class="text-danger">（已达到求助最大置顶时长）</span>
-        <span v-else-if="maxRenewHours <= 0" class="text-danger">（已达到7天上限）</span>
-        <span v-else class="text-vscode-text-secondary">（最多续费 {{ maxRenewHours }} 小时）</span>
-      </div>
+          <div v-if="isPostPinned && postListItem?.pinExpiresAt" class="modal-hint">
+            当前剩余：{{ computeRemainingDetail(postListItem.pinExpiresAt) }}
+            <span v-if="maxRenewHours <= 0" style="color: var(--color-danger);">（{{ isQaPost ? '已达到求助最大置顶时长' : '已达到7天上限' }}）</span>
+            <span v-else>（最多续费 {{ maxRenewHours }} 小时）</span>
+          </div>
 
-      <div v-if="maxRenewHours > 0" class="mb-3">
-        <span class="text-sm text-vscode-text-secondary">选择时长：</span>
-        <div class="flex flex-wrap gap-2 mt-2">
-          <button
-            v-for="(label, i) in pinPresetLabels"
-            :key="i"
-            class="px-3 py-1 text-xs rounded border transition-colors"
-            :class="pinPresets[i] <= maxRenewHours ? (pinHours === pinPresets[i] ? 'bg-primary/20 border-primary text-primary' : 'border-vscode-border text-vscode-text-secondary hover:border-primary hover:text-primary') : 'border-vscode-border text-[#555] cursor-not-allowed'"
-            @click="pinPresets[i] <= maxRenewHours && (pinHours = pinPresets[i])"
-          >{{ label }}</button>
+          <div v-if="maxRenewHours > 0" class="modal-section">
+            <span class="modal-label">选择时长：</span>
+            <div class="preset-group">
+              <button
+                v-for="(label, i) in pinPresetLabels"
+                :key="i"
+                class="preset-btn"
+                :class="pinPresets[i] <= maxRenewHours ? (pinHours === pinPresets[i] ? 'preset-active' : '') : 'preset-disabled'"
+                @click="pinPresets[i] <= maxRenewHours && (pinHours = pinPresets[i])"
+              >{{ label }}</button>
+            </div>
+          </div>
+
+          <div v-if="maxRenewHours > 0" class="modal-section">
+            <span class="modal-label">自定义：</span>
+            <input
+              v-model.number="pinHours"
+              type="number"
+              min="1"
+              :max="maxRenewHours"
+              class="modal-input"
+            /> 小时
+          </div>
+
+          <div v-if="maxRenewHours > 0" class="modal-cost">
+            消耗：{{ Math.min(pinHours, maxRenewHours) * 10 }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 百斩豆
+          </div>
+
+          <div v-else class="modal-error">
+            {{ isQaPost ? '已达到求助最大置顶时长，不可高于求助时长' : '已达到最大置顶时长（7天），无法续费' }}
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn-ghost" @click="showPinDialog = false">取消</button>
+            <button v-if="maxRenewHours > 0" class="btn-primary" @click="handlePin">确认{{ isPostPinned ? '续费' : '置顶' }}</button>
+          </div>
         </div>
       </div>
+    </Transition>
+  </Teleport>
 
-      <div v-if="maxRenewHours > 0" class="mb-4">
-        <span class="text-sm text-vscode-text-secondary">自定义：</span>
-        <input
-          v-model.number="pinHours"
-          type="number"
-          min="1"
-          :max="maxRenewHours"
-          class="ml-2 w-24 bg-vscode-active border border-vscode-border rounded px-2 py-1 text-sm text-vscode-text outline-none focus:border-primary"
-        /> 小时
-      </div>
+  <!-- Tip dialog -->
+  <Teleport to="body">
+    <Transition name="modal">
+      <div v-if="showTipDialog" class="modal-overlay" @click.self="showTipDialog = false">
+        <div class="modal-card glass-float">
+          <template v-if="!showTipConfirm">
+            <h3 class="modal-title"><Bean class="w-4 h-4 inline-block align-text-bottom" /> 打赏帖子</h3>
+            <p class="modal-desc">选择打赏金额，豆子将直接转给帖主</p>
+            <p class="modal-balance">你的余额：{{ maxTipBeans }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></p>
 
-      <div v-if="maxRenewHours > 0" class="text-sm text-vscode-text-secondary mb-4">
-        消耗：{{ Math.min(pinHours, maxRenewHours) * 10  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 百斩豆
-      </div>
+            <!-- Presets -->
+            <div class="preset-group">
+              <button
+                v-for="preset in tipPresets"
+                :key="preset"
+                class="preset-btn"
+                :class="preset <= maxTipBeans ? (tipAmount === preset && !tipCustomInput ? 'preset-active' : '') : 'preset-disabled'"
+                @click="preset <= maxTipBeans && selectTipPreset(preset)"
+              >{{ preset }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></button>
+            </div>
 
-      <div v-else-if="isQaPost" class="text-sm text-danger mb-4">
-        已达到求助最大置顶时长，不可高于求助时长
-      </div>
-      <div v-else class="text-sm text-danger mb-4">
-        已达到最大置顶时长（7天），无法续费
-      </div>
+            <!-- Custom input -->
+            <div class="modal-section">
+              <label class="modal-label">自定义金额</label>
+              <input
+                v-model.number="tipCustomInput"
+                type="number"
+                min="1"
+                :max="maxTipBeans"
+                step="1"
+                placeholder="输入豆子数"
+                class="modal-input w-full"
+                :class="[tipCustomInput && !Number.isInteger(tipCustomInput) ? 'input-error' : '']"
+                @input="applyCustomTip"
+              />
+            </div>
 
-      <div class="flex gap-3 justify-end">
-        <button class="px-4 py-2 border border-vscode-border text-vscode-text-secondary rounded-md text-sm hover:bg-vscode-active" @click="showPinDialog = false">取消</button>
-        <button v-if="maxRenewHours > 0" class="px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary-dark" @click="handlePin">确认{{ isPostPinned ? '续费' : '置顶' }}</button>
-      </div>
-    </div>
-  </div>
+            <p v-if="tipError" class="modal-error">{{ tipError }}</p>
 
-  <!-- 打赏弹窗 -->
-  <div v-if="showTipDialog" class="fixed inset-0 z-50 flex items-center justify-center " @click.self="showTipDialog = false">
-    <div class="bg-vscode-bg border border-vscode-border rounded-lg p-6 w-[400px]">
-      <template v-if="!showTipConfirm">
-        <h3 class="text-lg font-semibold text-vscode-text mb-4"><Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 打赏帖子</h3>
-        <div class="text-sm text-vscode-text-secondary mb-4">选择打赏金额，豆子将直接转给帖主</div>
-        <div class="text-xs text-vscode-text-secondary mb-3">你的余额：{{ maxTipBeans  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></div>
+            <div class="modal-actions">
+              <button class="btn-ghost" @click="showTipDialog = false">取消</button>
+              <button class="btn-cta" :disabled="tipAmount < 1" @click="goToTipConfirm">
+                确认打赏 {{ tipAmount }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" />
+              </button>
+            </div>
+          </template>
 
-        <!-- Presets -->
-        <div class="flex flex-wrap gap-2 mb-4">
-          <button
-            v-for="preset in tipPresets"
-            :key="preset"
-            class="px-4 py-2 text-sm rounded-md border transition-colors"
-            :class="preset <= maxTipBeans ? (tipAmount === preset && !tipCustomInput ? 'bg-cta/20 border-warning text-warning' : 'border-vscode-border text-vscode-text-secondary hover:border-warning hover:text-warning') : 'border-vscode-border text-[#555] cursor-not-allowed'"
-            @click="preset <= maxTipBeans && selectTipPreset(preset)"
-          >{{ preset  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></button>
+          <!-- Confirm step -->
+          <template v-else>
+            <h3 class="modal-title">确认支付</h3>
+            <p class="modal-desc">是否支付 {{ tipAmount }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 百斩豆？</p>
+            <p class="modal-hint">打赏给帖主，豆子将从你的账户扣除</p>
+            <p v-if="tipError" class="modal-error">{{ tipError }}</p>
+            <div class="modal-actions">
+              <button class="btn-ghost" @click="showTipConfirm = false">取消</button>
+              <button class="btn-cta" :disabled="tipping" @click="handleTipConfirm">
+                {{ tipping ? '处理中...' : '确认支付' }}
+              </button>
+            </div>
+          </template>
         </div>
-
-        <!-- Custom input -->
-        <div class="mb-4">
-          <label class="text-sm text-vscode-text-secondary block mb-1.5">自定义金额</label>
-          <input
-            v-model.number="tipCustomInput"
-            type="number"
-            min="1"
-            :max="maxTipBeans"
-            step="1"
-            placeholder="输入豆子数"
-            class="w-full bg-vscode-active border border-vscode-border rounded-md px-3 py-2 text-sm text-vscode-text outline-none focus:border-warning placeholder:text-vscode-text-secondary"
-            :class="[tipCustomInput && !Number.isInteger(tipCustomInput) ? '!border-danger' : '']"
-            @input="applyCustomTip"
-          />
-        </div>
-
-        <p v-if="tipError" class="text-xs text-danger mb-3">{{ tipError }}</p>
-
-        <div class="flex gap-3 justify-end">
-          <button class="px-4 py-2 border border-vscode-border text-vscode-text-secondary rounded-md text-sm hover:bg-vscode-active" @click="showTipDialog = false">取消</button>
-          <button class="px-4 py-2 bg-cta text-white rounded-md text-sm font-medium hover:bg-cta-dark disabled:opacity-50" :disabled="tipAmount < 1" @click="goToTipConfirm">
-            确认打赏 {{ tipAmount  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" />
-          </button>
-        </div>
-      </template>
-
-      <!-- Confirm step -->
-      <template v-else>
-        <h3 class="text-lg font-semibold text-vscode-text mb-4">确认支付</h3>
-        <div class="text-sm text-vscode-text-secondary mb-2">是否支付 {{ tipAmount  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 百斩豆？</div>
-        <div class="text-xs text-vscode-text-secondary mb-4">打赏给帖主，豆子将从你的账户扣除</div>
-        <p v-if="tipError" class="text-xs text-danger mb-3">{{ tipError }}</p>
-        <div class="flex gap-3 justify-end">
-          <button class="px-4 py-2 border border-vscode-border text-vscode-text-secondary rounded-md text-sm hover:bg-vscode-active" @click="showTipConfirm = false">取消</button>
-          <button class="px-4 py-2 bg-cta text-white rounded-md text-sm font-medium hover:bg-cta-dark disabled:opacity-50" :disabled="tipping" @click="handleTipConfirm">
-            {{ tipping ? '处理中...' : '确认支付' }}
-          </button>
-        </div>
-      </template>
-    </div>
-  </div>
+      </div>
+    </Transition>
+  </Teleport>
 
   <UserHoverCard
     v-if="hoverUserId"
@@ -737,3 +749,535 @@ function onVisibilityChange() {
     @mouseleave="onHoverCardMouseLeave"
   />
 </template>
+
+<style scoped>
+/* ══════════════════════════════════════════════════════════════
+   PostDetail · Scoped Styles
+   Morandi + Oatmeal · Refined Editorial
+   ══════════════════════════════════════════════════════════════ */
+
+.post-detail {
+  color: var(--color-text-primary);
+}
+
+/* ── Content area ── */
+.post-content-area {
+  padding: 20px 24px 16px;
+}
+
+.content-divider {
+  height: 1px;
+  background: var(--color-divider);
+  margin: 0 24px;
+  flex-shrink: 0;
+}
+
+/* ── Author header ── */
+.author-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.author-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+  overflow: hidden;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+  user-select: none;
+}
+.author-avatar:hover { opacity: 0.85; }
+
+.avatar-fallback {
+  line-height: 1;
+}
+
+.author-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.author-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.post-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.badge-deleted {
+  font-size: 11px;
+  color: var(--color-danger);
+  background: var(--color-danger-subtle);
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  font-weight: 400;
+  flex-shrink: 0;
+}
+
+.author-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  margin-top: 3px;
+}
+
+.author-name {
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.author-name:hover { color: var(--color-primary); }
+
+.meta-sep {
+  color: var(--color-border);
+  user-select: none;
+}
+
+/* ── Author actions ── */
+.author-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.price-tag {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-warning);
+  padding: 4px 8px;
+  background: var(--color-warning-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.btn-tip {
+  color: var(--color-warning);
+  border-color: var(--color-warning);
+  background: transparent;
+}
+.btn-tip:hover {
+  background: var(--color-cta-subtle);
+}
+
+.btn-edit {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: transparent;
+}
+.btn-edit:hover {
+  background: var(--color-primary-subtle);
+}
+
+.btn-delete {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+  background: transparent;
+}
+.btn-delete:hover {
+  background: var(--color-danger-subtle);
+}
+
+.btn-pin {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+  background: transparent;
+}
+.btn-pin:hover {
+  background: var(--color-danger-subtle);
+}
+
+.btn-unpin {
+  color: var(--color-text-secondary);
+  border-color: var(--color-text-tertiary);
+  background: transparent;
+}
+.btn-unpin:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.btn-like {
+  color: var(--color-text-tertiary);
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+.btn-like:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+.btn-like.is-liked {
+  background: var(--color-danger-subtle);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+/* ── Info cards (Bounty / Referral) ── */
+.info-card {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: 15px;
+}
+
+.qa-card {
+  border-left: 3px solid var(--color-primary);
+}
+.qa-active {
+  background: var(--color-primary-subtle);
+}
+.qa-ended {
+  background: var(--color-surface);
+}
+
+.qa-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--color-text-secondary);
+}
+
+.qa-beans {
+  color: var(--color-warning);
+  font-weight: 500;
+}
+.qa-remaining {
+  color: var(--color-primary);
+}
+.qa-time {
+  color: var(--color-text-secondary);
+}
+.qa-distributed {
+  color: var(--color-success);
+  font-weight: 500;
+}
+.qa-expired {
+  color: var(--color-text-tertiary);
+}
+
+.referral-card {
+  background: var(--color-primary-subtle);
+  border-left: 3px solid var(--color-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.referral-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.referral-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  min-width: 56px;
+}
+
+.referral-value {
+  font-size: 14px;
+  color: var(--color-primary-dark);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.referral-link {
+  font-size: 14px;
+  color: var(--color-primary);
+  text-decoration: underline;
+  transition: color var(--transition-fast);
+  word-break: break-all;
+}
+.referral-link:hover {
+  color: var(--color-primary-light);
+}
+
+/* ── Promo card ── */
+.promo-card {
+  padding: 14px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  cursor: default;
+}
+
+.promo-text {
+  font-size: 15px;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  line-height: 1.65;
+}
+
+/* ── Resume section ── */
+.resume-section {
+  margin-bottom: 16px;
+}
+
+.section-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.resume-content-card {
+  padding: 14px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.resume-content {
+  font-size: 15px;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  line-height: 1.65;
+  font-family: inherit;
+  margin: 0;
+}
+
+/* ── Purchase CTA ── */
+.purchase-cta {
+  margin-top: 12px;
+  padding: 16px;
+  background: var(--color-cta-subtle);
+  border: 1px solid var(--color-cta);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.purchase-msg {
+  font-size: 13px;
+  color: var(--color-warning);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.purchase-error {
+  font-size: 12px;
+  color: var(--color-danger);
+  margin-bottom: 8px;
+}
+
+.btn-purchase {
+  padding: 8px 28px;
+  background: var(--color-cta);
+  color: var(--color-text-on-cta);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.btn-purchase:hover { background: var(--color-cta-dark); }
+.btn-purchase:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.purchased-badge {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--color-success);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Post body ── */
+.post-body {
+  font-size: 16px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  color: var(--color-text-secondary);
+  padding-bottom: 8px;
+}
+
+/* ── Modal system ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 28, 26, 0.35);
+  backdrop-filter: blur(4px);
+}
+
+.modal-card {
+  width: 400px;
+  max-width: 92vw;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 16px;
+}
+
+.modal-desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.modal-balance {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 12px;
+}
+
+.modal-hint {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.modal-section {
+  margin-bottom: 12px;
+}
+
+.modal-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.modal-cost {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 16px;
+}
+
+.modal-error {
+  font-size: 12px;
+  color: var(--color-danger);
+  margin-bottom: 12px;
+}
+
+.modal-input {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color var(--transition-fast);
+  width: 80px;
+}
+.modal-input:focus { border-color: var(--color-border-focus); }
+.modal-input.w-full { width: 100%; }
+.modal-input.input-error { border-color: var(--color-danger); }
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ── Preset buttons ── */
+.preset-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.preset-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.preset-btn:hover {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+.preset-btn.preset-active {
+  background: var(--color-cta-subtle);
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+  font-weight: 500;
+}
+.preset-btn.preset-disabled {
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ── Modal transitions ── */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 180ms ease;
+}
+.modal-enter-active .modal-card,
+.modal-leave-active .modal-card {
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+.modal-enter-from .modal-card {
+  transform: translateY(12px) scale(0.97);
+  opacity: 0;
+}
+.modal-leave-to .modal-card {
+  transform: translateY(-8px) scale(0.98);
+  opacity: 0;
+}
+</style>

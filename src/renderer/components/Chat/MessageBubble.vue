@@ -43,7 +43,7 @@ function getAttachmentUrl(storagePath: string): string { if (storagePath.startsW
   </div>
 
   <!-- 普通消息 -->
-  <div v-else class="flex px-4 py-1.5" :class="isOwn ? 'flex-row-reverse' : 'flex-row'">
+  <div v-else class="flex px-4 py-1.5 msg-enter" :class="isOwn ? 'flex-row-reverse' : 'flex-row'">
     <div class="flex-shrink-0" :class="isOwn ? 'ml-2' : 'mr-2'">
       <div v-if="showSender" class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs overflow-hidden" :style="{ backgroundColor: avatarColor(message.senderId || '') }">
         <img v-if="message.senderAvatar && !imgError" :src="avatarUrl(message.senderAvatar)" :alt="message.senderNickname" class="w-full h-full object-cover" @error="imgError = true" />

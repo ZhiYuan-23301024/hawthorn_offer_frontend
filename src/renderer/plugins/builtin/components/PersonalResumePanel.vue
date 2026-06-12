@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, getCurrentInstance, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, getCurrentInstance, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import {
   CheckCircle2,
   Download,
@@ -70,6 +70,21 @@ const latestScore = ref<ResumeScoreRecord | null>(null)
 const scoreHistory = ref<ResumeScoreRecord[]>([])
 const showHistory = ref(false)
 const isDetailMode = computed(() => props.mode === 'detail')
+const scoreBarWidths = ref<number[]>([0, 0, 0, 0, 0])
+const dummyDimensions = [
+  { key: 'content', name: '内容质量', score: 0, maxScore: 100 },
+  { key: 'structure', name: '结构规范', score: 0, maxScore: 100 },
+  { key: 'language', name: '语言表达', score: 0, maxScore: 100 },
+  { key: 'match', name: '岗位匹配', score: 0, maxScore: 100 },
+  { key: 'highlight', name: '亮点突出', score: 0, maxScore: 100 },
+]
+
+function animateScoreBars(dimensions: { score: number; maxScore: number }[]) {
+  scoreBarWidths.value = [0, 0, 0, 0, 0]
+  nextTick(() => {
+    scoreBarWidths.value = dimensions.map(d => Math.min(100, (d.score / d.maxScore) * 100))
+  })
+}
 
 const targetRoles = [
   { value: 'GENERAL', label: '通用' },
@@ -197,6 +212,7 @@ async function loadScores(id = selectedId.value) {
     const latest = await getLatestPersonalResumeScore(id)
     if (latest.code === 200) {
       latestScore.value = latest.data
+      animateScoreBars(latest.data.dimensions || [])
     }
   } catch {
     latestScore.value = null
@@ -418,6 +434,7 @@ async function runScore() {
     const res = await scorePersonalResume(selectedResume.value.id, targetRole.value)
     if (res.code === 200) {
       latestScore.value = res.data
+      animateScoreBars(res.data.dimensions || [])
       successMessage.value = '简历评分已生成'
       await loadScores(selectedResume.value.id)
     } else {
@@ -482,7 +499,7 @@ onUnmounted(() => {
   <div class="h-full flex flex-col bg-vscode-bg text-vscode-text">
     <div class="p-2 border-b border-vscode-border">
       <div class="flex items-center justify-between gap-2">
-        <span class="text-xs font-semibold text-vscode-text-secondary uppercase tracking-wider">个人简历</span>
+        <span class="text-sm font-semibold tracking-wider" style="color: var(--color-text-secondary);">个人简历</span>
         <button
           class="p-1 rounded text-vscode-icon hover:text-vscode-icon-hover hover:bg-vscode-active disabled:opacity-50"
           title="刷新"
@@ -497,22 +514,22 @@ onUnmounted(() => {
     <div v-if="!authStore.isAuthenticated" class="p-3 text-sm">
       <div class="rounded border border-vscode-border bg-vscode-sidebar p-3 space-y-2">
         <div class="flex items-center gap-2">
-          <ScrollText class="w-4 h-4 text-vscode-info" />
+          <ScrollText class="w-5 h-5 text-vscode-info" />
           <span class="font-medium">请先登录</span>
         </div>
-        <p class="text-xs text-vscode-text-secondary leading-5">登录后可以维护个人简历库、导入文件并生成评分。</p>
+        <p class="text-sm text-vscode-text-secondary leading-5">登录后可以维护个人简历库、导入文件并生成评分。</p>
       </div>
     </div>
 
     <div
       v-else
-      class="flex-1 min-h-0 overflow-y-auto text-sm"
-      :class="isDetailMode ? 'p-4' : 'p-2 space-y-2'"
+      class="flex-1 min-h-0 overflow-y-auto text-sm animate-fade-in-up"
+      :class="isDetailMode ? 'p-6' : 'p-2 space-y-2'"
     >
-      <div v-if="errorMessage" class="rounded bg-vscode-active px-2 py-1.5 text-vscode-warning text-xs">
+      <div v-if="errorMessage" class="rounded bg-vscode-active px-3 py-1.5 text-vscode-warning text-sm">
         {{ errorMessage }}
       </div>
-      <div v-if="successMessage" class="rounded bg-vscode-active px-2 py-1.5 text-vscode-success text-xs">
+      <div v-if="successMessage" class="rounded bg-vscode-active px-3 py-1.5 text-vscode-success text-sm">
         {{ successMessage }}
       </div>
       <input ref="replaceFileInputRef" type="file" class="hidden" accept=".doc,.docx,.pdf,.txt" @change="handleReplaceFile" />
@@ -522,7 +539,7 @@ onUnmounted(() => {
           <Search class="w-3.5 h-3.5 mr-1.5 flex-shrink-0" style="color: var(--color-text-tertiary);" />
           <input
             v-model="searchText"
-            class="bg-transparent text-xs outline-none flex-1"
+            class="bg-transparent text-sm outline-none flex-1"
             style="color: var(--color-text-primary);"
             placeholder="搜索简历"
             @input="loadResumes('')"
@@ -530,12 +547,12 @@ onUnmounted(() => {
           />
         </div>
         <div class="flex gap-1.5">
-          <button class="inline-flex items-center gap-1 px-2 py-1 rounded bg-vscode-selected text-xs" @click="startNew">
-            <FilePlus class="w-3.5 h-3.5" />
+          <button class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded bg-vscode-selected text-sm" @click="startNew">
+            <FilePlus class="w-4 h-4" />
             新建
           </button>
-          <button class="inline-flex items-center gap-1 px-2 py-1 rounded border border-vscode-border text-xs" :disabled="uploading" @click="triggerImport">
-            <Upload class="w-3.5 h-3.5" />
+          <button class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded border border-vscode-border text-sm" :disabled="uploading" @click="triggerImport">
+            <Upload class="w-4 h-4" />
             {{ uploading ? '导入中' : '导入文件' }}
           </button>
           <input ref="fileInputRef" type="file" class="hidden" accept=".doc,.docx,.pdf,.txt" @change="handleImportFile" />
@@ -543,14 +560,14 @@ onUnmounted(() => {
       </div>
 
       <div v-if="!isDetailMode" class="border border-vscode-border rounded bg-vscode-sidebar overflow-hidden">
-        <div v-if="loading" class="flex items-center gap-2 p-2 text-vscode-text-secondary text-xs">
+        <div v-if="loading" class="flex items-center gap-2 p-2 text-vscode-text-secondary text-sm">
           <Loader class="w-4 h-4 animate-spin" />
           正在加载...
         </div>
         <button
           v-for="item in resumes"
           :key="item.id"
-          class="w-full text-left px-2 py-2 border-b border-vscode-border last:border-b-0 hover:bg-vscode-active text-sm"
+          class="w-full text-left px-2 py-2 border-b border-vscode-border last:border-b-0 hover:bg-vscode-active text-sm transition-all duration-150 hover:pl-3"
           :class="selectedId === item.id ? 'bg-vscode-selected/50' : ''"
           @click="selectResume(item.id)"
         >
@@ -558,7 +575,7 @@ onUnmounted(() => {
             <Star v-if="item.isDefault" class="w-3.5 h-3.5 text-vscode-warning flex-shrink-0" />
             <span class="font-medium truncate">{{ item.resumeName }}</span>
           </div>
-          <div class="mt-1 text-[11px] text-vscode-text-secondary truncate">
+          <div class="mt-1 text-xs text-vscode-text-secondary truncate">
             {{ item.originalFileName || (item.sourceType === 'FILE' ? '文件简历' : '文本简历') }} · {{ formatDate(item.updatedAt) }}
           </div>
         </button>
@@ -570,71 +587,71 @@ onUnmounted(() => {
       <div
         v-if="isDetailMode"
         class="border border-vscode-border rounded bg-vscode-sidebar space-y-2"
-        :class="isDetailMode ? 'p-4' : 'p-2'"
+        :class="isDetailMode ? 'p-6' : 'p-2'"
       >
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-1 min-w-0">
-            <ScrollText class="w-4 h-4 text-vscode-info flex-shrink-0" />
+            <ScrollText class="w-5 h-5 text-vscode-info flex-shrink-0" />
             <span class="font-medium truncate">{{ hasResume ? selectedResume?.resumeName : '编辑个人简历' }}</span>
           </div>
-          <span v-if="selectedResume?.isDefault" class="text-[11px] text-vscode-warning">默认</span>
+          <span v-if="selectedResume?.isDefault" class="text-xs text-vscode-warning">默认</span>
         </div>
 
         <template v-if="editing">
           <label class="grid gap-1">
-            <span class="text-xs text-vscode-text-secondary">名称</span>
+            <span class="text-sm text-vscode-text-secondary">名称</span>
             <input
               v-model="resumeName"
-              class="bg-vscode-active border border-vscode-border px-2 py-1 rounded text-sm focus:outline-none focus:border-vscode-info/60"
+              class="bg-vscode-active border border-vscode-border px-3 py-1.5 rounded text-sm focus:outline-none focus:border-vscode-info/60"
               placeholder="例如：后端开发简历"
             />
           </label>
           <label class="grid gap-1">
-            <span class="text-xs text-vscode-text-secondary">内容</span>
+            <span class="text-sm text-vscode-text-secondary">内容</span>
             <textarea
               v-model="content"
               :rows="isDetailMode ? 24 : 14"
-              class="bg-vscode-active border border-vscode-border px-2 py-1 rounded text-sm leading-5 resize-y focus:outline-none focus:border-vscode-info/60"
+              class="bg-vscode-active border border-vscode-border px-3 py-1.5 rounded text-sm leading-5 resize-y focus:outline-none focus:border-vscode-info/60"
               placeholder="输入或导入你的个人简历内容"
             />
           </label>
           <div class="flex flex-wrap gap-1.5">
-            <button class="inline-flex items-center gap-1 px-2 py-1 rounded bg-vscode-selected text-xs disabled:opacity-60" :disabled="saving" @click="saveResume">
-              <Save class="w-3.5 h-3.5" />
+            <button class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded bg-vscode-selected text-sm disabled:opacity-60" :disabled="saving" @click="saveResume">
+              <Save class="w-4 h-4" />
               {{ saving ? '保存中' : '保存' }}
             </button>
-            <button v-if="hasResume" class="px-2 py-1 rounded border border-vscode-border text-xs" :disabled="saving" @click="cancelEdit">取消</button>
+            <button v-if="hasResume" class="px-2.5 py-1.5 rounded border border-vscode-border text-sm" :disabled="saving" @click="cancelEdit">取消</button>
           </div>
         </template>
 
         <template v-else-if="selectedResume">
-          <div class="text-xs text-vscode-text-secondary space-y-1">
+          <div class="text-sm text-vscode-text-secondary space-y-1">
             <div>更新：{{ formatDate(selectedResume.updatedAt) }}</div>
             <div v-if="selectedResume.originalFileName">文件：{{ selectedResume.originalFileName }} · {{ formatSize(selectedResume.fileSize) }}</div>
           </div>
           <pre
-            class="overflow-y-auto whitespace-pre-wrap break-words text-xs leading-5 text-vscode-text font-mono bg-vscode-active border border-vscode-border rounded p-2"
+            class="overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5 text-vscode-text font-mono bg-vscode-active border border-vscode-border rounded p-2"
             :class="isDetailMode ? 'max-h-[52vh]' : 'max-h-56'"
           >{{ selectedResume.content }}</pre>
           <div class="flex flex-wrap gap-1.5">
-            <button class="inline-flex items-center gap-1 px-2 py-1 rounded bg-vscode-selected text-xs" @click="startEdit">
-              <PenLine class="w-3.5 h-3.5" />
+            <button class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded bg-vscode-selected text-sm" @click="startEdit">
+              <PenLine class="w-4 h-4" />
               编辑
             </button>
-            <button class="inline-flex items-center gap-1 px-2 py-1 rounded border border-vscode-border text-xs" @click="triggerReplace">
-              <Upload class="w-3.5 h-3.5" />
+            <button class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded border border-vscode-border text-sm" @click="triggerReplace">
+              <Upload class="w-4 h-4" />
               替换文件
             </button>
-            <button class="inline-flex items-center gap-1 px-2 py-1 rounded border border-vscode-border text-xs disabled:opacity-50" :disabled="!selectedHasFile || downloading" @click="downloadFile">
-              <Download class="w-3.5 h-3.5" />
+            <button class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded border border-vscode-border text-sm disabled:opacity-50" :disabled="!selectedHasFile || downloading" @click="downloadFile">
+              <Download class="w-4 h-4" />
               下载
             </button>
-            <button class="inline-flex items-center gap-1 px-2 py-1 rounded border border-vscode-border text-xs disabled:opacity-50" :disabled="!!selectedResume.isDefault" @click="markDefault">
-              <CheckCircle2 class="w-3.5 h-3.5" />
+            <button class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded border border-vscode-border text-sm disabled:opacity-50" :disabled="!!selectedResume.isDefault" @click="markDefault">
+              <CheckCircle2 class="w-4 h-4" />
               设默认
             </button>
-            <button class="inline-flex items-center gap-1 px-2 py-1 rounded border border-vscode-warning text-vscode-warning text-xs disabled:opacity-60" :disabled="deleting" @click="removeResume">
-              <Trash2 class="w-3.5 h-3.5" />
+            <button class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded border border-vscode-warning text-vscode-warning text-sm disabled:opacity-60" :disabled="deleting" @click="removeResume">
+              <Trash2 class="w-4 h-4" />
               删除
             </button>
           </div>
@@ -642,58 +659,72 @@ onUnmounted(() => {
 
         <div v-else class="flex items-start gap-2 text-vscode-text-secondary">
           <FilePlus class="w-4 h-4 mt-0.5 flex-shrink-0" />
-          <span class="text-xs leading-5">选择、新建或导入一份个人简历。</span>
+          <span class="text-sm leading-5">选择、新建或导入一份个人简历。</span>
         </div>
       </div>
 
-      <div v-if="isDetailMode && selectedResume" class="border border-vscode-border rounded bg-vscode-sidebar p-2 space-y-2">
+      <div v-if="isDetailMode && selectedResume" class="border border-vscode-border rounded bg-vscode-sidebar p-5 space-y-2">
         <div class="flex items-center justify-between gap-2">
-          <span class="font-medium text-sm">简历评分</span>
-          <button class="inline-flex items-center gap-1 text-xs text-vscode-text-secondary hover:text-vscode-text" @click="showHistory = !showHistory">
-            <History class="w-3.5 h-3.5" />
+          <span class="font-medium text-base">简历评分</span>
+          <button class="inline-flex items-center gap-1 text-sm text-vscode-text-secondary hover:text-vscode-text" @click="showHistory = !showHistory">
+            <History class="w-4 h-4" />
             历史
           </button>
         </div>
         <div class="flex gap-1.5">
-          <select v-model="targetRole" class="flex-1 bg-vscode-active border border-vscode-border rounded px-2 py-1 text-xs focus:outline-none">
+          <select v-model="targetRole" class="flex-1 bg-vscode-active border border-vscode-border rounded px-2 py-1.5 text-sm focus:outline-none">
             <option v-for="role in targetRoles" :key="role.value" :value="role.value">{{ role.label }}</option>
           </select>
-          <button class="px-2 py-1 rounded bg-vscode-selected text-xs disabled:opacity-60" :disabled="scoring" @click="runScore">
+          <button class="px-3 py-1.5 rounded bg-vscode-selected text-sm disabled:opacity-60" :disabled="scoring" @click="runScore">
             {{ scoring ? '评分中' : '评分' }}
           </button>
         </div>
-        <div v-if="latestScore" class="space-y-2">
+        <!-- Score bars ALWAYS in DOM — never v-if/v-show, so CSS width transition can fire from 0 -->
+        <div class="score-section" :class="{ 'opacity-0': !latestScore }">
           <div class="flex items-end gap-2">
-            <span class="text-2xl font-semibold text-vscode-info">{{ latestScore.totalScore }}</span>
-            <span class="text-xs text-vscode-text-secondary pb-1">/ 100 · {{ latestScore.targetRoleName }}</span>
+            <span class="text-2xl font-semibold text-vscode-info">{{ latestScore?.totalScore ?? '-' }}</span>
+            <span class="text-sm text-vscode-text-secondary pb-1">{{ latestScore ? '/ 100 · ' + latestScore.targetRoleName : '' }}</span>
           </div>
-          <div class="space-y-1">
-            <div v-for="(dim, idx) in latestScore.dimensions" :key="dim.key" class="text-xs">
+          <div class="space-y-1 mt-2">
+            <div v-for="(dim, idx) in (latestScore?.dimensions || dummyDimensions)" :key="dim?.key || idx" class="text-sm">
               <div class="flex justify-between text-vscode-text-secondary">
-                <span :style="{ color: ['#7B8FA6','#A8906C','#6B8C73','#9E6E6E','#5C7088'][idx] || '#7B8FA6' }">{{ dim.name }}</span>
-                <span>{{ dim.score }}/{{ dim.maxScore }}</span>
+                <span :style="{ color: ['#7B8FA6','#A8906C','#6B8C73','#9E6E6E','#5C7088'][idx] || '#7B8FA6' }">{{ dim?.name || dummyDimensions[idx].name }}</span>
+                <span>{{ dim?.score ?? 0 }}/{{ dim?.maxScore ?? 100 }}</span>
               </div>
               <div class="h-1.5 bg-vscode-active rounded overflow-hidden">
-                <div class="h-full rounded" :style="{ width: `${Math.min(100, (dim.score / dim.maxScore) * 100)}%`, backgroundColor: ['#7B8FA6','#A8906C','#6B8C73','#9E6E6E','#5C7088'][idx] || '#7B8FA6' }"></div>
+                <div class="h-full rounded score-bar-fill" :style="{ width: scoreBarWidths[idx] + '%', backgroundColor: ['#7B8FA6','#A8906C','#6B8C73','#9E6E6E','#5C7088'][idx] || '#7B8FA6' }"></div>
               </div>
             </div>
           </div>
-          <p class="text-xs leading-5 text-vscode-text-secondary">{{ latestScore.summary }}</p>
-          <div class="grid gap-1 text-xs leading-5">
+          <p class="text-sm leading-5 text-vscode-text-secondary mt-2">{{ latestScore?.summary }}</p>
+          <div v-if="latestScore" class="grid gap-1 text-sm leading-5 mt-2">
             <div><span class="text-vscode-success">优势：</span>{{ latestScore.strengths.join('；') }}</div>
             <div><span class="text-vscode-warning">不足：</span>{{ latestScore.weaknesses.join('；') }}</div>
             <div><span class="text-vscode-info">建议：</span>{{ latestScore.suggestions.join('；') }}</div>
           </div>
         </div>
-        <div v-else class="text-xs text-vscode-text-secondary leading-5">还没有评分记录，选择岗位方向后生成评分。</div>
+        <div v-if="!latestScore" class="text-sm text-vscode-text-secondary leading-5">还没有评分记录，选择岗位方向后生成评分。</div>
         <div v-if="showHistory" class="border-t border-vscode-border pt-2 space-y-1">
-          <div v-for="record in scoreHistory" :key="record.id" class="flex items-center justify-between text-xs">
+          <div v-for="record in scoreHistory" :key="record.id" class="flex items-center justify-between text-sm">
             <span>{{ record.targetRoleName }} · {{ formatDate(record.createdAt) }}</span>
             <span class="text-vscode-info">{{ record.totalScore }}</span>
           </div>
-          <div v-if="scoreHistory.length === 0" class="text-xs text-vscode-text-secondary">暂无历史记录</div>
+          <div v-if="scoreHistory.length === 0" class="text-sm text-vscode-text-secondary">暂无历史记录</div>
         </div>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.score-section {
+  transition: opacity 200ms ease;
+}
+.score-section.opacity-0 {
+  opacity: 0.3;
+  pointer-events: none;
+}
+.score-bar-fill {
+  transition: width 700ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+</style>

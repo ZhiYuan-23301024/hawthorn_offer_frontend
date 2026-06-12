@@ -31,9 +31,9 @@ const pathData = computed(() => {
 
 const edgeStyles = computed(() => {
   const styles: Record<string, { stroke: string; strokeWidth: string; strokeDasharray: string }> = {
-    'main': { stroke: '#3b82f6', strokeWidth: '3', strokeDasharray: 'none' },
-    'branch': { stroke: '#f97316', strokeWidth: '2', strokeDasharray: 'none' },
-    'side': { stroke: '#10b981', strokeWidth: '2', strokeDasharray: '6,3' },
+    'main': { stroke: '#7B8FA6', strokeWidth: '3', strokeDasharray: 'none' },
+    'branch': { stroke: '#A8906C', strokeWidth: '2', strokeDasharray: 'none' },
+    'side': { stroke: '#6B8C73', strokeWidth: '2', strokeDasharray: '6,3' },
   }
   return styles[props.edge.type] || styles['main']
 })

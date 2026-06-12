@@ -7,6 +7,7 @@ import { useSocialStore } from '@/stores/social'
 import { useEditorStore } from '@/stores/editor'
 import { useAuthStore } from '@/stores/auth'
 import { API_BASE_URL } from '@/api/http'
+import { avatarUrl, avatarColor } from '@/utils/format'
 import UserProfilePage from '@/components/Profile/UserProfilePage.vue'
 
 const props = defineProps<{
@@ -42,6 +43,7 @@ const historyMessages = ref<MessageVO[]>([])
 const loadingHistory = ref(false)
 const historyPage = ref(1)
 const historyTotal = ref(0)
+const imgError = ref(false)
 
 // 对方用户信息（从 members 中提取）
 const friendInfo = computed(() => {
@@ -212,7 +214,7 @@ function handleToggleMute() {
   <Teleport to="body">
     <div
       v-if="show"
-      class="fixed inset-0 z-50 bg-black/50"
+      class="fixed inset-0 z-50" style="background: rgba(36, 34, 32, 0.35);"
       @click.self="emit('close')"
     >
       <div class="absolute right-0 top-0 h-full w-[360px] bg-vscode-sidebar border-l border-vscode-border shadow-2xl flex flex-col">
@@ -237,10 +239,10 @@ function handleToggleMute() {
           <!-- 好友头像 + 基本信息 -->
           <div class="px-4 py-4 border-b border-vscode-border">
             <div class="flex items-center gap-4 mb-3">
-              <div class="w-14 h-14 rounded-full bg-vscode-active flex items-center justify-center text-xl text-vscode-text overflow-hidden flex-shrink-0">
+              <div class="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl overflow-hidden flex-shrink-0" :style="{ backgroundColor: avatarColor(friendInfo.userId) }">
                 <img
-                  v-if="friendInfo.avatar"
-                  :src="friendInfo.avatar"
+                  v-if="friendInfo.avatar && !imgError"
+                  :src="avatarUrl(friendInfo.avatar)" @error="imgError = true"
                   :alt="friendInfo.nickname"
                   class="w-full h-full object-cover"
                 />
@@ -258,14 +260,14 @@ function handleToggleMute() {
             <div class="flex gap-2">
               <button
                 v-if="friendInfo"
-                class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded text-[#4a9eff] hover:bg-[#4a9eff]/10 transition-colors"
+                class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded text-primary hover:bg-primary/10 transition-colors"
                 @click="handleViewProfile"
               >
                 <ExternalLink class="w-3.5 h-3.5" />
                 个人主页
               </button>
               <button
-                class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded hover:bg-red-400/10 transition-colors text-red-400"
+                class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded hover:bg-danger-subtle transition-colors text-danger"
                 @click="handleDeleteFriend"
               >
                 <UserX class="w-3.5 h-3.5" />

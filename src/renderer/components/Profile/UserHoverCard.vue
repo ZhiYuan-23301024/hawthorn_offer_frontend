@@ -112,12 +112,12 @@ async function handleSendRequest() {
     <!-- Hover Card -->
     <div
       v-if="show && !showFriendDialog"
-      class="fixed z-[60] w-[300px] bg-[#1e1e1e] border border-[#444] rounded-lg shadow-2xl p-4"
+      class="fixed z-[60] w-[300px] rounded-lg shadow-2xl p-4 glass-float"
       :style="cardStyle"
       @mouseleave="emit('close')"
     >
       <div v-if="loading" class="flex items-center justify-center py-4">
-        <div class="w-4 h-4 border-2 border-[#4a9eff] border-t-transparent rounded-full animate-spin"></div>
+        <div class="w-4 h-4 border-2 rounded-full animate-spin" style="border-color: var(--color-primary); border-top-color: transparent;"></div>
       </div>
 
       <template v-else-if="profile">
@@ -131,26 +131,27 @@ async function handleSendRequest() {
             <span v-else>{{ profile.nickname?.charAt(0) || '?' }}</span>
           </div>
           <div class="min-w-0 flex-1">
-            <div class="text-sm font-semibold text-[#ddd] truncate">{{ profile.nickname }}</div>
-            <div v-if="profile.chsiVerified" class="text-xs text-blue-400">已认证</div>
+            <div class="text-sm font-semibold truncate" style="font-family: var(--font-display); color: var(--color-text-primary);">{{ profile.nickname }}</div>
+            <div v-if="profile.chsiVerified" class="text-xs" style="color: var(--color-primary);">已认证</div>
           </div>
         </div>
 
         <!-- Bio -->
-        <div v-if="profile.bio" class="text-xs text-[#999] mb-3 line-clamp-2">{{ profile.bio }}</div>
+        <div v-if="profile.bio" class="text-xs mb-3 line-clamp-2" style="color: var(--color-text-secondary);">{{ profile.bio }}</div>
 
         <!-- Stats -->
         <div v-if="stats" class="flex gap-3 mb-3 text-center text-xs">
-          <div><span class="text-[#4a9eff] font-medium">{{ stats.postCount }}</span> <span class="text-[#777]">帖子</span></div>
-          <div><span class="text-[#4a9eff] font-medium">{{ stats.commentCount }}</span> <span class="text-[#777]">回复</span></div>
-          <div><span class="text-[#4a9eff] font-medium">{{ stats.likeReceivedCount }}</span> <span class="text-[#777]">获赞</span></div>
-          <div><span class="text-[#f0c040] font-medium">{{ stats.adoptedCount }}</span> <span class="text-[#777]">采纳</span></div>
+          <div><span class="font-medium" style="color: var(--color-primary-dark);">{{ stats.postCount }}</span> <span style="color: var(--color-text-secondary);">帖子</span></div>
+          <div><span class="font-medium" style="color: var(--color-primary-dark);">{{ stats.commentCount }}</span> <span style="color: var(--color-text-secondary);">回复</span></div>
+          <div><span class="font-medium" style="color: var(--color-primary-dark);">{{ stats.likeReceivedCount }}</span> <span style="color: var(--color-text-secondary);">获赞</span></div>
+          <div><span class="font-medium" style="color: var(--color-warning);">{{ stats.adoptedCount }}</span> <span style="color: var(--color-text-secondary);">采纳</span></div>
         </div>
 
         <!-- Actions -->
         <div class="flex gap-2">
           <button
-            class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded border border-[#4a9eff] text-[#4a9eff] hover:bg-[#4a9eff]/10 transition-colors"
+            class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded border transition-colors"
+            style="border-color: var(--color-primary); color: var(--color-primary);"
             @click="handleViewProfile"
           >
             <ExternalLink class="w-3 h-3" /> 查看主页
@@ -158,7 +159,8 @@ async function handleSendRequest() {
           <template v-if="!isSelf">
             <template v-if="isFriend">
               <button
-                class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded border border-[#4a9eff] text-[#4a9eff] hover:bg-[#4a9eff]/10 transition-colors"
+                class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded border transition-colors"
+                style="border-color: var(--color-primary); color: var(--color-primary);"
                 @click="handleGoChat"
               >
                 <MessageCircle class="w-3 h-3" /> 去聊天
@@ -166,7 +168,8 @@ async function handleSendRequest() {
             </template>
             <button
               v-else
-              class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded border border-[#e74c3c] text-[#e74c3c] hover:bg-[#e74c3c]/10 transition-colors"
+              class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded border transition-colors"
+              style="border-color: var(--color-cta); color: var(--color-cta-dark);"
               @click="showFriendDialog = true"
             >
               <UserPlus class="w-3 h-3" /> 加好友
@@ -179,15 +182,15 @@ async function handleSendRequest() {
     <!-- Friend Request Mini Dialog -->
     <div
       v-if="show && showFriendDialog"
-      class="fixed z-[60] w-[300px] bg-[#1e1e1e] border border-[#444] rounded-lg shadow-2xl p-4"
+      class="fixed z-[60] w-[300px] rounded-lg shadow-2xl p-4 glass-float"
       :style="cardStyle"
     >
-      <h4 class="text-sm font-semibold text-[#ccc] mb-3">发送好友申请</h4>
-      <p class="text-xs text-[#888] mb-2">向 <span class="text-[#4a9eff]">{{ profile?.nickname }}</span> 发送好友申请</p>
-      <textarea v-model="friendMessage" class="w-full bg-[#2d2d2d] border border-[#444] rounded px-2 py-1.5 text-xs text-[#ccc] outline-none focus:border-[#4a9eff] resize-none" rows="2" placeholder="你好，我想加你为好友..."></textarea>
+      <h4 class="text-sm font-semibold mb-3" style="font-family: var(--font-display); color: var(--color-text-primary);">发送好友申请</h4>
+      <p class="text-xs mb-2" style="color: var(--color-text-secondary);">向 <span style="color: var(--color-primary);">{{ profile?.nickname }}</span> 发送好友申请</p>
+      <textarea v-model="friendMessage" class="w-full input-base resize-none text-xs" rows="2" placeholder="你好，我想加你为好友..."></textarea>
       <div class="flex gap-2 justify-end mt-3">
-        <button class="px-3 py-1 border border-[#555] text-[#aaa] rounded text-xs hover:bg-[#2a2a2a]" @click="showFriendDialog = false">取消</button>
-        <button class="px-3 py-1 bg-[#4a9eff] text-white rounded text-xs hover:bg-[#3a8eef] disabled:opacity-50" :disabled="!friendMessage.trim() || sendingRequest" @click="handleSendRequest">
+        <button class="px-3 py-1 rounded text-xs btn-ghost" @click="showFriendDialog = false">取消</button>
+        <button class="px-3 py-1 text-white rounded text-xs transition-colors disabled:opacity-50 btn-primary" :disabled="!friendMessage.trim() || sendingRequest" @click="handleSendRequest">
           {{ sendingRequest ? '...' : '发送' }}
         </button>
       </div>

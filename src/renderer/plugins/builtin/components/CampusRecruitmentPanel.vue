@@ -60,10 +60,10 @@ const followLoadingJobId = ref('')
 const stats = computed(() => {
   const current = overview.value
   return [
-    { label: '企业数量', value: String(current?.companyCount ?? 0), tone: 'text-sky-300' },
-    { label: '开放批次', value: String(current?.activeCampaignCount ?? 0), tone: 'text-emerald-300' },
-    { label: '7天内将截止', value: String(current?.upcomingDeadlineCount ?? 0), tone: 'text-amber-300' },
-    { label: '已关注岗位', value: String(current?.followedJobCount ?? 0), tone: 'text-fuchsia-300' }
+    { label: '企业数量', value: String(current?.companyCount ?? 0), tone: 'text-primary-light' },
+    { label: '开放批次', value: String(current?.activeCampaignCount ?? 0), tone: 'text-success' },
+    { label: '7天内将截止', value: String(current?.upcomingDeadlineCount ?? 0), tone: 'text-warning' },
+    { label: '已关注岗位', value: String(current?.followedJobCount ?? 0), tone: 'text-danger' }
   ]
 })
 
@@ -251,7 +251,7 @@ onMounted(initializeData)
               <Sparkles class="h-3.5 w-3.5" />
               企业校招工作台
             </div>
-            <h2 class="text-xl font-semibold text-vscode-text">校招专区</h2>
+            <h2 class="text-sm font-semibold text-vscode-text">校招专区</h2>
             <p class="max-w-2xl text-vscode-text-secondary">
               聚合近期企业校招批次、岗位和关键节点，也支持记录你自己的投递进度，尽量把信息浏览和跟进放在一个地方。
             </p>
@@ -280,7 +280,7 @@ onMounted(initializeData)
             :key="item.label"
             class="rounded-2xl border border-vscode-border bg-vscode-panel p-4"
           >
-            <p class="text-xs uppercase tracking-wide text-vscode-text-secondary">{{ item.label }}</p>
+            <p class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">{{ item.label }}</p>
             <p class="mt-2 text-2xl font-semibold" :class="item.tone">{{ item.value }}</p>
           </div>
         </div>
@@ -289,7 +289,7 @@ onMounted(initializeData)
           <div class="rounded-2xl border border-vscode-border bg-vscode-panel p-4">
             <div class="mb-3 flex items-center gap-2">
               <Building2 class="h-4 w-4 text-vscode-icon" />
-              <h3 class="font-medium text-vscode-text">重点企业</h3>
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">重点企业</h3>
             </div>
             <div v-if="featuredCompanies.length === 0" class="text-sm text-vscode-text-secondary">暂无企业数据</div>
             <div v-else class="space-y-3">
@@ -303,7 +303,7 @@ onMounted(initializeData)
                     <p class="font-medium text-vscode-text">{{ company.name }}</p>
                     <p class="text-xs text-vscode-text-secondary">{{ company.industry || '未分类行业' }}</p>
                   </div>
-                  <span class="rounded-full bg-amber-500/15 px-2 py-1 text-xs text-amber-300">
+                  <span class="rounded-full px-2 py-1 text-xs" style="background: rgba(196, 173, 120, 0.15); color: var(--color-warning);">
                     截止 {{ formatDeadline(company.latestDeadline) }}
                   </span>
                 </div>
@@ -315,7 +315,7 @@ onMounted(initializeData)
           <div class="rounded-2xl border border-vscode-border bg-vscode-panel p-4">
             <div class="mb-3 flex items-center gap-2">
               <BellRing class="h-4 w-4 text-vscode-icon" />
-              <h3 class="font-medium text-vscode-text">热门岗位</h3>
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">热门岗位</h3>
             </div>
             <div v-if="hotJobs.length === 0" class="text-sm text-vscode-text-secondary">暂无岗位数据</div>
             <div v-else class="space-y-3">
@@ -337,7 +337,7 @@ onMounted(initializeData)
         <div class="mb-4 flex items-center justify-between gap-3">
           <div class="flex items-center gap-2">
             <Building2 class="h-4 w-4 text-vscode-icon" />
-            <h3 class="font-medium text-vscode-text">企业列表</h3>
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">企业列表</h3>
           </div>
           <div class="flex gap-2">
             <input
@@ -359,7 +359,7 @@ onMounted(initializeData)
               v-for="company in companies"
               :key="company.id"
               class="w-full rounded-xl border p-4 text-left transition"
-              :class="company.id === selectedCompanyId ? 'border-sky-500 bg-sky-500/10' : 'border-vscode-border bg-vscode-active/35 hover:bg-vscode-active/60'"
+              :class="company.id === selectedCompanyId ? 'border-primary bg-primary-subtle' : 'border-vscode-border bg-vscode-active/35 hover:bg-vscode-active/60'"
               @click="selectedCompanyId = company.id"
             >
               <div class="flex items-start justify-between gap-3">
@@ -399,7 +399,7 @@ onMounted(initializeData)
               </p>
 
               <div class="mt-4 space-y-2">
-                <p class="text-xs uppercase tracking-wide text-vscode-text-secondary">当前批次</p>
+                <p class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">当前批次</p>
                 <div v-if="selectedCompanyDetail.campaigns.length === 0" class="text-sm text-vscode-text-secondary">暂无批次信息</div>
                 <div
                   v-for="campaign in selectedCompanyDetail.campaigns"
@@ -422,7 +422,7 @@ onMounted(initializeData)
         <div class="mb-4 flex items-center justify-between gap-3">
           <div class="flex items-center gap-2">
             <Briefcase class="h-4 w-4 text-vscode-icon" />
-            <h3 class="font-medium text-vscode-text">岗位列表</h3>
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">岗位列表</h3>
           </div>
           <div class="flex gap-2">
             <input
@@ -494,7 +494,7 @@ onMounted(initializeData)
       <section v-if="showSection('timeline')" class="rounded-2xl border border-vscode-border bg-vscode-panel p-4">
         <div class="mb-4 flex items-center gap-2">
           <CalendarClock class="h-4 w-4 text-vscode-icon" />
-          <h3 class="font-medium text-vscode-text">流程时间线</h3>
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">流程时间线</h3>
         </div>
         <div v-if="timeline.length === 0" class="text-sm text-vscode-text-secondary">暂无流程节点数据</div>
         <div v-else class="space-y-3">
@@ -516,7 +516,7 @@ onMounted(initializeData)
       <section v-if="showSection('tracking')" class="rounded-2xl border border-vscode-border bg-vscode-panel p-4">
         <div class="mb-4 flex items-center gap-2">
           <BadgeCheck class="h-4 w-4 text-vscode-icon" />
-          <h3 class="font-medium text-vscode-text">我的关注</h3>
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">我的关注</h3>
         </div>
         <div v-if="!authStore.token" class="text-sm text-vscode-text-secondary">登录后可以在这里查看自己的关注岗位和投递进度。</div>
         <div v-else-if="follows.length === 0" class="text-sm text-vscode-text-secondary">你还没有记录关注岗位，可以先在岗位列表里保存进度。</div>
@@ -535,7 +535,7 @@ onMounted(initializeData)
                 <p v-if="item.note" class="mt-2 text-sm text-vscode-text-secondary">{{ item.note }}</p>
               </div>
               <div class="flex items-center gap-2">
-                <span class="rounded-full bg-amber-500/15 px-2 py-1 text-xs text-amber-300">
+                <span class="rounded-full px-2 py-1 text-xs" style="background: rgba(196, 173, 120, 0.15); color: var(--color-warning);">
                   {{ formatFollowStatus(item.status) }}
                 </span>
                 <a

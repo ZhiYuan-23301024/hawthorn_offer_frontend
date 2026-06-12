@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { X, Search, UserPlus, Loader, Send } from 'lucide-vue-next'
 import { useSocialStore } from '@/stores/social'
+import { avatarUrl, avatarColor } from '@/utils/format'
 
 const props = defineProps<{
   show: boolean
@@ -16,6 +17,7 @@ const store = useSocialStore()
 const searchQuery = ref('')
 const expandedUserId = ref<string | null>(null)
 const requestMessage = ref('')
+const imgErrors = ref<Set<string>>(new Set())
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(() => props.show, (val) => {
@@ -71,7 +73,7 @@ async function handleSendRequest(userId: string, nickname: string) {
   <Teleport to="body">
     <div
       v-if="show"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      class="fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(36, 34, 32, 0.35);"
       @click.self="emit('close')"
     >
       <div class="bg-vscode-sidebar border border-vscode-border rounded-lg shadow-2xl w-[400px] max-h-[480px] flex flex-col">
@@ -135,12 +137,13 @@ async function handleSendRequest(userId: string, nickname: string) {
               :key="user.id"
             >
               <div class="flex items-center gap-3 px-4 py-3 hover:bg-vscode-active/50 transition-colors">
-                <div class="w-9 h-9 rounded-full bg-vscode-active flex items-center justify-center text-xs text-vscode-text overflow-hidden flex-shrink-0">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs overflow-hidden flex-shrink-0" :style="{ backgroundColor: avatarColor(user.id) }">
                   <img
-                    v-if="user.avatar"
-                    :src="user.avatar"
+                    v-if="user.avatar && !imgErrors.has(user.id)"
+                    :src="avatarUrl(user.avatar)"
                     :alt="user.nickname"
                     class="w-full h-full object-cover"
+                    @error="imgErrors.add(user.id)"
                   />
                   <span v-else>{{ (user.nickname || '?')[0] }}</span>
                 </div>

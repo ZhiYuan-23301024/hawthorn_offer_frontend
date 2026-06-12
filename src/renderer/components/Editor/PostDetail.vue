@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
-import { Heart, Edit3, Trash2, Coffee } from 'lucide-vue-next'
+import { Heart, Edit3, Trash2, Coffee, Pin, Lock, CheckCircle2, Bean } from 'lucide-vue-next'
 import { usePostStore } from '@/stores/post'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorStore } from '@/stores/editor'
@@ -419,7 +419,7 @@ function onVisibilityChange() {
 </script>
 
 <template>
-  <div v-if="detail" class="h-full flex flex-col text-[#ccc]">
+  <div v-if="detail" class="h-full flex flex-col text-vscode-text">
     <!-- Post content: scrollable, takes up to half the height -->
     <div class="overflow-y-auto flex-shrink-0" style="max-height: 45%">
     <!-- Resume detail -->
@@ -434,14 +434,14 @@ function onVisibilityChange() {
           <span v-else>{{ authorAvatar || authorName?.charAt(0) || '?' }}</span>
         </div>
         <div class="flex-1">
-          <div class="text-lg font-semibold text-[#ddd] flex items-center gap-2">
+          <div class="text-lg font-semibold text-vscode-text flex items-center gap-2">
             {{ titleOrName }}
-            <span v-if="resumeData?.deleted" class="text-xs text-[#e74c3c] bg-[#e74c3c]/10 px-2 py-0.5 rounded font-normal">已删除</span>
+            <span v-if="resumeData?.deleted" class="text-xs text-danger bg-danger-subtle px-2 py-0.5 rounded font-normal">已删除</span>
           </div>
-          <div class="text-xs text-[#888] mt-0.5">
+          <div class="text-xs text-vscode-text-secondary mt-0.5">
             <span
               v-if="!resumeData?.isAnonymous"
-              class="cursor-pointer hover:text-[#4a9eff] transition-colors"
+              class="cursor-pointer hover:text-primary transition-colors"
               @mouseenter="onAuthorMouseEnter($event, detailUserId)"
               @mouseleave="onAuthorMouseLeave"
               @click="onAuthorClick(detailUserId)"
@@ -451,20 +451,20 @@ function onVisibilityChange() {
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-[#f0c040] font-semibold text-sm">🫘 {{ resumeData.price }}</span>
+          <span class="text-warning font-semibold text-sm">{{ resumeData.price  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></span>
           <template v-if="!resumeData.deleted">
-            <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#f0c040] text-[#f0c040] text-sm hover:bg-[#f0c040]/10 transition-colors" @click="handleTipClick">
+            <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-warning text-warning text-sm hover:bg-cta/10 transition-colors" @click="handleTipClick">
               <Coffee class="w-3.5 h-3.5" /> 打赏
             </button>
-            <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#4a9eff] text-[#4a9eff] text-sm hover:bg-[#4a9eff]/10 transition-colors" @click="handleEdit">
+            <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary text-primary text-sm hover:bg-primary/10 transition-colors" @click="handleEdit">
               <Edit3 class="w-3.5 h-3.5" /> 编辑
             </button>
-            <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="handleDelete">
+            <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-danger text-danger text-sm hover:bg-danger/10 transition-colors" @click="handleDelete">
               <Trash2 class="w-3.5 h-3.5" /> 删除
             </button>
             <button
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-colors"
-              :class="resumeData.isLiked ? 'bg-[#e74c3c]/20 border-[#e74c3c] text-[#e74c3c]' : 'bg-[#2d2d2d] border-[#555] text-[#888] hover:border-[#e74c3c] hover:text-[#e74c3c]'"
+              :class="resumeData.isLiked ? 'bg-danger/20 border-danger text-danger' : 'bg-vscode-active border-vscode-border text-vscode-text-secondary hover:border-danger hover:text-danger'"
               @click="handleResumeLike"
             >
               <Heart class="w-4 h-4" :fill="resumeData.isLiked ? 'currentColor' : 'none'" />
@@ -474,27 +474,27 @@ function onVisibilityChange() {
         </div>
       </div>
 
-      <div class="mb-4 p-3 bg-[#2a2a2a] rounded-md" @click="onPostContentClick">
-        <p class="text-sm text-[#ccc] whitespace-pre-wrap">{{ resumeData.promoText }}</p>
+      <div class="mb-4 p-3 bg-vscode-active rounded-md" @click="onPostContentClick">
+        <p class="text-sm text-vscode-text whitespace-pre-wrap">{{ resumeData.promoText }}</p>
       </div>
 
       <div class="mb-4">
-        <h3 class="text-sm text-[#888] mb-2">
+        <h3 class="text-sm text-vscode-text-secondary mb-2">
           {{ resumeData.hasPurchased || isOwner ? '简历内容' : '简历预览（前200字）' }}
         </h3>
-        <div class="p-3 bg-[#252525] border border-[#333] rounded-md">
-          <pre class="text-sm text-[#ccc] whitespace-pre-wrap font-sans">{{ resumeData.content }}</pre>
+        <div class="p-3 bg-vscode-active border border-vscode-border rounded-md">
+          <pre class="text-sm text-vscode-text whitespace-pre-wrap font-sans">{{ resumeData.content }}</pre>
         </div>
-        <div v-if="!resumeData.deleted && !resumeData.hasPurchased && !isOwner" class="mt-2 p-3 bg-[#2d2510] border border-[#4a3a10] rounded-md text-center">
-          <p class="text-sm text-[#f0c040] mb-2">🔒 支付 🫘 {{ resumeData.price }} 豆查看完整简历</p>
-          <p v-if="purchaseError" class="text-xs text-[#e74c3c] mb-2">{{ purchaseError }}</p>
-          <button class="px-6 py-2 bg-[#f0c040] text-[#1e1e1e] rounded-md text-sm font-medium hover:bg-[#e0b030] transition-colors disabled:opacity-50"
+        <div v-if="!resumeData.deleted && !resumeData.hasPurchased && !isOwner" class="mt-2 p-3 bg-cta-subtle border border-cta rounded-md text-center">
+          <p class="text-sm text-warning mb-2"><Lock class="w-4 h-4 inline-block" style="color:var(--color-warning);" /> 支付 {{ resumeData.price  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 豆查看完整简历</p>
+          <p v-if="purchaseError" class="text-xs text-danger mb-2">{{ purchaseError }}</p>
+          <button class="px-6 py-2 bg-cta text-white rounded-md text-sm font-medium hover:bg-cta-dark transition-colors disabled:opacity-50"
             :disabled="purchasing" @click="handlePurchase">
             {{ purchasing ? '处理中...' : '支付解锁' }}
           </button>
         </div>
-        <div v-else-if="resumeData.hasPurchased && !isOwner" class="mt-2 text-xs text-[#27ae60]">
-          ✅ 已购买，可查看完整内容
+        <div v-else-if="resumeData.hasPurchased && !isOwner" class="mt-2 text-xs text-success">
+          <CheckCircle2 class="w-4 h-4 inline-block" style="color:var(--color-success);" /> 已购买，可查看完整内容
         </div>
       </div>
     </template>
@@ -503,29 +503,29 @@ function onVisibilityChange() {
     <template v-else>
       <!-- Bounty info card (QA posts only) -->
       <div v-if="isQaPost" class="mb-4 p-4 border rounded-md"
-        :class="bountyStatus === 'active' ? 'border-[#4a9eff]/30 bg-[#4a9eff]/5' : 'border-[#555]/30 bg-[#2a2a2a]'">
+        :class="bountyStatus === 'active' ? 'border-primary/30 bg-primary/5' : 'border-vscode-border/30 bg-vscode-active'">
         <div class="flex items-center gap-3 text-sm flex-wrap">
-          <span class="text-[#f0c040]">🫘 求助 {{ bountyBeansTotal }} 豆子</span>
-          <span v-if="bountyStatus === 'active'" class="text-[#4a9eff]">| 剩余 {{ bountyRemaining }}</span>
-          <span v-if="bountyStatus === 'active' && bountyTimeLeft" class="text-[#888]">| ⏱ 剩余 {{ bountyTimeLeft }}</span>
-          <span v-else-if="bountyStatus === 'distributed'" class="text-[#27ae60]">| 已分配</span>
-          <span v-else-if="bountyStatus === 'expired'" class="text-[#888]">| 已结束</span>
+          <span class="text-warning"><Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 求助 {{ bountyBeansTotal }} 豆子</span>
+          <span v-if="bountyStatus === 'active'" class="text-primary">| 剩余 {{ bountyRemaining }}</span>
+          <span v-if="bountyStatus === 'active' && bountyTimeLeft" class="text-vscode-text-secondary">| ⏱ 剩余 {{ bountyTimeLeft }}</span>
+          <span v-else-if="bountyStatus === 'distributed'" class="text-success">| 已分配</span>
+          <span v-else-if="bountyStatus === 'expired'" class="text-vscode-text-secondary">| 已结束</span>
         </div>
       </div>
 
       <!-- Referral info card (referral posts only) -->
-      <div v-if="isReferralPost" class="mb-4 p-4 border border-[#4a9eff]/30 rounded-md bg-[#4a9eff]/5">
+      <div v-if="isReferralPost" class="mb-4 p-4 border border-primary/30 rounded-md bg-primary/5">
         <div class="flex flex-col gap-2 text-sm">
           <div class="flex items-center gap-2">
-            <span class="text-[#888]">内推码</span>
-            <span class="text-[#4a9eff] font-medium">{{ referralCode }}</span>
+            <span class="text-vscode-text-secondary">内推码</span>
+            <span class="text-primary font-medium">{{ referralCode }}</span>
           </div>
           <div v-if="referralLink" class="flex items-center gap-2">
-            <span class="text-[#888]">内推链接</span>
+            <span class="text-vscode-text-secondary">内推链接</span>
             <a
               :href="referralLink"
               target="_blank"
-              class="text-[#4a9eff] hover:text-[#6ab4ff] underline transition-colors break-all"
+              class="text-primary hover:text-primary-light underline transition-colors break-all"
             >{{ referralLink }}</a>
           </div>
         </div>
@@ -547,13 +547,13 @@ function onVisibilityChange() {
           <span v-else>{{ authorAvatar || '?' }}</span>
         </div>
         <div class="flex-1">
-          <div class="text-lg font-semibold text-[#ddd]">
+          <div class="text-lg font-semibold text-vscode-text">
             {{ titleOrName }}
           </div>
-          <div class="text-xs text-[#888] mt-0.5">
+          <div class="text-xs text-vscode-text-secondary mt-0.5">
             <span
               v-if="!postListItem?.isAnonymous"
-              class="cursor-pointer hover:text-[#4a9eff] transition-colors"
+              class="cursor-pointer hover:text-primary transition-colors"
               @mouseenter="onAuthorMouseEnter($event, detailUserId)"
               @mouseleave="onAuthorMouseLeave"
               @click="onAuthorClick(detailUserId)"
@@ -561,29 +561,29 @@ function onVisibilityChange() {
             <span v-else>{{ authorName }}</span>
             <span v-if="detailCreatedAt" class="ml-2">{{ formatTime(detailCreatedAt) }}</span>
           </div>
-          <div v-if="isPostPinned && postListItem?.pinExpiresAt" class="text-xs text-[#e74c3c] mt-0.5">
-            📌 置顶 · 剩余 {{ computeRemainingDetail(postListItem.pinExpiresAt) }}
+          <div v-if="isPostPinned && postListItem?.pinExpiresAt" class="text-xs text-danger mt-0.5">
+            <Pin class="w-3 h-3 inline-block" /> 置顶 · 剩余 {{ computeRemainingDetail(postListItem.pinExpiresAt) }}
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#4a9eff] text-[#4a9eff] text-sm hover:bg-[#4a9eff]/10 transition-colors" @click="handleEdit">
+          <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary text-primary text-sm hover:bg-primary/10 transition-colors" @click="handleEdit">
             <Edit3 class="w-3.5 h-3.5" /> 编辑
           </button>
-          <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="handleDelete">
+          <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-danger text-danger text-sm hover:bg-danger/10 transition-colors" @click="handleDelete">
             <Trash2 class="w-3.5 h-3.5" /> 删除
           </button>
-          <button v-if="isOwner && (postType === 'regular' || postType === 'referral') && !isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="showPinDialog = true">
-            📌 置顶
+          <button v-if="isOwner && (postType === 'regular' || postType === 'referral') && !isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-danger text-danger text-sm hover:bg-danger/10 transition-colors" @click="showPinDialog = true">
+            <Pin class="w-3 h-3 inline-block" /> 置顶
           </button>
-          <button v-if="isOwner && (postType === 'regular' || postType === 'referral') && isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="showPinDialog = true">
-            📌 续费置顶
+          <button v-if="isOwner && (postType === 'regular' || postType === 'referral') && isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-danger text-danger text-sm hover:bg-danger/10 transition-colors" @click="showPinDialog = true">
+            <Pin class="w-3 h-3 inline-block" /> 续费置顶
           </button>
-          <button v-if="isOwner && (postType === 'regular' || postType === 'referral') && isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#888] text-[#888] text-sm hover:bg-[#888]/10 transition-colors" @click="handleUnpin">
+          <button v-if="isOwner && (postType === 'regular' || postType === 'referral') && isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#888] text-vscode-text-secondary text-sm hover:bg-[#888]/10 transition-colors" @click="handleUnpin">
             取消置顶
           </button>
           <button
             class="flex items-center gap-1.5 px-4 py-2 rounded-md border transition-colors"
-            :class="isLiked ? 'bg-[#e74c3c]/20 border-[#e74c3c] text-[#e74c3c]' : 'bg-[#2d2d2d] border-[#555] text-[#888] hover:border-[#e74c3c] hover:text-[#e74c3c]'"
+            :class="isLiked ? 'bg-danger/20 border-danger text-danger' : 'bg-vscode-active border-vscode-border text-vscode-text-secondary hover:border-danger hover:text-danger'"
             @click="handleLike"
           >
             <Heart class="w-4 h-4" :fill="isLiked ? 'currentColor' : 'none'" />
@@ -592,7 +592,7 @@ function onVisibilityChange() {
         </div>
       </div>
 
-      <div class="text-sm leading-relaxed whitespace-pre-wrap text-[#bbb]" @click="onPostContentClick">
+      <div class="text-sm leading-relaxed whitespace-pre-wrap text-vscode-text-secondary" @click="onPostContentClick">
         {{ bodyContent }}
       </div>
     </template>
@@ -601,78 +601,78 @@ function onVisibilityChange() {
 
     <!-- Comments (regular / QA posts only) -->
     <CommentSection v-if="!resumeData?.deleted" ref="commentSectionRef" :target-id="postId" target-type="post" :post-type="isQaPost ? 'qa' : (postType === 'resume' ? 'resume' : 'normal')" :bounty-remaining="bountyRemaining" :bounty-status="bountyStatus" :post-author-id="detailUserId" class="flex-1 min-h-0" />
-    <div v-else class="flex-1 flex items-center justify-center text-sm text-[#666]">帖子已删除，评论已关闭</div>
+    <div v-else class="flex-1 flex items-center justify-center text-sm text-vscode-text-secondary">帖子已删除，评论已关闭</div>
   </div>
 
   <div v-else-if="postStore.loadingDetail" class="h-full flex items-center justify-center">
-    <div class="text-sm text-[#888]">加载中...</div>
+    <div class="text-sm text-vscode-text-secondary">加载中...</div>
   </div>
 
   <div v-else class="h-full flex items-center justify-center">
-    <div class="text-sm text-[#888]">请选择一篇帖子查看详情</div>
+    <div class="text-sm text-vscode-text-secondary">请选择一篇帖子查看详情</div>
   </div>
 
   <!-- 置顶弹窗 -->
-  <div v-if="showPinDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="showPinDialog = false">
-    <div class="bg-[#1e1e1e] border border-[#333] rounded-lg p-6 w-[400px]">
-      <h3 class="text-lg font-semibold text-[#ccc] mb-4">{{ isPostPinned ? '续费置顶' : '帖子置顶' }}</h3>
+  <div v-if="showPinDialog" class="fixed inset-0 z-50 flex items-center justify-center " @click.self="showPinDialog = false">
+    <div class="bg-vscode-bg border border-vscode-border rounded-lg p-6 w-[400px]">
+      <h3 class="text-lg font-semibold text-vscode-text mb-4">{{ isPostPinned ? '续费置顶' : '帖子置顶' }}</h3>
 
-      <div v-if="isPostPinned && postListItem?.pinExpiresAt" class="text-xs text-[#888] mb-3">
+      <div v-if="isPostPinned && postListItem?.pinExpiresAt" class="text-xs text-vscode-text-secondary mb-3">
         当前剩余：{{ computeRemainingDetail(postListItem.pinExpiresAt) }}
-        <span v-if="maxRenewHours <= 0 && isQaPost" class="text-[#e74c3c]">（已达到求助最大置顶时长）</span>
-        <span v-else-if="maxRenewHours <= 0" class="text-[#e74c3c]">（已达到7天上限）</span>
-        <span v-else class="text-[#888]">（最多续费 {{ maxRenewHours }} 小时）</span>
+        <span v-if="maxRenewHours <= 0 && isQaPost" class="text-danger">（已达到求助最大置顶时长）</span>
+        <span v-else-if="maxRenewHours <= 0" class="text-danger">（已达到7天上限）</span>
+        <span v-else class="text-vscode-text-secondary">（最多续费 {{ maxRenewHours }} 小时）</span>
       </div>
 
       <div v-if="maxRenewHours > 0" class="mb-3">
-        <span class="text-sm text-[#888]">选择时长：</span>
+        <span class="text-sm text-vscode-text-secondary">选择时长：</span>
         <div class="flex flex-wrap gap-2 mt-2">
           <button
             v-for="(label, i) in pinPresetLabels"
             :key="i"
             class="px-3 py-1 text-xs rounded border transition-colors"
-            :class="pinPresets[i] <= maxRenewHours ? (pinHours === pinPresets[i] ? 'bg-[#4a9eff]/20 border-[#4a9eff] text-[#4a9eff]' : 'border-[#444] text-[#888] hover:border-[#4a9eff] hover:text-[#4a9eff]') : 'border-[#333] text-[#555] cursor-not-allowed'"
+            :class="pinPresets[i] <= maxRenewHours ? (pinHours === pinPresets[i] ? 'bg-primary/20 border-primary text-primary' : 'border-vscode-border text-vscode-text-secondary hover:border-primary hover:text-primary') : 'border-vscode-border text-[#555] cursor-not-allowed'"
             @click="pinPresets[i] <= maxRenewHours && (pinHours = pinPresets[i])"
           >{{ label }}</button>
         </div>
       </div>
 
       <div v-if="maxRenewHours > 0" class="mb-4">
-        <span class="text-sm text-[#888]">自定义：</span>
+        <span class="text-sm text-vscode-text-secondary">自定义：</span>
         <input
           v-model.number="pinHours"
           type="number"
           min="1"
           :max="maxRenewHours"
-          class="ml-2 w-24 bg-[#2d2d2d] border border-[#444] rounded px-2 py-1 text-sm text-[#ccc] outline-none focus:border-[#4a9eff]"
+          class="ml-2 w-24 bg-vscode-active border border-vscode-border rounded px-2 py-1 text-sm text-vscode-text outline-none focus:border-primary"
         /> 小时
       </div>
 
-      <div v-if="maxRenewHours > 0" class="text-sm text-[#aaa] mb-4">
-        消耗：🫘 {{ Math.min(pinHours, maxRenewHours) * 10 }} 百斩豆
+      <div v-if="maxRenewHours > 0" class="text-sm text-vscode-text-secondary mb-4">
+        消耗：{{ Math.min(pinHours, maxRenewHours) * 10  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 百斩豆
       </div>
 
-      <div v-else-if="isQaPost" class="text-sm text-[#e74c3c] mb-4">
+      <div v-else-if="isQaPost" class="text-sm text-danger mb-4">
         已达到求助最大置顶时长，不可高于求助时长
       </div>
-      <div v-else class="text-sm text-[#e74c3c] mb-4">
+      <div v-else class="text-sm text-danger mb-4">
         已达到最大置顶时长（7天），无法续费
       </div>
 
       <div class="flex gap-3 justify-end">
-        <button class="px-4 py-2 border border-[#555] text-[#aaa] rounded-md text-sm hover:bg-[#2a2a2a]" @click="showPinDialog = false">取消</button>
-        <button v-if="maxRenewHours > 0" class="px-4 py-2 bg-[#4a9eff] text-white rounded-md text-sm hover:bg-[#3a8eef]" @click="handlePin">确认{{ isPostPinned ? '续费' : '置顶' }}</button>
+        <button class="px-4 py-2 border border-vscode-border text-vscode-text-secondary rounded-md text-sm hover:bg-vscode-active" @click="showPinDialog = false">取消</button>
+        <button v-if="maxRenewHours > 0" class="px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary-dark" @click="handlePin">确认{{ isPostPinned ? '续费' : '置顶' }}</button>
       </div>
     </div>
   </div>
 
   <!-- 打赏弹窗 -->
-  <div v-if="showTipDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="showTipDialog = false">
-    <div class="bg-[#1e1e1e] border border-[#333] rounded-lg p-6 w-[400px]">
+  <div v-if="showTipDialog" class="fixed inset-0 z-50 flex items-center justify-center " @click.self="showTipDialog = false">
+    <div class="bg-vscode-bg border border-vscode-border rounded-lg p-6 w-[400px]">
       <template v-if="!showTipConfirm">
-        <h3 class="text-lg font-semibold text-[#ccc] mb-4">🫘 打赏帖子</h3>
-        <div class="text-sm text-[#aaa] mb-4">选择打赏金额，豆子将直接转给帖主</div>
-        <div class="text-xs text-[#888] mb-3">你的余额：🫘 {{ maxTipBeans }}</div>
+        <h3 class="text-lg font-semibold text-vscode-text mb-4"><Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 打赏帖子</h3>
+        <div class="text-sm text-vscode-text-secondary mb-4">选择打赏金额，豆子将直接转给帖主</div>
+        <div class="text-xs text-vscode-text-secondary mb-3">你的余额：{{ maxTipBeans  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></div>
 
         <!-- Presets -->
         <div class="flex flex-wrap gap-2 mb-4">
@@ -680,14 +680,14 @@ function onVisibilityChange() {
             v-for="preset in tipPresets"
             :key="preset"
             class="px-4 py-2 text-sm rounded-md border transition-colors"
-            :class="preset <= maxTipBeans ? (tipAmount === preset && !tipCustomInput ? 'bg-[#f0c040]/20 border-[#f0c040] text-[#f0c040]' : 'border-[#444] text-[#aaa] hover:border-[#f0c040] hover:text-[#f0c040]') : 'border-[#333] text-[#555] cursor-not-allowed'"
+            :class="preset <= maxTipBeans ? (tipAmount === preset && !tipCustomInput ? 'bg-cta/20 border-warning text-warning' : 'border-vscode-border text-vscode-text-secondary hover:border-warning hover:text-warning') : 'border-vscode-border text-[#555] cursor-not-allowed'"
             @click="preset <= maxTipBeans && selectTipPreset(preset)"
-          >🫘 {{ preset }}</button>
+          >{{ preset  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></button>
         </div>
 
         <!-- Custom input -->
         <div class="mb-4">
-          <label class="text-sm text-[#aaa] block mb-1.5">自定义金额</label>
+          <label class="text-sm text-vscode-text-secondary block mb-1.5">自定义金额</label>
           <input
             v-model.number="tipCustomInput"
             type="number"
@@ -695,31 +695,31 @@ function onVisibilityChange() {
             :max="maxTipBeans"
             step="1"
             placeholder="输入豆子数"
-            class="w-full bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-2 text-sm text-[#ccc] outline-none focus:border-[#f0c040] placeholder:text-[#666]"
-            :class="[tipCustomInput && !Number.isInteger(tipCustomInput) ? '!border-[#e74c3c]' : '']"
+            class="w-full bg-vscode-active border border-vscode-border rounded-md px-3 py-2 text-sm text-vscode-text outline-none focus:border-warning placeholder:text-vscode-text-secondary"
+            :class="[tipCustomInput && !Number.isInteger(tipCustomInput) ? '!border-danger' : '']"
             @input="applyCustomTip"
           />
         </div>
 
-        <p v-if="tipError" class="text-xs text-[#e74c3c] mb-3">{{ tipError }}</p>
+        <p v-if="tipError" class="text-xs text-danger mb-3">{{ tipError }}</p>
 
         <div class="flex gap-3 justify-end">
-          <button class="px-4 py-2 border border-[#555] text-[#aaa] rounded-md text-sm hover:bg-[#2a2a2a]" @click="showTipDialog = false">取消</button>
-          <button class="px-4 py-2 bg-[#f0c040] text-[#1e1e1e] rounded-md text-sm font-medium hover:bg-[#e0b030] disabled:opacity-50" :disabled="tipAmount < 1" @click="goToTipConfirm">
-            确认打赏 🫘 {{ tipAmount }}
+          <button class="px-4 py-2 border border-vscode-border text-vscode-text-secondary rounded-md text-sm hover:bg-vscode-active" @click="showTipDialog = false">取消</button>
+          <button class="px-4 py-2 bg-cta text-white rounded-md text-sm font-medium hover:bg-cta-dark disabled:opacity-50" :disabled="tipAmount < 1" @click="goToTipConfirm">
+            确认打赏 {{ tipAmount  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" />
           </button>
         </div>
       </template>
 
       <!-- Confirm step -->
       <template v-else>
-        <h3 class="text-lg font-semibold text-[#ccc] mb-4">确认支付</h3>
-        <div class="text-sm text-[#aaa] mb-2">是否支付 🫘 {{ tipAmount }} 百斩豆？</div>
-        <div class="text-xs text-[#888] mb-4">打赏给帖主，豆子将从你的账户扣除</div>
-        <p v-if="tipError" class="text-xs text-[#e74c3c] mb-3">{{ tipError }}</p>
+        <h3 class="text-lg font-semibold text-vscode-text mb-4">确认支付</h3>
+        <div class="text-sm text-vscode-text-secondary mb-2">是否支付 {{ tipAmount  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 百斩豆？</div>
+        <div class="text-xs text-vscode-text-secondary mb-4">打赏给帖主，豆子将从你的账户扣除</div>
+        <p v-if="tipError" class="text-xs text-danger mb-3">{{ tipError }}</p>
         <div class="flex gap-3 justify-end">
-          <button class="px-4 py-2 border border-[#555] text-[#aaa] rounded-md text-sm hover:bg-[#2a2a2a]" @click="showTipConfirm = false">取消</button>
-          <button class="px-4 py-2 bg-[#f0c040] text-[#1e1e1e] rounded-md text-sm font-medium hover:bg-[#e0b030] disabled:opacity-50" :disabled="tipping" @click="handleTipConfirm">
+          <button class="px-4 py-2 border border-vscode-border text-vscode-text-secondary rounded-md text-sm hover:bg-vscode-active" @click="showTipConfirm = false">取消</button>
+          <button class="px-4 py-2 bg-cta text-white rounded-md text-sm font-medium hover:bg-cta-dark disabled:opacity-50" :disabled="tipping" @click="handleTipConfirm">
             {{ tipping ? '处理中...' : '确认支付' }}
           </button>
         </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { X } from 'lucide-vue-next'
+import { X, ArrowUpCircle, ArrowDownCircle, Bean } from 'lucide-vue-next'
+import { stripEmoji } from '@/utils/format'
 
 const props = defineProps<{
   show: boolean
@@ -37,7 +38,8 @@ function getAmount(): string {
 
 function getReason(): string {
   if (!props.message?.content) return ''
-  const match = props.message.content.match(/·\s*(.+?)\s*[+-]\d+\s*百斩豆/)
+  const text = stripEmoji(props.message.content)
+  const match = text.match(/·\s*(.+?)\s*[+-]\d+\s*百斩豆/)
   return match ? match[1].trim() : ''
 }
 </script>
@@ -46,13 +48,15 @@ function getReason(): string {
   <Teleport to="body">
     <div
       v-if="show && message"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      class="fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(36, 34, 32, 0.3);"
       @click.self="emit('close')"
     >
       <div class="bg-vscode-sidebar border border-vscode-border rounded-lg shadow-2xl w-80 p-5">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-base font-semibold" :class="isEarn ? 'text-green-400' : 'text-red-400'">
-            {{ isEarn ? '💰 豆子收入' : '📤 豆子支出' }}
+          <h3 class="text-base font-semibold flex items-center gap-2" :class="isEarn ? 'text-success' : 'text-danger'">
+            <ArrowUpCircle v-if="isEarn" class="w-5 h-5" />
+            <ArrowDownCircle v-else class="w-5 h-5" />
+            {{ isEarn ? '豆子收入' : '豆子支出' }}
           </h3>
           <button
             class="p-1 rounded hover:bg-vscode-active transition-colors text-vscode-icon"
@@ -63,7 +67,8 @@ function getReason(): string {
         </div>
 
         <div class="text-center py-4">
-          <span class="text-3xl font-bold" :class="isEarn ? 'text-green-400' : 'text-red-400'">
+          <Bean class="w-8 h-8 mx-auto mb-2" :style="{ color: isEarn ? 'var(--color-success)' : 'var(--color-danger)' }" />
+          <span class="text-3xl font-bold" :class="isEarn ? 'text-success' : 'text-danger'">
             {{ getAmount() }}
           </span>
           <span class="text-sm text-vscode-text-secondary ml-1">百斩豆</span>

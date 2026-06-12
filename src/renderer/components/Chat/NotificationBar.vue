@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Bell, Bean, Heart, MessageSquare, UserPlus } from 'lucide-vue-next'
+import { cleanNotificationText } from '@/utils/format'
 
 const props = defineProps<{
   message: {
@@ -15,6 +17,38 @@ const props = defineProps<{
 defineEmits<{
   click: [message: typeof props.message]
 }>()
+
+// 豆子相关
+const BEAN_TYPES = ['BEAN_EARN', 'BEAN_SPEND', 'TIP', 'REWARD', 'BOUNTY', 'PURCHASE', 'REFUND', 'PIN']
+const isBeanNotify = computed(() =>
+  BEAN_TYPES.some(t => props.message.notificationType?.includes(t)) ||
+  props.message.content?.includes('百斩豆') || props.message.content?.includes('豆子')
+)
+const isBeanEarn = computed(() =>
+  props.message.notificationType === 'BEAN_EARN' || props.message.notificationType === 'TIP' ||
+  props.message.notificationType === 'REWARD' || props.message.notificationType === 'REFUND'
+)
+
+// 社交互动
+const isLike = computed(() => props.message.notificationType === 'LIKE' || props.message.content?.includes('赞'))
+const isComment = computed(() => props.message.notificationType === 'COMMENT' || props.message.notificationType === 'REPLY' || props.message.content?.includes('回复') || props.message.content?.includes('评论'))
+const isFollow = computed(() => props.message.notificationType === 'FOLLOW' || props.message.content?.includes('关注'))
+
+const iconComponent = computed(() => {
+  if (isBeanNotify.value) return Bean
+  if (isLike.value) return Heart
+  if (isComment.value) return MessageSquare
+  if (isFollow.value) return UserPlus
+  return Bell
+})
+
+const iconColor = computed(() => {
+  if (isBeanNotify.value) return isBeanEarn.value ? 'var(--color-success)' : 'var(--color-danger)'
+  if (isLike.value) return 'var(--color-danger)'
+  if (isComment.value) return 'var(--color-primary)'
+  if (isFollow.value) return 'var(--color-primary)'
+  return 'var(--color-primary)'
+})
 
 function formatTime(dateStr: string): string {
   if (!dateStr) return ''
@@ -39,8 +73,8 @@ const lines = computed(() => {
   const content = props.message.content || ''
   const parts = content.split('\n')
   return {
-    title: parts[0] || '',
-    preview: parts.slice(1).join(' ') || ''
+    title: cleanNotificationText(parts[0] || ''),
+    preview: cleanNotificationText(parts.slice(1).join(' ') || '')
   }
 })
 
@@ -57,7 +91,8 @@ const previewText = computed(() => {
     @click="$emit('click', message)"
   >
     <div class="flex items-center justify-between">
-      <span class="text-sm text-vscode-text flex-1 min-w-0 truncate mr-3">
+      <span class="text-sm flex-1 min-w-0 truncate mr-3 flex items-center gap-1.5" :style="{ color: 'var(--color-text-primary)' }">
+        <component :is="iconComponent" class="w-4 h-4 flex-shrink-0" :style="{ color: iconColor }" />
         {{ lines.title }}
       </span>
       <span class="text-xs text-vscode-text-secondary flex-shrink-0">

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { UserCircle, LogOut, PenLine, ShieldCheck, Flame, Gift, Download } from 'lucide-vue-next'
+import { UserCircle, LogOut, PenLine, ShieldCheck, Flame, Gift, Download , Bean } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { API_BASE_URL, apiGet, apiPost, type ApiResponse } from '@/api/http'
 import { avatarUrl, avatarColor } from '@/utils/format'
@@ -97,10 +97,10 @@ const accountAvatarError = ref(false)
 watch(() => authStore.user?.avatar, () => { accountAvatarError.value = false })
 
 const heatIntensity = (count: number) => {
-  if (count <= 0) return 'bg-gray-700'
-  if (count <= 2) return 'bg-emerald-700'
-  if (count <= 4) return 'bg-emerald-500'
-  return 'bg-emerald-300'
+  if (count <= 0) return 'bg-surface-hover'
+  if (count <= 2) return 'bg-success-subtle'
+  if (count <= 4) return 'bg-success/70'
+  return 'bg-success'
 }
 
 const hoveredHeatPointLines = computed(() => {
@@ -654,7 +654,7 @@ watch(activeSection, () => {
     <template v-else>
       <div v-if="settingsMessage" class="rounded bg-vscode-active px-3 py-2 text-vscode-warning">{{ settingsMessage }}</div>
       <section v-if="showSection('profile')" class="border border-vscode-border rounded p-3 space-y-2">
-        <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">个人信息</h3>
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">个人信息</h3>
         <div class="flex items-center gap-2">
           <img
             v-if="(avatarPreviewUrl || accountAvatarUrl) && !accountAvatarError"
@@ -687,7 +687,7 @@ watch(activeSection, () => {
       </section>
 
       <section v-if="showSection('avatar')" class="border border-vscode-border rounded p-3 space-y-2">
-        <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">头像</h3>
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">头像</h3>
         <label class="grid gap-1">
           <span>头像</span>
           <input type="file" accept="image/*" @change="onAvatarUpload" />
@@ -696,7 +696,7 @@ watch(activeSection, () => {
       </section>
 
       <section v-if="showSection('password')" class="border border-vscode-border rounded p-3 space-y-2">
-        <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">安全设置</h3>
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">安全设置</h3>
         <label class="grid gap-1">
           <span>旧密码</span>
           <input v-model="oldPassword" type="password" class="bg-vscode-active border border-vscode-border px-2 py-1 rounded" />
@@ -711,7 +711,7 @@ watch(activeSection, () => {
       </section>
 
       <section v-if="showSection('chsi')" class="border border-vscode-border rounded p-3 space-y-2">
-        <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">学信网认证</h3>
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">学信网认证</h3>
         <div class="inline-flex items-center gap-1 text-vscode-warning text-xs">
           <ShieldCheck class="w-4 h-4" />
           <span>当前状态：{{ chsiStatusText }}</span>
@@ -750,7 +750,7 @@ watch(activeSection, () => {
 
       <section v-if="canReviewChsi && showSection('chsi-review')" class="border border-vscode-border rounded p-3 space-y-3">
         <div class="flex items-center justify-between gap-2">
-          <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">认证审核</h3>
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">认证审核</h3>
           <button class="px-2 py-1 border border-vscode-border rounded text-xs" @click="fetchPendingChsiReviews">
             刷新列表
           </button>
@@ -796,7 +796,7 @@ watch(activeSection, () => {
 
             <div class="flex items-center gap-2">
               <button
-                class="px-2 py-1 rounded bg-emerald-700 text-white disabled:opacity-60"
+                class="px-2 py-1 rounded bg-success text-white disabled:opacity-60"
                 :disabled="reviewActionLoadingId !== ''"
                 @click="reviewSubmission(item.id || '', 'approve')"
               >
@@ -816,7 +816,7 @@ watch(activeSection, () => {
 
       <!-- CDKEY 兑换 -->
       <section v-if="showSection('cdkey')" class="border border-vscode-border rounded p-3 space-y-2">
-        <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">CDKEY 兑换</h3>
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">CDKEY 兑换</h3>
 
         <!-- 购买链接 -->
         <div class="text-xs text-vscode-text-secondary">购买百斩豆</div>
@@ -828,9 +828,9 @@ watch(activeSection, () => {
               10: 'm2c9kk', 50: 'hbtvr7', 100: 'svzd3e', 300: 'wtrnn0', 500: 'x6ueof', 1000: '9vz3pi', 5000: '35wcu4'
             })[opt]"
             target="_blank"
-            class="flex flex-col items-center bg-vscode-active border border-vscode-border rounded px-1.5 py-1.5 hover:border-[#4a9eff] no-underline transition-colors"
+            class="flex flex-col items-center bg-vscode-active border border-vscode-border rounded px-1.5 py-1.5 hover:border-primary no-underline transition-colors"
           >
-            <span class="text-[#f0c040] font-medium text-xs">🫘{{ opt }}</span>
+            <span class="font-medium text-xs" style="color: var(--color-warning);">{{ opt  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></span>
             <span class="text-[10px] text-vscode-text-secondary">购买</span>
           </a>
         </div>
@@ -843,14 +843,14 @@ watch(activeSection, () => {
           style="text-transform: uppercase"
           @keydown.enter="doRedeemCdkey"
         />
-        <div v-if="cdkeyMessage" class="text-xs" :class="cdkeyMessageType === 'success' ? 'text-emerald-500' : 'text-vscode-warning'">
+        <div v-if="cdkeyMessage" class="text-xs" :class="cdkeyMessageType === 'success' ? 'text-success' : 'text-vscode-warning'">
           {{ cdkeyMessage }}
         </div>
         <div class="flex items-center justify-between">
           <button class="px-3 py-1 bg-vscode-selected rounded text-sm" @click="doRedeemCdkey">
             <span class="inline-flex gap-1 items-center"><Gift class="w-4 h-4"/> 兑换</span>
           </button>
-          <span class="text-xs text-vscode-text-secondary">余额：🫘 {{ cdkeyBalance }}</span>
+          <span class="text-xs text-vscode-text-secondary">余额：{{ cdkeyBalance  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></span>
         </div>
 
         <!-- CDKEY 管理（仅管理员可见） -->
@@ -877,7 +877,7 @@ watch(activeSection, () => {
                 <span class="inline-flex gap-1 items-center"><Download class="w-4 h-4"/> 下载 TXT</span>
               </button>
             </div>
-            <div v-if="adminMessage" class="text-xs mb-2" :class="adminMessageType === 'success' ? 'text-emerald-500' : 'text-vscode-warning'">
+            <div v-if="adminMessage" class="text-xs mb-2" :class="adminMessageType === 'success' ? 'text-success' : 'text-vscode-warning'">
               {{ adminMessage }}
             </div>
             <textarea
@@ -892,7 +892,7 @@ watch(activeSection, () => {
       </section>
 
       <section v-if="showSection('activity')" class="border border-vscode-border rounded p-3 space-y-2">
-        <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">Activity 热力图</h3>
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-vscode-text-secondary">Activity 热力图</h3>
         <div class="flex items-center gap-2 text-xs">
           <button class="px-2 py-1 border border-vscode-border rounded" @click="onHeatDaysChange(14)">14天</button>
           <button class="px-2 py-1 border border-vscode-border rounded" @click="onHeatDaysChange(30)">30天</button>

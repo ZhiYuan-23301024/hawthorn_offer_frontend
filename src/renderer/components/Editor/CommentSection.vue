@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue'
-import { Heart, ChevronDown, ChevronUp, Send, Trash2, Maximize2, Minimize2 } from 'lucide-vue-next'
+import { Heart, ChevronDown, ChevronUp, Send, Trash2, Maximize2, Minimize2, CheckCircle2, Bean } from 'lucide-vue-next'
 import { usePostStore } from '@/stores/post'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorStore } from '@/stores/editor'
@@ -382,19 +382,19 @@ defineExpose({ cancelReply })
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="flex items-center justify-between py-3 border-t border-[#333]">
-      <span class="text-sm text-[#aaa] font-medium">
+    <div class="flex items-center justify-between py-3 border-t border-vscode-border">
+      <span class="text-sm text-vscode-text-secondary font-medium">
         评论 ({{ totalCommentCount }})
       </span>
       <div class="flex gap-3 text-xs">
-        <button :class="sortMode === 'hot' ? 'text-[#4a9eff]' : 'text-[#888] hover:text-[#ccc]'" @click="sortMode = 'hot'">热门</button>
-        <button :class="sortMode === 'latest' ? 'text-[#4a9eff]' : 'text-[#888] hover:text-[#ccc]'" @click="sortMode = 'latest'">最新</button>
+        <button :class="sortMode === 'hot' ? 'text-primary' : 'text-vscode-text-secondary hover:text-vscode-text'" @click="sortMode = 'hot'">热门</button>
+        <button :class="sortMode === 'latest' ? 'text-primary' : 'text-vscode-text-secondary hover:text-vscode-text'" @click="sortMode = 'latest'">最新</button>
       </div>
     </div>
 
     <!-- Comment list -->
     <div class="flex-1 overflow-y-auto space-y-3 pb-2">
-      <div v-if="sortedComments.length === 0" class="text-xs text-[#666] py-4 text-center">
+      <div v-if="sortedComments.length === 0" class="text-xs text-vscode-text-secondary py-4 text-center">
         暂无评论，来发表第一条吧
       </div>
 
@@ -403,8 +403,8 @@ defineExpose({ cancelReply })
         <div
           class="flex gap-2.5 rounded-md -mx-1 px-1 py-1 transition-colors"
           :class="[
-            entry.depth > 0 ? 'ml-9 pl-2 border-l-2 border-[#333]' : '',
-            entry.comment.content ? 'cursor-pointer hover:bg-[#2a2a2a]' : 'cursor-default opacity-60'
+            entry.depth > 0 ? 'ml-9 pl-2 border-l-2 border-vscode-border' : '',
+            entry.comment.content ? 'cursor-pointer hover:bg-vscode-active' : 'cursor-default opacity-60'
           ]"
           @click="entry.comment.content && onCommentClick(entry.comment.id, entry.comment.nickname)"
         >
@@ -426,29 +426,29 @@ defineExpose({ cancelReply })
             <div v-if="entry.comment.content" class="text-xs">
               <span
                 class="font-semibold"
-                :class="!entry.comment.isAnonymous ? 'text-[#ccc] cursor-pointer hover:text-[#4a9eff] transition-colors' : 'text-[#ccc]'"
+                :class="!entry.comment.isAnonymous ? 'text-vscode-text cursor-pointer hover:text-primary transition-colors' : 'text-vscode-text'"
                 @mouseenter="!entry.comment.isAnonymous && onAvatarMouseEnter($event, entry.comment.userId)"
                 @mouseleave="onAvatarMouseLeave"
                 @click.stop="!entry.comment.isAnonymous && onAvatarClick(entry.comment.userId)"
               >{{ entry.comment.nickname }}</span>
-              <span v-if="entry.comment.isAnonymous && entry.comment.isPostAuthor" class="ml-1 text-xs px-1.5 py-0.5 rounded bg-[#4a9eff]/20 text-[#4a9eff] font-medium">楼主</span>
-              <span v-else-if="entry.comment.isAnonymous && isSelfComment(entry.comment)" class="ml-1 text-xs px-1.5 py-0.5 rounded bg-[#27ae60]/20 text-[#27ae60] font-medium">本人</span>
-              <span v-if="(entry.comment.bountyBeans ?? 0) > 0" class="ml-1 text-xs text-[#f0c040]">🫘+{{ entry.comment.bountyBeans }}</span>
-              <span v-if="entry.comment.isAdopted" class="ml-1 text-xs px-1.5 py-0.5 rounded bg-[#27ae60]/20 text-[#27ae60] font-medium">✅ 已采纳</span>
-              <span v-if="entry.replyToName" class="text-[#4a9eff] ml-1">回复 @{{ entry.replyToName }}</span>
-              <span class="text-[#666] ml-2">{{ formatTimeAgo(entry.comment.createdAt) }}</span>
+              <span v-if="entry.comment.isAnonymous && entry.comment.isPostAuthor" class="ml-1 text-xs px-1.5 py-0.5 rounded bg-primary/20 text-primary font-medium">楼主</span>
+              <span v-else-if="entry.comment.isAnonymous && isSelfComment(entry.comment)" class="ml-1 text-xs px-1.5 py-0.5 rounded bg-success/20 text-success font-medium">本人</span>
+              <span v-if="(entry.comment.bountyBeans ?? 0) > 0" class="ml-1 text-xs text-warning">+{{ entry.comment.bountyBeans  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></span>
+              <span v-if="entry.comment.isAdopted" class="ml-1 text-xs px-1.5 py-0.5 rounded bg-success/20 text-success font-medium"><CheckCircle2 class="w-3.5 h-3.5 inline-block" style="color:var(--color-success);" /> 已采纳</span>
+              <span v-if="entry.replyToName" class="text-primary ml-1">回复 @{{ entry.replyToName }}</span>
+              <span class="text-vscode-text-secondary ml-2">{{ formatTimeAgo(entry.comment.createdAt) }}</span>
             </div>
-            <div v-if="entry.comment.content" class="text-xs text-[#bbb] mt-1 leading-relaxed whitespace-pre-wrap">
+            <div v-if="entry.comment.content" class="text-xs text-vscode-text-secondary mt-1 leading-relaxed whitespace-pre-wrap">
               {{ entry.comment.content }}
             </div>
-            <div v-else class="text-xs text-[#666] italic mt-1">
+            <div v-else class="text-xs text-vscode-text-secondary italic mt-1">
               该评论已被删除
             </div>
 
             <!-- Reply toggle (any comment with children) -->
             <div
               v-if="entry.comment.children?.length"
-              class="mt-2 text-xs text-[#888] cursor-pointer hover:text-[#aaa] inline-flex items-center gap-1"
+              class="mt-2 text-xs text-vscode-text-secondary cursor-pointer hover:text-vscode-text-secondary inline-flex items-center gap-1"
               @click.stop="toggleReplies(entry.comment.id)"
             >
               <span v-if="expandedReplies.has(entry.comment.id)">
@@ -463,7 +463,7 @@ defineExpose({ cancelReply })
           <!-- Delete button (own, non-deleted comments only) -->
           <button
             v-if="entry.comment.content && authStore.user?.id && entry.comment.userId === authStore.user.id"
-            class="flex items-center gap-0.5 text-xs flex-shrink-0 self-center text-[#888] hover:text-[#e74c3c] transition-colors"
+            class="flex items-center gap-0.5 text-xs flex-shrink-0 self-center text-vscode-text-secondary hover:text-danger transition-colors"
             @click.stop="handleDeleteComment(entry.comment.id)"
           >
             <Trash2 class="w-3.5 h-3.5" />
@@ -473,7 +473,7 @@ defineExpose({ cancelReply })
           <button
             v-if="entry.comment.content"
             class="flex items-center gap-0.5 text-xs flex-shrink-0 self-center transition-colors"
-            :class="commentLikedIds.has(entry.comment.id) ? 'text-[#e74c3c]' : 'text-[#888] hover:text-[#e74c3c]'"
+            :class="commentLikedIds.has(entry.comment.id) ? 'text-danger' : 'text-vscode-text-secondary hover:text-danger'"
             @click.stop="handleLikeComment(entry.comment)"
           >
             <Heart class="w-3.5 h-3.5" :fill="commentLikedIds.has(entry.comment.id) ? 'currentColor' : 'none'" />
@@ -484,12 +484,12 @@ defineExpose({ cancelReply })
           <template v-if="props.postType === 'qa' && entry.comment.content">
             <button
               v-if="isOwner && props.bountyStatus === 'active' && !entry.comment.isAdopted && entry.comment.userId !== authStore.user?.id"
-              class="text-xs px-2 py-0.5 rounded border border-[#f0c040]/50 text-[#f0c040] hover:bg-[#f0c040]/10 transition-colors flex-shrink-0 self-center"
+              class="text-xs px-2 py-0.5 rounded border border-warning/50 text-warning hover:bg-cta/10 transition-colors flex-shrink-0 self-center"
               @click.stop="openBountyDialog('adopt', entry.comment)"
             >采纳</button>
             <button
               v-if="entry.comment.userId !== authStore.user?.id"
-              class="text-xs px-2 py-0.5 rounded border border-[#4a9eff]/50 text-[#4a9eff] hover:bg-[#4a9eff]/10 transition-colors flex-shrink-0 self-center"
+              class="text-xs px-2 py-0.5 rounded border border-primary/50 text-primary hover:bg-primary/10 transition-colors flex-shrink-0 self-center"
               @click.stop="openBountyDialog('reward', entry.comment)"
             >打赏</button>
           </template>
@@ -498,67 +498,67 @@ defineExpose({ cancelReply })
     </div>
 
     <!-- Reply bar -->
-    <div v-if="replyToId" class="flex flex-col gap-2 py-2 border-t border-[#333]">
+    <div v-if="replyToId" class="flex flex-col gap-2 py-2 border-t border-vscode-border">
       <div class="flex items-end gap-2">
-        <span class="text-xs text-[#4a9eff] flex-shrink-0 pt-1.5">回复 @{{ replyToName }}:</span>
+        <span class="text-xs text-primary flex-shrink-0 pt-1.5">回复 @{{ replyToName }}:</span>
         <textarea
           ref="replyTextarea"
           v-model="replyContent"
           rows="1"
           placeholder="写下回复... (Enter 发送, Shift+Enter 换行)"
-          class="flex-1 bg-[#2d2d2d] border border-[#444] rounded-md px-2.5 py-1.5 text-xs text-[#ccc] outline-none focus:border-[#4a9eff] placeholder:text-[#666] resize-none overflow-y-auto transition-all"
+          class="flex-1 bg-vscode-active border border-vscode-border rounded-md px-2.5 py-1.5 text-xs text-vscode-text outline-none focus:border-primary placeholder:text-vscode-text-secondary resize-none overflow-y-auto transition-all"
           :style="replyExpanded ? { height: '50vh' } : {}"
           @input="autoResizeReply"
           @keydown.enter.exact.prevent="handleSendReply"
         />
         <div class="flex flex-col gap-1 flex-shrink-0">
           <button
-            class="text-[#888] hover:text-[#ccc] transition-colors"
+            class="text-vscode-text-secondary hover:text-vscode-text transition-colors"
             @click="replyExpanded = !replyExpanded"
           >
             <Minimize2 v-if="replyExpanded" class="w-4 h-4" />
             <Maximize2 v-else class="w-4 h-4" />
           </button>
-          <button class="text-[#4a9eff] hover:text-[#3a8eef]" @click="handleSendReply">
+          <button class="text-primary hover:text-primary-dark" @click="handleSendReply">
             <Send class="w-4 h-4" />
           </button>
         </div>
-        <button class="text-xs text-[#888] hover:text-[#ccc] flex-shrink-0 mb-0.5" @click="cancelReply">取消</button>
+        <button class="text-xs text-vscode-text-secondary hover:text-vscode-text flex-shrink-0 mb-0.5" @click="cancelReply">取消</button>
       </div>
       <div class="flex items-center gap-2">
         <input
           id="anonymous-reply"
           v-model="isAnonymousReply"
           type="checkbox"
-          class="w-4 h-4 rounded border-[#444] bg-[#2d2d2d] accent-[#4a9eff]"
+          class="w-4 h-4 rounded border-vscode-border bg-vscode-active accent-primary"
         />
-        <label for="anonymous-reply" class="text-xs text-[#aaa] cursor-pointer">匿名回复</label>
+        <label for="anonymous-reply" class="text-xs text-vscode-text-secondary cursor-pointer">匿名回复</label>
       </div>
     </div>
 
     <!-- New comment input -->
-    <div v-else class="flex flex-col gap-2 pt-3 border-t border-[#333]">
+    <div v-else class="flex flex-col gap-2 pt-3 border-t border-vscode-border">
       <div class="flex items-end gap-2">
         <textarea
           ref="commentTextarea"
           v-model="newComment"
           rows="2"
           placeholder="留下你的评论... (Enter 发送, Shift+Enter 换行)"
-          class="flex-1 bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-2 text-sm text-[#ccc] outline-none focus:border-[#4a9eff] placeholder:text-[#666] resize-none overflow-y-auto transition-all"
+          class="flex-1 bg-vscode-active border border-vscode-border rounded-md px-3 py-2 text-sm text-vscode-text outline-none focus:border-primary placeholder:text-vscode-text-secondary resize-none overflow-y-auto transition-all"
           :style="commentExpanded ? { height: '50vh' } : {}"
           @input="autoResizeComment"
           @keydown.enter.exact.prevent="handleSendComment"
         />
         <div class="flex flex-col gap-1 flex-shrink-0">
           <button
-            class="text-[#888] hover:text-[#ccc] transition-colors"
+            class="text-vscode-text-secondary hover:text-vscode-text transition-colors"
             @click="toggleCommentExpand"
           >
             <Minimize2 v-if="commentExpanded" class="w-4 h-4" />
             <Maximize2 v-else class="w-4 h-4" />
           </button>
           <button
-            class="bg-[#4a9eff] text-white text-sm px-4 py-2 rounded-md hover:bg-[#3a8eef] transition-colors"
+            class="bg-primary text-white text-sm px-4 py-2 rounded-md hover:bg-primary-dark transition-colors"
             @click="handleSendComment"
           >发送</button>
         </div>
@@ -568,24 +568,24 @@ defineExpose({ cancelReply })
           id="anonymous-comment"
           v-model="isAnonymousComment"
           type="checkbox"
-          class="w-4 h-4 rounded border-[#444] bg-[#2d2d2d] accent-[#4a9eff]"
+          class="w-4 h-4 rounded border-vscode-border bg-vscode-active accent-primary"
         />
-        <label for="anonymous-comment" class="text-xs text-[#aaa] cursor-pointer">匿名评论</label>
+        <label for="anonymous-comment" class="text-xs text-vscode-text-secondary cursor-pointer">匿名评论</label>
       </div>
     </div>
 
     <!-- Bounty dialog -->
-    <div v-if="showBountyDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="showBountyDialog = false">
-      <div class="bg-[#1e1e1e] border border-[#333] rounded-lg p-6 w-[400px]">
+    <div v-if="showBountyDialog" class="fixed inset-0 z-50 flex items-center justify-center " @click.self="showBountyDialog = false">
+      <div class="bg-vscode-bg border border-vscode-border rounded-lg p-6 w-[400px]">
         <template v-if="!showBountyConfirm">
-          <h3 class="text-lg font-semibold text-[#ccc] mb-4">
+          <h3 class="text-lg font-semibold text-vscode-text mb-4">
             {{ bountyDialogType === 'adopt' ? '采纳回答' : '打赏回答' }}
           </h3>
-          <div class="text-sm text-[#aaa] mb-3">
+          <div class="text-sm text-vscode-text-secondary mb-3">
             {{ bountyDialogType === 'adopt' ? '采纳后将标记为已采纳，豆子立即发放' : '直接打赏豆子给回答者' }}
           </div>
-          <div v-if="bountyDialogType === 'adopt' && props.bountyRemaining && props.bountyRemaining > 0" class="text-xs text-[#888] mb-3">
-            求助剩余：🫘 {{ props.bountyRemaining }}
+          <div v-if="bountyDialogType === 'adopt' && props.bountyRemaining && props.bountyRemaining > 0" class="text-xs text-vscode-text-secondary mb-3">
+            求助剩余：{{ props.bountyRemaining  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" />
           </div>
 
           <!-- Presets -->
@@ -594,51 +594,51 @@ defineExpose({ cancelReply })
               v-for="preset in bountyPresets"
               :key="preset"
               class="px-4 py-2 text-sm rounded-md border transition-colors"
-              :class="bountyDialogBeans === preset && !bountyCustomInput ? 'bg-[#4a9eff]/20 border-[#4a9eff] text-[#4a9eff]' : 'border-[#444] text-[#aaa] hover:border-[#4a9eff] hover:text-[#4a9eff]'"
+              :class="bountyDialogBeans === preset && !bountyCustomInput ? 'bg-primary/20 border-primary text-primary' : 'border-vscode-border text-vscode-text-secondary hover:border-primary hover:text-primary'"
               @click="selectBountyPreset(preset)"
-            >🫘 {{ preset }}</button>
+            >{{ preset  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></button>
           </div>
 
           <!-- Custom input -->
           <div class="mb-4">
-            <label class="block text-sm text-[#aaa] mb-1.5">自定义金额</label>
+            <label class="block text-sm text-vscode-text-secondary mb-1.5">自定义金额</label>
             <input
               v-model.number="bountyCustomInput"
               type="number"
               min="1"
               step="1"
               placeholder="输入豆子数"
-              class="w-full bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-2 text-sm text-[#ccc] outline-none focus:border-[#4a9eff] placeholder:text-[#666]"
-              :class="[bountyCustomInput && !Number.isInteger(bountyCustomInput) ? '!border-[#e74c3c]' : '']"
+              class="w-full bg-vscode-active border border-vscode-border rounded-md px-3 py-2 text-sm text-vscode-text outline-none focus:border-primary placeholder:text-vscode-text-secondary"
+              :class="[bountyCustomInput && !Number.isInteger(bountyCustomInput) ? '!border-danger' : '']"
               @input="applyBountyCustom"
             />
-            <div v-if="bountyDialogType === 'adopt' && props.bountyRemaining && bountyDialogBeans > (props.bountyRemaining || 0)" class="text-xs text-[#e74c3c] mt-1">
+            <div v-if="bountyDialogType === 'adopt' && props.bountyRemaining && bountyDialogBeans > (props.bountyRemaining || 0)" class="text-xs text-danger mt-1">
               超出求助余额 {{ bountyDialogBeans - (props.bountyRemaining || 0) }} 豆子，将继续从账户扣除
             </div>
           </div>
 
-          <p v-if="bountyError" class="text-xs text-[#e74c3c] mb-3">{{ bountyError }}</p>
+          <p v-if="bountyError" class="text-xs text-danger mb-3">{{ bountyError }}</p>
 
           <div class="flex gap-3 justify-end">
-            <button class="px-4 py-2 border border-[#555] text-[#aaa] rounded-md text-sm hover:bg-[#2a2a2a]" @click="showBountyDialog = false">取消</button>
-            <button class="px-4 py-2 bg-[#4a9eff] text-white rounded-md text-sm hover:bg-[#3a8eef] disabled:opacity-50" :disabled="bountyDialogBeans < 1" @click="goToBountyConfirm">
-              确认{{ bountyDialogType === 'adopt' ? '采纳' : '打赏' }} 🫘 {{ bountyDialogBeans }}
+            <button class="px-4 py-2 border border-vscode-border text-vscode-text-secondary rounded-md text-sm hover:bg-vscode-active" @click="showBountyDialog = false">取消</button>
+            <button class="px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary-dark disabled:opacity-50" :disabled="bountyDialogBeans < 1" @click="goToBountyConfirm">
+              确认{{ bountyDialogType === 'adopt' ? '采纳' : '打赏' }} {{ bountyDialogBeans  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" />
             </button>
           </div>
         </template>
 
         <!-- Confirm step -->
         <template v-else>
-          <h3 class="text-lg font-semibold text-[#ccc] mb-4">确认支付</h3>
-          <div class="text-sm text-[#aaa] mb-2">是否支付 🫘 {{ bountyDialogBeans }} 百斩豆？</div>
-          <div class="text-xs text-[#888] mb-4">
+          <h3 class="text-lg font-semibold text-vscode-text mb-4">确认支付</h3>
+          <div class="text-sm text-vscode-text-secondary mb-2">是否支付 {{ bountyDialogBeans  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 百斩豆？</div>
+          <div class="text-xs text-vscode-text-secondary mb-4">
             {{ bountyDialogType === 'adopt' ? '采纳该回答，豆子将立即发放给回答者' : '打赏给回答者，豆子将从你的账户扣除' }}
-            <span v-if="bountyDialogType === 'adopt' && props.bountyRemaining && bountyDialogBeans > (props.bountyRemaining || 0)" class="text-[#e74c3c]">（超出求助余额部分将从账户扣除）</span>
+            <span v-if="bountyDialogType === 'adopt' && props.bountyRemaining && bountyDialogBeans > (props.bountyRemaining || 0)" class="text-danger">（超出求助余额部分将从账户扣除）</span>
           </div>
-          <p v-if="bountyError" class="text-xs text-[#e74c3c] mb-3">{{ bountyError }}</p>
+          <p v-if="bountyError" class="text-xs text-danger mb-3">{{ bountyError }}</p>
           <div class="flex gap-3 justify-end">
-            <button class="px-4 py-2 border border-[#555] text-[#aaa] rounded-md text-sm hover:bg-[#2a2a2a]" @click="showBountyConfirm = false">取消</button>
-            <button class="px-4 py-2 bg-[#4a9eff] text-white rounded-md text-sm hover:bg-[#3a8eef] disabled:opacity-50" :disabled="bountySubmitting" @click="handleBountyConfirm">
+            <button class="px-4 py-2 border border-vscode-border text-vscode-text-secondary rounded-md text-sm hover:bg-vscode-active" @click="showBountyConfirm = false">取消</button>
+            <button class="px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary-dark disabled:opacity-50" :disabled="bountySubmitting" @click="handleBountyConfirm">
               {{ bountySubmitting ? '处理中...' : '确认支付' }}
             </button>
           </div>

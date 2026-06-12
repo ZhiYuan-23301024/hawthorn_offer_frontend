@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Save,
   ScrollText,
+  Search,
   Star,
   Trash2,
   Upload
@@ -517,14 +518,16 @@ onUnmounted(() => {
       <input ref="replaceFileInputRef" type="file" class="hidden" accept=".doc,.docx,.pdf,.txt" @change="handleReplaceFile" />
 
       <div v-if="!isDetailMode" class="space-y-2">
-        <div class="flex gap-1.5">
+        <div class="flex items-center rounded-md px-2.5 py-1.5 input-base" style="background: var(--color-surface);">
+          <Search class="w-3.5 h-3.5 mr-1.5 flex-shrink-0" style="color: var(--color-text-tertiary);" />
           <input
             v-model="searchText"
-            class="min-w-0 flex-1 bg-vscode-sidebar border border-vscode-border rounded px-2 py-1 text-xs focus:outline-none focus:border-vscode-info/60"
+            class="bg-transparent text-xs outline-none flex-1"
+            style="color: var(--color-text-primary);"
             placeholder="搜索简历"
+            @input="loadResumes('')"
             @keydown.enter="loadResumes('')"
           />
-          <button class="px-2 py-1 rounded bg-vscode-selected text-xs" :disabled="loading" @click="loadResumes('')">搜索</button>
         </div>
         <div class="flex gap-1.5">
           <button class="inline-flex items-center gap-1 px-2 py-1 rounded bg-vscode-selected text-xs" @click="startNew">
@@ -547,7 +550,7 @@ onUnmounted(() => {
         <button
           v-for="item in resumes"
           :key="item.id"
-          class="w-full text-left px-2 py-2 border-b border-vscode-border last:border-b-0 hover:bg-vscode-active"
+          class="w-full text-left px-2 py-2 border-b border-vscode-border last:border-b-0 hover:bg-vscode-active text-sm"
           :class="selectedId === item.id ? 'bg-vscode-selected/50' : ''"
           @click="selectResume(item.id)"
         >
@@ -665,13 +668,13 @@ onUnmounted(() => {
             <span class="text-xs text-vscode-text-secondary pb-1">/ 100 · {{ latestScore.targetRoleName }}</span>
           </div>
           <div class="space-y-1">
-            <div v-for="dim in latestScore.dimensions" :key="dim.key" class="text-xs">
+            <div v-for="(dim, idx) in latestScore.dimensions" :key="dim.key" class="text-xs">
               <div class="flex justify-between text-vscode-text-secondary">
-                <span>{{ dim.name }}</span>
+                <span :style="{ color: ['#7B8FA6','#A8906C','#6B8C73','#9E6E6E','#5C7088'][idx] || '#7B8FA6' }">{{ dim.name }}</span>
                 <span>{{ dim.score }}/{{ dim.maxScore }}</span>
               </div>
               <div class="h-1.5 bg-vscode-active rounded overflow-hidden">
-                <div class="h-full bg-vscode-info" :style="{ width: `${Math.min(100, (dim.score / dim.maxScore) * 100)}%` }"></div>
+                <div class="h-full rounded" :style="{ width: `${Math.min(100, (dim.score / dim.maxScore) * 100)}%`, backgroundColor: ['#7B8FA6','#A8906C','#6B8C73','#9E6E6E','#5C7088'][idx] || '#7B8FA6' }"></div>
               </div>
             </div>
           </div>

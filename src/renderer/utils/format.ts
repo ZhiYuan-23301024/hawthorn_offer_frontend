@@ -29,13 +29,43 @@ export function avatarUrl(url: string | null | undefined): string | undefined {
 }
 
 /**
- * Generate a deterministic HSL color from a user ID string
+ * Morandi 色系头像背景色 —— 从 8 种低饱和莫兰迪色中确定性选取
  */
+const AVATAR_COLORS = [
+  '#7B8FA6',  // 灰蓝
+  '#8C9B8A',  // 灰绿
+  '#A8906C',  // 燕麦棕
+  '#9E7E7E',  // 灰粉
+  '#7B8F8A',  // 青灰
+  '#8A849B',  // 紫灰
+  '#A08B76',  // 暖驼
+  '#7A8A95',  // 蓝灰
+]
+
 export function avatarColor(userId: string): string {
   let hash = 0
   for (let i = 0; i < userId.length; i++) {
     hash = userId.charCodeAt(i) + ((hash << 5) - hash)
   }
-  const h = Math.abs(hash) % 360
-  return `hsl(${h}, 45%, 35%)`
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+}
+
+/**
+ * 全局 emoji 正则（共享，避免每个组件重复编译）
+ */
+export const EMOJI_RE = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2702}-\u{27B0}\u{2300}-\u{23FF}\u{2B50}\u{2764}\u{200D}\u{FE0F}]/gu
+
+/**
+ * 过滤 emoji，合并多余空格
+ */
+export function stripEmoji(s: string): string {
+  return s.replace(EMOJI_RE, '').replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * 通知标题中 "点赞 · " "回复 · " 等前缀（因为已有图标）
+ */
+const REDUNDANT_PREFIX = /^(点赞|回复|评论|关注|系统)\s*[·]\s*/
+export function cleanNotificationText(s: string): string {
+  return stripEmoji(s).replace(REDUNDANT_PREFIX, '')
 }

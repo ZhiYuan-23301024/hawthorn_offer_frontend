@@ -97,9 +97,9 @@ function renamePlan() {
 
 function getDifficultyColor(difficulty: string) {
   switch (difficulty) {
-    case 'easy': return 'bg-green-500'
-    case 'medium': return 'bg-yellow-500'
-    case 'hard': return 'bg-red-500'
+    case 'easy': return 'bg-success'
+    case 'medium': return 'bg-warning'
+    case 'hard': return 'bg-danger'
     default: return 'bg-gray-500'
   }
 }
@@ -310,7 +310,7 @@ onMounted(() => {
     </div>
   </div>
 
-  <div v-if="showCreatePlanModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div v-if="showCreatePlanModal" class="fixed inset-0 flex items-center justify-center z-50" style="background: rgba(36, 34, 32, 0.35);">
     <div class="bg-vscode-sidebar rounded-lg p-4 w-96 shadow-xl">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-semibold text-vscode-text">新建打卡计划</h3>
@@ -348,7 +348,7 @@ onMounted(() => {
     </div>
   </div>
 
-  <div v-if="showRenameModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div v-if="showRenameModal" class="fixed inset-0 flex items-center justify-center z-50" style="background: rgba(36, 34, 32, 0.35);">
     <div class="bg-vscode-sidebar rounded-lg p-4 w-80 shadow-xl">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-semibold text-vscode-text">重命名计划</h3>

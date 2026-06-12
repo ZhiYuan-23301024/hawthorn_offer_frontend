@@ -20,12 +20,14 @@ const filteredTasks = computed(() => {
   )
 })
 
-const categoryIcons: Record<string, string> = {
-  '编程': '💻',
-  '学习': '📚',
-  '健康': '💪',
-  '习惯': '🌱',
-  '其他': '📌',
+import { Code2, BookOpen, Heart, Repeat, Tag } from 'lucide-vue-next'
+
+const categoryIcons: Record<string, any> = {
+  '编程': Code2,
+  '学习': BookOpen,
+  '健康': Heart,
+  '习惯': Repeat,
+  '其他': Tag,
 }
 
 function handleDragStart(e: DragEvent, task: CheckinTask) {
@@ -72,7 +74,7 @@ function handleDragStart(e: DragEvent, task: CheckinTask) {
             <GripVertical class="w-4 h-4 text-vscode-text-secondary mr-2 flex-shrink-0 mt-0.5" />
             <div class="flex-1 min-w-0">
               <div class="flex items-center space-x-2">
-                <span class="text-base">{{ categoryIcons[task.category] || '📌' }}</span>
+                <component :is="categoryIcons[task.category] || Tag" class="w-4 h-4" style="color: var(--color-text-secondary);" />
                 <span class="font-medium text-sm text-vscode-text truncate">{{ task.name }}</span>
               </div>
               <p class="text-xs text-vscode-text-secondary mt-1 line-clamp-2">{{ task.description }}</p>

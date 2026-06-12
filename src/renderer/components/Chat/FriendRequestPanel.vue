@@ -3,10 +3,12 @@ import { ref, onMounted } from 'vue'
 import { UserPlus, UserCheck, UserX, Clock, Loader, Users } from 'lucide-vue-next'
 import { useSocialStore } from '@/stores/social'
 import { useEditorStore } from '@/stores/editor'
+import { avatarUrl, avatarColor } from '@/utils/format'
 import ChatView from './ChatView.vue'
 
 const store = useSocialStore()
 const editorStore = useEditorStore()
+const imgErrors = ref<Set<string>>(new Set())
 const activeTab = ref<'pending' | 'sent'>('pending')
 
 onMounted(() => {
@@ -109,12 +111,13 @@ function formatTime(dateStr: string): string {
         :key="req.id"
         class="flex items-center gap-3 px-3 py-3 border-b border-vscode-border/50 hover:bg-vscode-selected/20 transition-colors"
       >
-        <div class="w-10 h-10 rounded-full bg-vscode-active flex items-center justify-center text-xs text-vscode-text overflow-hidden flex-shrink-0">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs overflow-hidden flex-shrink-0" :style="{ backgroundColor: avatarColor(req.fromUserId) }">
           <img
-            v-if="req.fromAvatar"
-            :src="req.fromAvatar"
+            v-if="req.fromAvatar && !imgErrors.has('from-' + req.id)"
+            :src="avatarUrl(req.fromAvatar)"
             :alt="req.fromNickname"
             class="w-full h-full object-cover"
+            @error="imgErrors.add('from-' + req.id)"
           />
           <span v-else>{{ (req.fromNickname || '?')[0] }}</span>
         </div>
@@ -138,7 +141,7 @@ function formatTime(dateStr: string): string {
               <UserCheck class="w-4 h-4" />
             </button>
             <button
-              class="p-1.5 rounded-lg bg-red-400/10 text-red-400 hover:bg-red-400/20 transition-colors"
+              class="p-1.5 rounded-lg bg-danger-subtle text-danger hover:bg-danger/20 transition-colors"
               title="拒绝"
               @click="handleReject(req.id)"
             >
@@ -149,9 +152,9 @@ function formatTime(dateStr: string): string {
             v-else
             class="px-2 py-0.5 text-xs rounded-full"
             :class="{
-              'bg-green-500/20 text-green-400': req.status === 'ACCEPTED',
-              'bg-gray-500/20 text-gray-400': req.status === 'REJECTED',
-              'bg-red-500/20 text-red-400': req.status === 'REMOVED'
+              'bg-success/20 text-success': req.status === 'ACCEPTED',
+              'bg-surface-hover text-morandi-text2': req.status === 'REJECTED',
+              'bg-danger/20 text-danger': req.status === 'REMOVED'
             }"
           >
             {{ req.status === 'ACCEPTED' ? '已接受' : req.status === 'REJECTED' ? '已拒绝' : '已删除' }}
@@ -175,10 +178,10 @@ function formatTime(dateStr: string): string {
           :key="req.id"
           class="flex items-center gap-3 px-3 py-3 border-b border-vscode-border/50 hover:bg-vscode-selected/20 transition-colors"
         >
-          <div class="w-10 h-10 rounded-full bg-vscode-active flex items-center justify-center text-xs text-vscode-text overflow-hidden flex-shrink-0">
+          <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs overflow-hidden flex-shrink-0" :style="{ backgroundColor: avatarColor(req.userId) }">
             <img
-              v-if="req.userAvatar"
-              :src="req.userAvatar"
+              v-if="req.userAvatar && !imgErrors.has('user-' + req.id)"
+              :src="avatarUrl(req.userAvatar)"
               :alt="req.userNickname"
               class="w-full h-full object-cover"
             />
@@ -206,7 +209,7 @@ function formatTime(dateStr: string): string {
               <UserCheck class="w-4 h-4" />
             </button>
             <button
-              class="p-1.5 rounded-lg bg-red-400/10 text-red-400 hover:bg-red-400/20 transition-colors"
+              class="p-1.5 rounded-lg bg-danger-subtle text-danger hover:bg-danger/20 transition-colors"
               title="拒绝"
               @click="handleRejectJoinReq(req.conversationId, req.id)"
             >
@@ -227,10 +230,10 @@ function formatTime(dateStr: string): string {
         :key="req.id"
         class="flex items-center gap-3 px-3 py-3 border-b border-vscode-border/50"
       >
-        <div class="w-10 h-10 rounded-full bg-vscode-active flex items-center justify-center text-xs text-vscode-text overflow-hidden flex-shrink-0">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs overflow-hidden flex-shrink-0" :style="{ backgroundColor: avatarColor(req.toUserId) }">
           <img
-            v-if="req.toAvatar"
-            :src="req.toAvatar"
+            v-if="req.toAvatar && !imgErrors.has('to-' + req.id)"
+            :src="avatarUrl(req.toAvatar)"
             :alt="req.toNickname"
             class="w-full h-full object-cover"
           />
@@ -243,8 +246,8 @@ function formatTime(dateStr: string): string {
           </div>
           <div class="text-xs mt-0.5" :class="{
             'text-vscode-info': req.status === 'PENDING',
-            'text-green-400': req.status === 'ACCEPTED',
-            'text-red-400': req.status === 'REJECTED'
+            'text-success': req.status === 'ACCEPTED',
+            'text-danger': req.status === 'REJECTED'
           }">
             {{ req.status === 'PENDING' ? '等待对方确认' : req.status === 'ACCEPTED' ? '已接受' : '已拒绝' }}
           </div>

@@ -80,7 +80,6 @@ function onTabChange(tab: 'resume' | 'regular' | 'qa' | 'myOwn') {
 
 function onSelectPost(id: string, type: 'resume' | 'regular' | 'qa') {
   postStore.selectPost(id, type)
-  // 从列表数据中获取标题（同步，无需等 API 返回）
   const tabType = type === 'qa' ? 'regular' : type
   const title = type === 'resume'
     ? postStore.resumePostList.find(p => p.id === id)?.resumeName || '简历详情'
@@ -147,7 +146,6 @@ function onOpenPostFromComment(postId: string) {
   )
 }
 
-
 const currentList = computed(() => {
   return postStore.activeTab === 'resume' ? postStore.resumePostList : postStore.postList
 })
@@ -176,144 +174,109 @@ function onVisibilityChange() {
     const kw = postStore.keyword || undefined
     if (postStore.activeTab === 'resume') {
       const sub = postStore.resumeSubTab
-      if (sub === 'purchased') {
-        postStore.fetchPurchasedResumePosts()
-      } else if (sub === 'mine') {
-        postStore.fetchMyResumePosts()
-      } else {
-        postStore.fetchResumePostList(1, kw)
-      }
+      if (sub === 'purchased') { postStore.fetchPurchasedResumePosts() }
+      else if (sub === 'mine') { postStore.fetchMyResumePosts() }
+      else { postStore.fetchResumePostList(1, kw) }
     } else if (postStore.activeTab === 'myOwn') {
-      if (postStore.myOwnSubTab === 'comments') {
-        postStore.fetchMyComments()
-      } else if (postStore.myOwnSubTab === 'likes') {
-        postStore.fetchMyLikes()
-      } else {
-        postStore.fetchMyPosts(1, kw)
-      }
+      if (postStore.myOwnSubTab === 'comments') { postStore.fetchMyComments() }
+      else if (postStore.myOwnSubTab === 'likes') { postStore.fetchMyLikes() }
+      else { postStore.fetchMyPosts(1, kw) }
     } else if (postStore.activeTab === 'qa') {
       const f = qaActiveFilter.value
-      if (f === 'hot' || f === 'latest') {
-        postStore.fetchQaPosts(1, kw, f)
-      } else {
-        postStore.fetchQaPosts(1, kw, 'latest', f)
-      }
+      if (f === 'hot' || f === 'latest') { postStore.fetchQaPosts(1, kw, f) }
+      else { postStore.fetchQaPosts(1, kw, 'latest', f) }
     } else {
       postStore.fetchPostList(1, kw, postStore.sort)
     }
   }
 }
-
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-[#1e1e1e]">
+  <div class="flex flex-col h-full" style="background-color: var(--color-bg);">
     <!-- Tab bar -->
-    <div class="flex border-b border-[#333] px-3 pt-2">
+    <div class="flex px-3 pt-2" style="border-bottom: 1px solid var(--color-divider);">
       <button
-        class="px-3 py-1.5 text-sm font-medium transition-colors"
-        :class="postStore.activeTab === 'resume'
-          ? 'text-[#4a9eff] border-b-2 border-[#4a9eff]'
-          : 'text-[#888] hover:text-[#ccc]'"
-        @click="onTabChange('resume')"
-      >
-        简历贴
-      </button>
-      <button
-        class="px-3 py-1.5 text-sm font-medium transition-colors"
-        :class="postStore.activeTab === 'regular'
-          ? 'text-[#4a9eff] border-b-2 border-[#4a9eff]'
-          : 'text-[#888] hover:text-[#ccc]'"
-        @click="onTabChange('regular')"
-      >
-        社区
-      </button>
-      <button
-        class="px-3 py-1.5 text-sm font-medium transition-colors"
-        :class="postStore.activeTab === 'qa'
-          ? 'text-[#4a9eff] border-b-2 border-[#4a9eff]'
-          : 'text-[#888] hover:text-[#ccc]'"
-        @click="onTabChange('qa')"
-      >
-        求助
-      </button>
-      <button
-        class="px-3 py-1.5 text-sm font-medium transition-colors"
-        :class="postStore.activeTab === 'myOwn'
-          ? 'text-[#4a9eff] border-b-2 border-[#4a9eff]'
-          : 'text-[#888] hover:text-[#ccc]'"
-        @click="onTabChange('myOwn')"
-      >
-        我的
-      </button>
+        v-for="tab in [
+          { id: 'resume' as const, label: '简历贴' },
+          { id: 'regular' as const, label: '社区' },
+          { id: 'qa' as const, label: '求助' },
+          { id: 'myOwn' as const, label: '我的' }
+        ]"
+        :key="tab.id"
+        class="px-3 py-1.5 text-sm font-medium transition-colors relative flex-shrink-0 whitespace-nowrap"
+        :style="{
+          color: postStore.activeTab === tab.id ? 'var(--color-primary-dark)' : 'var(--color-text-tertiary)',
+          borderBottom: postStore.activeTab === tab.id ? '2px solid var(--color-primary)' : '2px solid transparent',
+        }"
+        @click="onTabChange(tab.id)"
+      >{{ tab.label }}</button>
     </div>
 
     <!-- Search bar -->
-    <div class="px-3 py-2 border-b border-[#2a2a2a]">
-      <div class="flex items-center bg-[#2d2d2d] border border-[#444] rounded-md px-2.5 py-1.5">
-        <Search class="w-3.5 h-3.5 text-[#666] mr-1.5 flex-shrink-0" />
+    <div class="px-3 py-2" style="border-bottom: 1px solid var(--color-divider);">
+      <div class="flex items-center rounded-md px-2.5 py-1.5 input-base" style="background: var(--color-surface);">
+        <Search class="w-3.5 h-3.5 mr-1.5 flex-shrink-0" style="color: var(--color-text-tertiary);" />
         <input
           v-model="searchInput"
           type="text"
           :placeholder="postStore.activeTab === 'resume' ? '搜索简历...' : (postStore.activeTab === 'myOwn' ? (postStore.myOwnSubTab === 'posts' ? '搜索我的帖子...' : '搜索...') : (postStore.activeTab === 'qa' ? '搜索求助...' : '搜索社区...'))"
-          class="bg-transparent text-[#ccc] text-xs outline-none flex-1 placeholder:text-[#666]"
+          class="bg-transparent text-xs outline-none flex-1"
+          style="color: var(--color-text-primary);"
           @input="onSearchInput"
         />
       </div>
     </div>
 
-    <!-- Sub-tab for resume posts -->
-    <div v-if="postStore.activeTab === 'resume'" class="px-3 py-1.5 border-b border-[#2a2a2a] flex gap-4">
+    <!-- Sub-tab bars -->
+    <div v-if="postStore.activeTab === 'resume'" class="px-3 py-1.5 flex" style="border-bottom: 1px solid var(--color-divider);">
       <button
         v-for="sub in [{v:'recommended',l:'推荐'},{v:'purchased',l:'已购买'},{v:'mine',l:'我的'}]"
         :key="sub.v"
-        class="text-xs pb-1 transition-colors"
-        :class="postStore.resumeSubTab === sub.v
-          ? 'text-[#4a9eff] border-b border-[#4a9eff]'
-          : 'text-[#888] hover:text-[#ccc]'"
+        class="flex-1 text-center text-sm pb-1 transition-colors"
+        :style="{
+          color: postStore.resumeSubTab === sub.v ? 'var(--color-primary-dark)' : 'var(--color-text-tertiary)',
+          borderBottom: postStore.resumeSubTab === sub.v ? '2px solid var(--color-primary)' : '2px solid transparent',
+        }"
         @click="postStore.setResumeSubTab(sub.v as 'recommended' | 'purchased' | 'mine')"
       >{{ sub.l }}</button>
     </div>
 
-    <!-- Sub-tab bar for regular posts (热门/最新/内推) -->
-    <div v-if="postStore.activeTab === 'regular'" class="px-3 py-1.5 border-b border-[#2a2a2a] flex gap-4">
+    <div v-if="postStore.activeTab === 'regular'" class="px-3 py-1.5 flex" style="border-bottom: 1px solid var(--color-divider);">
       <button
         v-for="opt in regularSubTabOptions"
         :key="opt.value"
-        class="text-xs pb-1 transition-colors"
-        :class="postStore.regularSubTab === opt.value
-          ? 'text-[#4a9eff] border-b border-[#4a9eff]'
-          : 'text-[#888] hover:text-[#ccc]'"
+        class="flex-1 text-center text-sm pb-1 transition-colors"
+        :style="{
+          color: postStore.regularSubTab === opt.value ? 'var(--color-primary-dark)' : 'var(--color-text-tertiary)',
+          borderBottom: postStore.regularSubTab === opt.value ? '2px solid var(--color-primary)' : '2px solid transparent',
+        }"
         @click="onRegularSubTabChange(opt.value)"
-      >
-        {{ opt.label }}
-      </button>
+      >{{ opt.label }}</button>
     </div>
 
-    <!-- Filter bar for QA posts -->
-    <div v-if="postStore.activeTab === 'qa'" class="px-3 py-1.5 border-b border-[#2a2a2a] flex gap-4">
+    <div v-if="postStore.activeTab === 'qa'" class="px-3 py-1.5 flex" style="border-bottom: 1px solid var(--color-divider);">
       <button
         v-for="opt in qaFilterOptions"
         :key="opt.value"
-        class="text-xs pb-1 transition-colors"
-        :class="qaActiveFilter === opt.value
-          ? 'text-[#4a9eff] border-b border-[#4a9eff]'
-          : 'text-[#888] hover:text-[#ccc]'"
+        class="flex-1 text-center text-sm pb-1 transition-colors"
+        :style="{
+          color: qaActiveFilter === opt.value ? 'var(--color-primary-dark)' : 'var(--color-text-tertiary)',
+          borderBottom: qaActiveFilter === opt.value ? '2px solid var(--color-primary)' : '2px solid transparent',
+        }"
         @click="onQaFilterChange(opt.value)"
-      >
-        {{ opt.label }}
-      </button>
+      >{{ opt.label }}</button>
     </div>
 
-    <!-- Sub-tab bar for "我的" -->
-    <div v-if="postStore.activeTab === 'myOwn'" class="px-3 py-1.5 border-b border-[#2a2a2a] flex items-center gap-4">
+    <div v-if="postStore.activeTab === 'myOwn'" class="px-3 py-1.5 flex" style="border-bottom: 1px solid var(--color-divider);">
       <button
         v-for="opt in myOwnSubTabOptions"
         :key="opt.value"
-        class="flex items-center gap-1 text-xs pb-1 transition-colors"
-        :class="postStore.myOwnSubTab === opt.value
-          ? 'text-[#4a9eff] border-b border-[#4a9eff]'
-          : 'text-[#888] hover:text-[#ccc]'"
+        class="flex-1 justify-center items-center gap-1 text-sm pb-1 transition-colors flex"
+        :style="{
+          color: postStore.myOwnSubTab === opt.value ? 'var(--color-primary-dark)' : 'var(--color-text-tertiary)',
+          borderBottom: postStore.myOwnSubTab === opt.value ? '2px solid var(--color-primary)' : '2px solid transparent',
+        }"
         @click="onMyOwnSubTabChange(opt.value)"
       >
         <component :is="opt.icon" class="w-3 h-3" />
@@ -323,136 +286,109 @@ function onVisibilityChange() {
 
     <!-- Post list -->
     <div class="flex-1 overflow-y-auto px-1.5 py-1.5 space-y-1" @scroll="onScroll">
-      <!-- Loading -->
       <div v-if="isLoading" class="flex items-center justify-center py-10">
-        <div class="text-sm text-[#888]">加载中...</div>
+        <div class="text-sm" style="color: var(--color-text-tertiary);">加载中...</div>
       </div>
 
-      <!-- Empty (skip for myOwn — sub-tabs handle their own empty states) -->
       <div v-else-if="currentList.length === 0 && postStore.activeTab !== 'myOwn'" class="flex items-center justify-center py-10">
         <div class="text-center">
-          <div class="text-sm text-[#888]">暂无帖子</div>
-          <div class="text-xs text-[#666] mt-1">快来发布第一篇吧</div>
+          <div class="text-sm" style="color: var(--color-text-secondary);">暂无帖子</div>
+          <div class="text-xs mt-1" style="color: var(--color-text-tertiary);">快来发布第一篇吧</div>
         </div>
       </div>
 
-      <!-- Resume cards -->
       <template v-else-if="postStore.activeTab === 'resume'">
         <ResumePostCard
-          v-for="resume in postStore.resumePostList"
-          :key="resume.id"
+          v-for="resume in postStore.resumePostList" :key="resume.id"
           :resume="resume"
           :is-selected="postStore.selectedId === resume.id"
           :is-liked="postStore.likedIds.has(resume.id)"
-          @select="onSelectPost($event, 'resume')"
-          @like="onLike"
+          @select="onSelectPost($event, 'resume')" @like="onLike"
         />
       </template>
 
-      <!-- Regular post cards -->
       <template v-else-if="postStore.activeTab === 'regular'">
         <RegularPostCard
-          v-for="post in postStore.postList"
-          :key="post.id"
+          v-for="post in postStore.postList" :key="post.id"
           :post="post"
           :is-selected="postStore.selectedId === post.id"
           :is-liked="postStore.likedIds.has(post.id)"
-          @select="onSelectPost($event, 'regular')"
-          @like="onLike"
+          @select="onSelectPost($event, 'regular')" @like="onLike"
         />
       </template>
 
-      <!-- QA post cards -->
       <template v-else-if="postStore.activeTab === 'qa'">
         <RegularPostCard
-          v-for="post in postStore.postList"
-          :key="post.id"
+          v-for="post in postStore.postList" :key="post.id"
           :post="post"
           :is-selected="postStore.selectedId === post.id"
           :is-liked="postStore.likedIds.has(post.id)"
-          @select="onSelectPost($event, 'qa')"
-          @like="onLike"
+          @select="onSelectPost($event, 'qa')" @like="onLike"
         />
       </template>
 
-      <!-- My own posts -->
       <template v-else-if="postStore.activeTab === 'myOwn'">
-        <!-- Posts sub-tab -->
         <template v-if="postStore.myOwnSubTab === 'posts'">
           <RegularPostCard
-            v-for="post in postStore.postList"
-            :key="post.id"
+            v-for="post in postStore.postList" :key="post.id"
             :post="post"
             :is-selected="postStore.selectedId === post.id"
             :is-liked="postStore.likedIds.has(post.id)"
             :show-pin-actions="true"
-            @select="onSelectPost($event, 'regular')"
-            @like="onLike"
+            @select="onSelectPost($event, 'regular')" @like="onLike"
             @pin-changed="postStore.fetchMyPosts(1, postStore.keyword || undefined)"
           />
         </template>
 
-        <!-- Comments sub-tab -->
         <template v-else-if="postStore.myOwnSubTab === 'comments'">
           <div v-if="postStore.myOwnDisplayComments.length === 0 && !postStore.loading" class="flex items-center justify-center py-10">
-            <div class="text-sm text-[#888]">暂无回复</div>
+            <div class="text-sm" style="color: var(--color-text-tertiary);">暂无回复</div>
           </div>
-          <div
-            v-for="c in postStore.myOwnDisplayComments"
-            :key="c.id"
-            class="py-3 border-b border-[#333] last:border-0"
-          >
-            <div class="text-sm text-[#bbb] line-clamp-2">{{ c.content }}</div>
-            <div class="flex items-center gap-3 mt-1 text-xs text-[#777]">
+          <div v-for="c in postStore.myOwnDisplayComments" :key="c.id" class="py-3" style="border-bottom: 1px solid var(--color-divider);">
+            <div class="text-sm line-clamp-2" style="color: var(--color-text-primary);">{{ c.content }}</div>
+            <div class="flex items-center gap-3 mt-1 text-xs" style="color: var(--color-text-secondary);">
               <span>{{ formatTimeAgo(c.createdAt) }}</span>
               <span v-if="c.likeCount" class="flex items-center gap-1"><Heart class="w-3 h-3" />{{ c.likeCount }}</span>
-              <a v-if="c.postTitle" class="text-[#4a9eff] hover:underline cursor-pointer truncate max-w-[200px]" @click.stop="c.targetId && onOpenPostFromComment(c.targetId)">
-                @{{ c.postTitle }}
-              </a>
+              <a v-if="c.postTitle" class="cursor-pointer truncate max-w-[200px] hover:underline" style="color: var(--color-primary);" @click.stop="c.targetId && onOpenPostFromComment(c.targetId)">@{{ c.postTitle }}</a>
             </div>
           </div>
         </template>
 
-        <!-- Likes sub-tab -->
         <template v-else-if="postStore.myOwnSubTab === 'likes'">
           <div v-if="postStore.myOwnDisplayLikes.length === 0 && !postStore.loading" class="flex items-center justify-center py-10">
-            <div class="text-sm text-[#888]">暂无点赞</div>
+            <div class="text-sm" style="color: var(--color-text-tertiary);">暂无点赞</div>
           </div>
           <div
             v-for="item in postStore.myOwnDisplayLikes"
             :key="`${item.targetId}-${item.targetType}`"
-            class="py-3 border-b border-[#333] last:border-0 transition-colors rounded px-2 -mx-2"
-            :class="item.targetType === 'post' && item.targetId
-              ? 'cursor-pointer hover:bg-[#2a2a2a]'
-              : 'cursor-default opacity-70'"
+            class="py-3 transition-colors rounded px-2 -mx-2"
+            style="border-bottom: 1px solid var(--color-divider);"
+            :class="item.targetType === 'post' && item.targetId ? 'cursor-pointer' : 'cursor-default opacity-70'"
             @click="item.targetType === 'post' && item.targetId && onOpenPostFromComment(item.targetId)"
+            @mouseenter="(e: MouseEvent) => { if (item.targetType === 'post' && item.targetId) (e.target as HTMLElement).style.backgroundColor = 'var(--color-surface-hover)' }"
+            @mouseleave="(e: MouseEvent) => { (e.target as HTMLElement).style.backgroundColor = 'transparent' }"
           >
             <div class="flex items-center gap-2">
-              <span
-                class="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 whitespace-nowrap"
-                :class="item.targetType === 'post'
-                  ? 'bg-blue-500/20 text-blue-400'
-                  : 'bg-green-500/20 text-green-400'"
-              >
-                {{ item.targetType === 'post' ? '帖子' : '回复' }}
-              </span>
-              <span class="text-sm text-[#bbb] line-clamp-1">{{ item.targetText || '(内容已删除)' }}</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0" :style="{
+                backgroundColor: item.targetType === 'post' ? 'var(--color-primary-subtle)' : 'var(--color-success-subtle)',
+                color: item.targetType === 'post' ? 'var(--color-primary-dark)' : 'var(--color-success)',
+              }">{{ item.targetType === 'post' ? '帖子' : '回复' }}</span>
+              <span class="text-sm line-clamp-1" style="color: var(--color-text-primary);">{{ item.targetText || '(内容已删除)' }}</span>
             </div>
-            <div class="text-xs text-[#777] mt-1">{{ formatTimeAgo(item.likeTime) }}</div>
+            <div class="text-xs mt-1" style="color: var(--color-text-secondary);">{{ formatTimeAgo(item.likeTime) }}</div>
           </div>
         </template>
       </template>
 
-      <!-- Load more indicator -->
       <div v-if="postStore.loadingMore" class="flex items-center justify-center py-4">
-        <div class="text-xs text-[#666]">加载更多...</div>
+        <div class="text-xs" style="color: var(--color-text-tertiary);">加载更多...</div>
       </div>
     </div>
 
-    <!-- Publish / View resume button (hide for myOwn comments/likes sub-tabs) -->
-    <div v-if="!(postStore.activeTab === 'myOwn' && postStore.myOwnSubTab !== 'posts')" class="border-t border-[#333] p-2.5">
+    <!-- Publish button -->
+    <div v-if="!(postStore.activeTab === 'myOwn' && postStore.myOwnSubTab !== 'posts')" class="p-2.5" style="border-top: 1px solid var(--color-divider);">
       <button
-        class="w-full text-white text-sm font-medium py-2 rounded-md transition-colors bg-[#4a9eff] hover:bg-[#3a8eef]"
+        class="w-full text-sm font-medium py-2 rounded-md transition-colors btn-cta"
         @click="handlePublish"
       >
         {{ postStore.activeTab === 'resume' ? '+ 发布简历帖' : postStore.activeTab === 'qa' ? '+ 发布求助' : (postStore.activeTab === 'regular' && postStore.regularSubTab === 'referral') ? '+ 发布内推帖' : '+ 发布社区帖' }}

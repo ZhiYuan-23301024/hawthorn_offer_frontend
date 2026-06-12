@@ -8,6 +8,7 @@ import { apiGet, type ApiResponse } from '@/api/http'
 import type { PersonalResume } from '@/api/resume'
 import type { ResumePostDetail } from '@/api/post'
 import { useRequireAuth } from '@/composables/useRequireAuth'
+import { Bean, Pin } from 'lucide-vue-next'
 import PostDetail from './PostDetail.vue'
 
 const props = defineProps<{
@@ -306,66 +307,65 @@ async function handleSubmit() {
 <template>
   <div class="h-full overflow-y-auto">
     <div class="max-w-2xl mx-auto">
-      <h2 class="text-lg font-semibold text-[#ddd] mb-6">
+      <h2 class="text-lg font-semibold text-vscode-text mb-6">
         {{ postType === 'resume' ? (isEditing ? '编辑简历' : '发布简历') : postType === 'qa' ? (isEditing ? '编辑求助' : '发布求助') : (postType === 'referral' || isReferralPost) ? (isEditing ? '编辑内推帖' : '发布内推帖') : (isEditing ? '编辑社区帖' : '发布社区帖') }}
       </h2>
 
-      <div v-if="error" class="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-md text-sm text-red-400">
+      <div v-if="error" class="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-md text-sm text-danger">
         {{ error }}
       </div>
 
       <!-- Resume form -->
       <template v-if="postType === 'resume'">
         <div class="mb-4">
-          <label class="block text-sm text-[#aaa] mb-1.5">选择简历</label>
+          <label class="block text-sm text-vscode-text-secondary mb-1.5">选择简历</label>
           <select
             v-model="selectedResumeId"
-            class="w-full bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-2.5 text-sm text-[#ccc] outline-none focus:border-[#4a9eff]"
+            class="w-full bg-vscode-active border border-vscode-border rounded-md px-3 py-2.5 text-sm text-vscode-text outline-none focus:border-primary"
           >
             <option value="" disabled>请选择一份个人简历</option>
             <option v-for="r in personalResumes" :key="r.id" :value="r.id">
               {{ r.resumeName }}
             </option>
           </select>
-          <p v-if="personalResumes.length === 0 && !loadingResumes" class="text-xs text-[#666] mt-1">
+          <p v-if="personalResumes.length === 0 && !loadingResumes" class="text-xs text-vscode-text-secondary mt-1">
             暂无简历，请先在个人设置中创建简历
           </p>
         </div>
         <div class="mb-4">
-          <label class="block text-sm text-[#aaa] mb-1.5">宣传文字</label>
+          <label class="block text-sm text-vscode-text-secondary mb-1.5">宣传文字</label>
           <textarea
             v-model="promoText"
             placeholder="写一段宣传文字，让更多人了解你的简历亮点..."
             rows="4"
-            class="w-full bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-2.5 text-sm text-[#ccc] outline-none focus:border-[#4a9eff] placeholder:text-[#666] resize-none"
+            class="w-full bg-vscode-active border border-vscode-border rounded-md px-3 py-2.5 text-sm text-vscode-text outline-none focus:border-primary placeholder:text-vscode-text-secondary resize-none"
           ></textarea>
         </div>
         <div class="mb-4">
-          <label class="block text-sm text-[#aaa] mb-1.5">查看完整简历价格（豆子）</label>
+          <label class="block text-sm text-vscode-text-secondary mb-1.5">查看完整简历价格（<Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 豆子）</label>
           <input
             v-model.number="price"
             type="number"
             min="1"
             max="99999"
-            class="w-32 bg-[#2d2d2d] border rounded-md px-3 py-2 text-sm outline-none focus:border-[#4a9eff]"
-            :class="price < 1 || !Number.isInteger(price) ? 'border-red-500/50 text-red-400' : 'border-[#444] text-[#ccc]'"
+            class="w-32 bg-vscode-active border rounded-md px-3 py-2 text-sm outline-none focus:border-primary"
+            :class="price < 1 || !Number.isInteger(price) ? 'border-red-500/50 text-danger' : 'border-vscode-border text-vscode-text'"
             @blur="onPriceBlur"
           />
-          <span class="text-xs ml-2" :class="price < 1 || !Number.isInteger(price) ? 'text-red-400' : 'text-[#666]'">
-            {{ price < 1 || !Number.isInteger(price) ? '请输入有效正整数' : '默认 50 豆' }}
-          </span>
+          <span v-if="price < 1 || !Number.isInteger(price)" class="text-xs ml-2 text-danger">请输入有效正整数</span>
+          <span v-else class="text-xs ml-2 text-vscode-text-secondary">默认 50 <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></span>
         </div>
       </template>
 
       <!-- Regular / QA / Referral post form -->
       <template v-if="postType === 'regular' || postType === 'qa' || postType === 'referral'">
         <div class="mb-4">
-          <label class="block text-sm text-[#aaa] mb-1.5">标题</label>
+          <label class="block text-sm text-vscode-text-secondary mb-1.5">标题</label>
           <input
             v-model="title"
             type="text"
             placeholder="输入帖子标题"
-            class="w-full bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-2 text-sm text-[#ccc] outline-none focus:border-[#4a9eff] placeholder:text-[#666]"
+            class="w-full bg-vscode-active border border-vscode-border rounded-md px-3 py-2 text-sm text-vscode-text outline-none focus:border-primary placeholder:text-vscode-text-secondary"
           />
         </div>
       </template>
@@ -373,79 +373,79 @@ async function handleSubmit() {
       <!-- Content -->
       <template v-if="postType !== 'resume'">
         <div class="mb-4">
-          <label class="block text-sm text-[#aaa] mb-1.5">内容</label>
+          <label class="block text-sm text-vscode-text-secondary mb-1.5">内容</label>
           <textarea
             v-model="content"
             placeholder="输入帖子内容..."
             rows="12"
-            class="w-full bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-2 text-sm text-[#ccc] outline-none focus:border-[#4a9eff] placeholder:text-[#666] resize-none"
+            class="w-full bg-vscode-active border border-vscode-border rounded-md px-3 py-2 text-sm text-vscode-text outline-none focus:border-primary placeholder:text-vscode-text-secondary resize-none"
           />
         </div>
       </template>
       <!-- Resume preview -->
       <template v-else>
         <div class="mb-4">
-          <label class="block text-sm text-[#aaa] mb-1.5">简历预览（前200字）</label>
-          <div class="w-full bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-3 text-sm text-[#888] whitespace-pre-wrap min-h-[100px]">
+          <label class="block text-sm text-vscode-text-secondary mb-1.5">简历预览（前200字）</label>
+          <div class="w-full bg-vscode-active border border-vscode-border rounded-md px-3 py-3 text-sm text-vscode-text-secondary whitespace-pre-wrap min-h-[100px]">
             {{ selectedResumePreview || '请先选择一份简历' }}
           </div>
         </div>
       </template>
 
       <!-- Bounty settings (QA posts only, new posts only) -->
-      <div v-if="postType === 'qa' && !isEditing" class="mb-4 p-4 border border-[#4a9eff]/30 rounded-md bg-[#4a9eff]/5">
-        <h3 class="text-sm font-medium text-[#4a9eff] mb-3">🫘 求助设置</h3>
+      <div v-if="postType === 'qa' && !isEditing" class="mb-4 p-4 border border-primary/30 rounded-md bg-primary/5">
+        <h3 class="text-sm font-medium text-primary mb-3"><Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 求助设置</h3>
         <div class="mb-3">
-          <label class="block text-sm text-[#aaa] mb-1.5">求助豆子数（最低10）</label>
+          <label class="block text-sm text-vscode-text-secondary mb-1.5">求助豆子数（最低10）</label>
           <input
             v-model.number="bountyBeans"
             type="number"
             min="10"
             max="99999"
-            class="w-32 bg-[#2d2d2d] border rounded-md px-3 py-2 text-sm outline-none focus:border-[#4a9eff]"
-            :class="bountyBeans < 10 || !Number.isInteger(bountyBeans) ? 'border-red-500/50 text-red-400' : 'border-[#444] text-[#ccc]'"
+            class="w-32 bg-vscode-active border rounded-md px-3 py-2 text-sm outline-none focus:border-primary"
+            :class="bountyBeans < 10 || !Number.isInteger(bountyBeans) ? 'border-red-500/50 text-danger' : 'border-vscode-border text-vscode-text'"
             @blur="onBountyBlur"
           />
-          <span class="ml-2 text-xs" :class="bountyBeans < 10 || !Number.isInteger(bountyBeans) ? 'text-red-400' : 'text-[#888]'">
+          <span class="ml-2 text-xs" :class="bountyBeans < 10 || !Number.isInteger(bountyBeans) ? 'text-danger' : 'text-vscode-text-secondary'">
             {{ bountyBeans < 10 || !Number.isInteger(bountyBeans) ? '最低 10 豆' : '个豆子' }}
           </span>
         </div>
         <div class="mb-3">
-          <label class="block text-sm text-[#aaa] mb-1.5">求助时长</label>
+          <label class="block text-sm text-vscode-text-secondary mb-1.5">求助时长</label>
           <div class="flex gap-2 flex-wrap">
             <button
               v-for="opt in bountyDurationOptions"
               :key="opt.value"
               class="text-xs px-2 py-0.5 rounded border transition-colors"
-              :class="bountyDuration === opt.value ? 'bg-[#4a9eff]/20 border-[#4a9eff] text-[#4a9eff]' : 'border-[#444] text-[#888] hover:border-[#4a9eff]'"
+              :class="bountyDuration === opt.value ? 'bg-primary/20 border-primary text-primary' : 'border-vscode-border text-vscode-text-secondary hover:border-primary'"
               @click="bountyDuration = opt.value"
             >{{ opt.label }}</button>
           </div>
         </div>
-        <div class="text-xs text-[#888]">
-          将扣除 🫘 {{ bountyBeans + (isPinnedPost ? pinHours * 10 : 0) }} 百斩豆（余额：🫘 {{ authStore.user?.beans ?? 0 }}）
+        <div class="text-xs text-vscode-text-secondary">
+          将扣除 {{ bountyBeans + (isPinnedPost ? pinHours * 10 : 0)  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 百斩豆（余额：{{ authStore.user?.beans ?? 0  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" />）
         </div>
       </div>
 
       <!-- Referral post toggle (regular post type, new posts only) -->
       <!-- Referral fields for editing -->
-      <div v-if="isEditing && isReferralPost" class="mb-4 p-4 border border-[#4a9eff]/30 rounded-md bg-[#4a9eff]/5">
+      <div v-if="isEditing && isReferralPost" class="mb-4 p-4 border border-primary/30 rounded-md bg-primary/5">
         <div class="mb-3">
-          <label class="block text-sm text-[#aaa] mb-1.5">内推码</label>
+          <label class="block text-sm text-vscode-text-secondary mb-1.5">内推码</label>
           <input
             v-model="referralCode"
             type="text"
             placeholder="输入内推码"
-            class="w-full bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-2 text-sm text-[#ccc] outline-none focus:border-[#4a9eff] placeholder:text-[#666]"
+            class="w-full bg-vscode-active border border-vscode-border rounded-md px-3 py-2 text-sm text-vscode-text outline-none focus:border-primary placeholder:text-vscode-text-secondary"
           />
         </div>
         <div>
-          <label class="block text-sm text-[#aaa] mb-1.5">内推链接</label>
+          <label class="block text-sm text-vscode-text-secondary mb-1.5">内推链接</label>
           <input
             v-model="referralLink"
             type="url"
             placeholder="输入内推链接（支持跳转）"
-            class="w-full bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-2 text-sm text-[#ccc] outline-none focus:border-[#4a9eff] placeholder:text-[#666]"
+            class="w-full bg-vscode-active border border-vscode-border rounded-md px-3 py-2 text-sm text-vscode-text outline-none focus:border-primary placeholder:text-vscode-text-secondary"
           />
         </div>
       </div>
@@ -455,34 +455,34 @@ async function handleSubmit() {
         <div v-if="postType === 'regular'" class="flex items-center gap-2 mb-3">
           <button
             class="text-xs px-3 py-1 rounded border transition-colors"
-            :class="!isReferralPost ? 'bg-[#4a9eff]/20 border-[#4a9eff] text-[#4a9eff]' : 'border-[#444] text-[#888] hover:border-[#4a9eff]'"
+            :class="!isReferralPost ? 'bg-primary/20 border-primary text-primary' : 'border-vscode-border text-vscode-text-secondary hover:border-primary'"
             @click="isReferralPost = false"
           >普通帖</button>
           <button
             class="text-xs px-3 py-1 rounded border transition-colors"
-            :class="isReferralPost ? 'bg-[#4a9eff]/20 border-[#4a9eff] text-[#4a9eff]' : 'border-[#444] text-[#888] hover:border-[#4a9eff]'"
+            :class="isReferralPost ? 'bg-primary/20 border-primary text-primary' : 'border-vscode-border text-vscode-text-secondary hover:border-primary'"
             @click="isReferralPost = true"
           >内推帖</button>
         </div>
 
         <!-- Referral fields -->
-        <div v-if="isReferralPost" class="p-4 border border-[#4a9eff]/30 rounded-md bg-[#4a9eff]/5">
+        <div v-if="isReferralPost" class="p-4 border border-primary/30 rounded-md bg-primary/5">
           <div class="mb-3">
-            <label class="block text-sm text-[#aaa] mb-1.5">内推码</label>
+            <label class="block text-sm text-vscode-text-secondary mb-1.5">内推码</label>
             <input
               v-model="referralCode"
               type="text"
               placeholder="输入内推码"
-              class="w-full bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-2 text-sm text-[#ccc] outline-none focus:border-[#4a9eff] placeholder:text-[#666]"
+              class="w-full bg-vscode-active border border-vscode-border rounded-md px-3 py-2 text-sm text-vscode-text outline-none focus:border-primary placeholder:text-vscode-text-secondary"
             />
           </div>
           <div>
-            <label class="block text-sm text-[#aaa] mb-1.5">内推链接</label>
+            <label class="block text-sm text-vscode-text-secondary mb-1.5">内推链接</label>
             <input
               v-model="referralLink"
               type="url"
               placeholder="输入内推链接（支持跳转）"
-              class="w-full bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-2 text-sm text-[#ccc] outline-none focus:border-[#4a9eff] placeholder:text-[#666]"
+              class="w-full bg-vscode-active border border-vscode-border rounded-md px-3 py-2 text-sm text-vscode-text outline-none focus:border-primary placeholder:text-vscode-text-secondary"
             />
           </div>
         </div>
@@ -494,9 +494,9 @@ async function handleSubmit() {
           id="anonymous"
           v-model="isAnonymous"
           type="checkbox"
-          class="w-4 h-4 rounded border-[#444] bg-[#2d2d2d] accent-[#4a9eff]"
+          class="w-4 h-4 rounded border-vscode-border bg-vscode-active accent-primary"
         />
-        <label for="anonymous" class="text-sm text-[#aaa]">匿名发布</label>
+        <label for="anonymous" class="text-sm text-vscode-text-secondary">匿名发布</label>
       </div>
 
       <!-- Pin toggle (regular/referral/qa, new posts only) -->
@@ -506,28 +506,31 @@ async function handleSubmit() {
             id="pinPost"
             v-model="isPinnedPost"
             type="checkbox"
-            class="w-4 h-4 rounded border-[#444] bg-[#2d2d2d] accent-[#e74c3c]"
+            class="w-4 h-4 rounded border-vscode-border bg-vscode-active accent-danger"
           />
-          <label for="pinPost" class="text-sm text-[#aaa]">📌置顶</label>
+          <label for="pinPost" class="text-sm text-vscode-text-secondary"><Pin class="w-3.5 h-3.5 inline-block" />置顶</label>
         </div>
         <div v-if="isPinnedPost" class="ml-6 flex items-center gap-2 flex-wrap">
           <template v-if="allowedPinPresets.length > 0">
             <span v-for="(label, i) in allowedPinPresetLabels" :key="i">
               <button
                 class="text-xs px-2 py-0.5 rounded border transition-colors"
-                :class="pinHours === allowedPinPresets[i] ? 'bg-[#4a9eff]/20 border-[#4a9eff] text-[#4a9eff]' : 'border-[#444] text-[#888] hover:border-[#4a9eff]'"
+                :class="pinHours === allowedPinPresets[i] ? 'bg-primary/20 border-primary text-primary' : 'border-vscode-border text-vscode-text-secondary hover:border-primary'"
                 @click="pinHours = allowedPinPresets[i]"
               >{{ label }}</button>
             </span>
           </template>
-          <span v-else class="text-xs text-[#e74c3c]">求助时长过短，无法置顶</span>
+          <span v-else class="text-xs text-danger">求助时长过短，无法置顶</span>
           <input v-if="allowedPinPresets.length > 0" v-model.number="pinHours" type="number" min="1" :max="maxPinHours"
-            class="w-16 bg-[#2d2d2d] border rounded px-2 py-1 text-sm outline-none"
-            :class="pinHours < 1 || !Number.isInteger(pinHours) || pinHours > maxPinHours ? 'border-red-500/50 text-red-400' : 'border-[#444] text-[#ccc]'"
+            class="w-16 bg-vscode-active border rounded px-2 py-1 text-sm outline-none"
+            :class="pinHours < 1 || !Number.isInteger(pinHours) || pinHours > maxPinHours ? 'border-red-500/50 text-danger' : 'border-vscode-border text-vscode-text'"
             @blur="onPinBlur"
           />
-          <span v-if="allowedPinPresets.length > 0" class="text-xs" :class="pinHours < 1 || !Number.isInteger(pinHours) || pinHours > maxPinHours ? 'text-red-400' : 'text-[#888]'">
-            {{ pinHours < 1 || !Number.isInteger(pinHours) ? '至少 1 小时' : pinHours > maxPinHours ? `不超过 ${maxPinHours} 小时` : `小时 · 消耗 🫘 ${pinHours * 10}（余额：🫘 ${authStore.user?.beans ?? 0}）` }}
+          <span v-if="allowedPinPresets.length > 0 && (pinHours < 1 || !Number.isInteger(pinHours) || pinHours > maxPinHours)" class="text-xs text-danger">
+            {{ pinHours < 1 || !Number.isInteger(pinHours) ? '至少 1 小时' : `不超过 ${maxPinHours} 小时` }}
+          </span>
+          <span v-else-if="allowedPinPresets.length > 0" class="text-xs text-vscode-text-secondary">
+            小时 · 消耗 {{ pinHours * 10  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" />（余额：{{ authStore.user?.beans ?? 0  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" />）
           </span>
         </div>
       </div>
@@ -535,7 +538,7 @@ async function handleSubmit() {
       <!-- Submit + Cancel -->
       <div class="flex gap-3">
         <button
-          class="flex-1 bg-[#4a9eff] text-white rounded-md py-2 text-sm font-medium hover:bg-[#3a8eef] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          class="flex-1 bg-primary text-white rounded-md py-2 text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           :disabled="submitting"
           @click="handleSubmit"
         >
@@ -543,7 +546,7 @@ async function handleSubmit() {
         </button>
         <button
           v-if="isEditing"
-          class="flex-1 border border-[#555] text-[#aaa] rounded-md py-2 text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+          class="flex-1 border border-vscode-border text-vscode-text-secondary rounded-md py-2 text-sm font-medium hover:bg-vscode-active transition-colors"
           @click="handleCancel"
         >
           取消

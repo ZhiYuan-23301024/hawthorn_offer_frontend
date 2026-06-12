@@ -72,8 +72,8 @@ onMounted(() => {
           <div class="flex items-center space-x-2">
             <span class="text-sm text-vscode-text-secondary">{{ task.category }}</span>
             <span :class="[
-              task.difficulty === 'easy' ? 'bg-green-500' : 
-              task.difficulty === 'medium' ? 'bg-yellow-500' : 'bg-red-500',
+              task.difficulty === 'easy' ? 'bg-success' :
+              task.difficulty === 'medium' ? 'bg-warning' : 'bg-danger',
               'w-2 h-2 rounded-full'
             ]"></span>
             <span class="text-xs text-vscode-text-secondary">
@@ -152,7 +152,7 @@ onMounted(() => {
       <button
         class="w-full py-2.5 rounded-lg text-sm font-medium transition-colors"
         :class="isInstalled 
-          ? 'bg-vscode-error hover:bg-red-600 text-white' 
+          ? 'bg-danger text-white'
           : 'bg-vscode-active hover:bg-vscode-hover text-vscode-icon-hover'"
         @click="toggleInstall"
       >

@@ -3,6 +3,7 @@ import { ref, watch, computed } from 'vue'
 import { X, Users, MessageSquare, Crown, Shield, Loader, FileText, Image, EyeOff, BellOff, Bell, LogOut, Camera, Link, Search } from 'lucide-vue-next'
 import type { ConversationVO, MemberVO, MessageVO } from '@/api/social'
 import { getConversationDetail, getMessages, updateGroupAvatar, searchMessages } from '@/api/social'
+import { avatarColor, avatarUrl } from '@/utils/format'
 import { useSocialStore } from '@/stores/social'
 import { useEditorStore } from '@/stores/editor'
 import { API_BASE_URL } from '@/api/http'
@@ -107,8 +108,8 @@ function getRoleLabel(role: string): string {
 
 function getRoleClass(role: string): string {
   switch (role) {
-    case 'OWNER': return 'bg-amber-500/20 text-amber-400'
-    case 'ADMIN': return 'bg-blue-500/20 text-blue-400'
+    case 'OWNER': return 'bg-warning/20 text-warning'
+    case 'ADMIN': return 'bg-primary/20 text-primary'
     default: return 'bg-vscode-active text-vscode-text-secondary'
   }
 }
@@ -215,6 +216,8 @@ function handleLeave() {
 
 const avatarInput = ref<HTMLInputElement | null>(null)
 const uploadingAvatar = ref(false)
+const memberImgErrors = ref(new Set())
+const avatarImgError = ref(false)
 const canChangeAvatar = computed(() =>
   detail.value?.type === 'GROUP' && (detail.value?.role === 'OWNER' || detail.value?.role === 'ADMIN')
 )
@@ -257,7 +260,7 @@ function handleToggleMute() {
   <Teleport to="body">
     <div
       v-if="show"
-      class="fixed inset-0 z-50 bg-black/50"
+      class="fixed inset-0 z-50" style="background: rgba(36, 34, 32, 0.35);"
       @click.self="emit('close')"
     >
       <div class="absolute right-0 top-0 h-full w-[360px] bg-vscode-sidebar border-l border-vscode-border shadow-2xl flex flex-col">
@@ -283,21 +286,23 @@ function handleToggleMute() {
           <div class="px-4 py-4 border-b border-vscode-border">
             <div class="flex items-center gap-4 mb-3">
               <div
-                class="w-14 h-14 rounded-full bg-vscode-active flex items-center justify-center text-xl text-vscode-text overflow-hidden flex-shrink-0"
+                class="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl overflow-hidden flex-shrink-0"
                 :class="canChangeAvatar ? 'cursor-pointer group relative' : ''"
+                :style="{ backgroundColor: avatarColor(props.conversationId) }"
                 @click="triggerAvatarUpload"
               >
                 <img
-                  v-if="detail.avatar"
+                  v-if="detail.avatar && !avatarImgError"
                   :src="getAttachmentUrl(detail.avatar)"
                   :alt="detail.name"
                   class="w-full h-full object-cover"
                   :class="canChangeAvatar ? 'group-hover:opacity-60 transition-opacity' : ''"
+                  @error="avatarImgError = true"
                 />
                 <span v-else>{{ (detail.name || '群')[0] }}</span>
                 <div
                   v-if="canChangeAvatar"
-                  class="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  class="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style="background: rgba(36, 34, 32, 0.4);"
                 >
                   <Loader v-if="uploadingAvatar" class="w-5 h-5 animate-spin text-white" />
                   <Camera v-else class="w-5 h-5 text-white" />
@@ -332,7 +337,7 @@ function handleToggleMute() {
                 {{ detail.isMuted ? '已免打扰' : '免打扰' }}
               </button>
               <button
-                class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded hover:bg-red-400/10 transition-colors text-red-400"
+                class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded hover:bg-danger-subtle transition-colors text-danger"
                 @click="handleLeave"
               >
                 <LogOut class="w-3.5 h-3.5" />
@@ -372,10 +377,10 @@ function handleToggleMute() {
               :key="member.userId"
               class="flex items-center gap-3 px-4 py-2.5 hover:bg-vscode-active/50 transition-colors"
             >
-              <div class="w-9 h-9 rounded-full bg-vscode-active flex items-center justify-center text-xs text-vscode-text overflow-hidden flex-shrink-0">
+              <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs overflow-hidden flex-shrink-0" :style="{ backgroundColor: avatarColor(member.userId) }">
                 <img
-                  v-if="member.avatar"
-                  :src="member.avatar"
+                  v-if="member.avatar && !memberImgErrors.has(member.userId)"
+                  :src="avatarUrl(member.avatar)" @error="memberImgErrors.add(member.userId)"
                   :alt="member.nickname"
                   class="w-full h-full object-cover"
                 />

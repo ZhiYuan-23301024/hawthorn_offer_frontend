@@ -101,7 +101,7 @@ function formatTime(dateStr: string): string {
             <UserCheck class="w-4 h-4" />
           </button>
           <button
-            class="p-1.5 rounded-lg bg-red-400/10 text-red-400 hover:bg-red-400/20 transition-colors"
+            class="p-1.5 rounded-lg bg-danger-subtle text-danger hover:bg-danger/20 transition-colors"
             title="拒绝"
             @click="handleReject(req.id)"
           >

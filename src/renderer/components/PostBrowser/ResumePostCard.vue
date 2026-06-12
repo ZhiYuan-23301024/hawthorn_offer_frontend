@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Heart, MessageSquare } from 'lucide-vue-next'
+import { Heart, MessageSquare , Bean } from 'lucide-vue-next'
 import type { ResumePostListVO } from '@/api/post'
 import { avatarUrl, avatarColor, formatTimeAgo } from '@/utils/format'
 
@@ -21,14 +21,21 @@ const imgError = ref(false)
 <template>
   <div
     class="px-3 py-2.5 rounded-lg cursor-pointer transition-colors border relative"
-    :class="resume.deleted
-      ? (isSelected ? 'bg-[#2a2a2a] border-[#555] opacity-70' : 'bg-[#1e1e1e] border-[#333] opacity-60 hover:opacity-80')
-      : (isSelected ? 'bg-[#094771] border-[#007acc]' : 'border-transparent hover:bg-[#2a2a2a]')"
+    :class="resume.deleted ? 'opacity-60' : ''"
+    :style="{
+      backgroundColor: resume.deleted
+        ? 'transparent'
+        : (isSelected ? 'var(--color-primary-subtle)' : 'transparent'),
+      borderColor: resume.deleted
+        ? 'var(--color-border)'
+        : (isSelected ? 'var(--color-primary)' : 'transparent'),
+    }"
     @click="emit('select', resume.id)"
+    @mouseenter="(e: MouseEvent) => { if (!isSelected && !resume.deleted) (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--color-surface-hover)' }"
+    @mouseleave="(e: MouseEvent) => { if (!isSelected && !resume.deleted) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent' }"
   >
-    <span v-if="resume.deleted" class="absolute top-1.5 right-2 text-[10px] text-[#e74c3c] bg-[#e74c3c]/10 px-1.5 py-0.5 rounded">已删除</span>
+    <span v-if="resume.deleted" class="absolute top-1.5 right-2 text-xs px-1.5 py-0.5 rounded" style="color: var(--color-danger); background-color: var(--color-danger-subtle);">已删除</span>
     <div class="flex items-start gap-2.5">
-      <!-- Avatar -->
       <div
         class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden"
         :style="{ backgroundColor: avatarColor(resume.userId) }"
@@ -36,34 +43,20 @@ const imgError = ref(false)
         <img v-show="!imgError" :src="avatarUrl(resume.authorAvatarUrl) || ''" alt="" class="w-full h-full object-cover" @error="imgError = true" />
         <span v-show="imgError || !avatarUrl(resume.authorAvatarUrl)">{{ resume.authorAvatar || '?' }}</span>
       </div>
-
       <div class="flex-1 min-w-0">
-        <!-- Title + Price tag + Deleted -->
-        <div class="font-semibold text-sm flex items-center gap-2" :class="isSelected ? 'text-white' : 'text-[#ddd]'">
-          <span :class="resume.deleted ? 'text-[#666] line-through' : ''">{{ resume.resumeName }}</span>
-          <span v-if="!resume.deleted" class="flex-shrink-0 text-[10px] text-[#f0c040] bg-[#3d3520] px-1.5 py-0.5 rounded">🫘 {{ resume.price || 50 }}</span>
+        <div class="font-semibold text-sm flex items-center gap-2">
+          <span :class="resume.deleted ? 'line-through' : ''" :style="{ color: resume.deleted ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)' }">{{ resume.resumeName }}</span>
+          <span v-if="!resume.deleted" class="flex-shrink-0 text-xs px-1.5 py-0.5 rounded" style="color: var(--color-cta-dark); background-color: var(--color-cta-subtle);">{{ resume.price || 50  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></span>
         </div>
-
-        <!-- Author -->
-        <div class="text-xs mt-0.5" :class="isSelected ? 'text-[#b0d4f1]' : 'text-[#aaa]'">
-          {{ resume.authorName }}
-        </div>
-
-        <!-- Promo text -->
-        <div
-          v-if="resume.promoText"
-          class="text-xs mt-1 leading-relaxed line-clamp-2"
-          :class="isSelected ? 'text-[#a0c8e8]' : 'text-[#999]'"
-        >
-          {{ resume.promoText }}
-        </div>
-
-        <!-- Meta row -->
-        <div class="flex items-center gap-3 mt-1.5 text-xs" :class="isSelected ? 'text-[#b0d4f1]' : 'text-[#888]'">
+        <div class="text-sm mt-0.5" style="color: var(--color-text-secondary);">{{ resume.authorName }}</div>
+        <div v-if="resume.promoText" class="text-sm mt-1.5 leading-relaxed line-clamp-2" style="color: var(--color-text-tertiary);">{{ resume.promoText }}</div>
+        <div class="flex items-center gap-3 mt-2 text-xs" style="color: var(--color-text-tertiary);">
           <button
-            class="flex items-center gap-0.5 hover:text-[#e74c3c] transition-colors"
-            :class="isLiked ? 'text-[#e74c3c]' : ''"
+            class="flex items-center gap-0.5 transition-colors"
+            :style="{ color: isLiked ? 'var(--color-danger)' : 'var(--color-text-tertiary)' }"
             @click.stop="emit('like', resume.id)"
+            @mouseenter="(e: MouseEvent) => { if (!isLiked) (e.currentTarget as HTMLElement).style.color = 'var(--color-danger)' }"
+            @mouseleave="(e: MouseEvent) => { if (!isLiked) (e.currentTarget as HTMLElement).style.color = 'var(--color-text-tertiary)' }"
           >
             <Heart class="w-3 h-3" :fill="isLiked ? 'currentColor' : 'none'" />
             {{ resume.likeCount || 0 }}

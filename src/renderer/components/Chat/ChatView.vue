@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted, nextTick, defineAsyncComponent } from 'vue'
-import { MoreVertical, Bell, BellOff, EyeOff, LogOut, Users, UserPlus, Info } from 'lucide-vue-next'
+import { MoreVertical, Bell, BellOff, EyeOff, LogOut, Users, UserPlus, Info, Bean } from 'lucide-vue-next'
 import { useSocialStore } from '@/stores/social'
 import { useEditorStore } from '@/stores/editor'
 import { useAuthStore } from '@/stores/auth'
 import { usePostStore } from '@/stores/post'
 import { API_BASE_URL } from '@/api/http'
+import { avatarColor } from '@/utils/format'
 import MessageBubble from './MessageBubble.vue'
 import ChatInput from './ChatInput.vue'
 import GroupJoinRequestsPanel from './GroupJoinRequestsPanel.vue'
@@ -26,6 +27,7 @@ const showMenu = ref(false)
 const showJoinRequests = ref(false)
 const showGroupInfo = ref(false)
 const showFriendInfo = ref(false)
+const avatarImgError = ref(false)
 
 const postStore = usePostStore()
 
@@ -164,18 +166,20 @@ onUnmounted(() => {
     <!-- 头部栏 -->
     <div class="flex items-center justify-between px-4 py-2.5 border-b border-vscode-border bg-vscode-bg">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-full bg-vscode-active flex items-center justify-center text-xs text-vscode-text overflow-hidden">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs overflow-hidden" :style="{ backgroundColor: avatarColor(store.activeConversation?.id || 'default') }">
           <img
-            v-if="store.activeConversation?.avatar"
+            v-if="store.activeConversation?.avatar && !avatarImgError"
             :src="getAvatarUrl(store.activeConversation.avatar)"
             :alt="store.activeConversation.name"
             class="w-full h-full object-cover"
+            @error="avatarImgError = true"
           />
           <span v-else>{{ (store.activeConversation?.name || '?')[0] }}</span>
         </div>
         <div>
-          <div class="text-sm font-medium text-vscode-text">
+          <div class="text-sm font-medium text-vscode-text flex items-center gap-1.5">
             {{ store.activeConversation?.name || (store.activeConversation?.type === 'GROUP' ? '未命名群聊' : '未知用户') }}
+            <span v-if="store.activeConversation?.type === 'GROUP'" class="badge flex-shrink-0" style="background:var(--color-primary-subtle);color:var(--color-primary-dark);font-size:10px;padding:1px 6px;">群</span>
           </div>
           <div class="text-xs text-vscode-text-secondary">
             <template v-if="store.activeConversation?.type === 'GROUP'">
@@ -256,7 +260,7 @@ onUnmounted(() => {
             </button>
             <hr class="border-vscode-border my-1" />
             <button
-              class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-400 hover:bg-red-400/10 transition-colors"
+              class="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-danger hover:bg-danger-subtle transition-colors"
               @click="showMenu = false; handleLeave()"
             >
               <LogOut class="w-4 h-4" />
@@ -315,7 +319,10 @@ onUnmounted(() => {
           v-if="!store.loadingMessages && store.messages.length === 0"
           class="h-full flex flex-col items-center justify-center text-vscode-text-secondary"
         >
-          <div class="text-4xl mb-3 opacity-30">{{ isBeanNotify ? '💎' : '🔔' }}</div>
+          <div class="mb-3 opacity-30 flex items-center justify-center">
+            <Bell v-if="!isBeanNotify" :size="36" />
+            <Bean v-else :size="36" />
+          </div>
           <div class="text-sm">暂无通知</div>
         </div>
 
@@ -350,7 +357,7 @@ onUnmounted(() => {
           v-if="!store.loadingMessages && store.messages.length === 0"
           class="h-full flex flex-col items-center justify-center text-vscode-text-secondary"
         >
-          <div class="text-4xl mb-3 opacity-30">💬</div>
+          <div class="text-4xl mb-3 opacity-30"><MessageCircle :size="36" style="opacity:0.3;" /></div>
           <div class="text-sm">暂无消息，开始聊天吧</div>
         </div>
 

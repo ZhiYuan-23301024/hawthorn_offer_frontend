@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { Search, Loader, Users, UserPlus, Send } from 'lucide-vue-next'
 import { useSocialStore } from '@/stores/social'
 import { useEditorStore } from '@/stores/editor'
+import { avatarUrl, avatarColor } from '@/utils/format'
 import ChatView from './ChatView.vue'
 
 const store = useSocialStore()
@@ -12,6 +13,7 @@ const searchCode = ref('')
 const joinMessage = ref('')
 const showJoinForm = ref(false)
 const joining = ref(false)
+const imgError = ref(false)
 
 async function handleSearch() {
   if (!searchCode.value.trim()) return
@@ -74,14 +76,15 @@ async function handleJoin() {
       class="border border-vscode-border rounded-lg p-3 bg-vscode-bg"
     >
       <div class="flex items-center gap-3 mb-3">
-        <div class="w-10 h-10 rounded-full bg-vscode-active flex items-center justify-center text-sm text-vscode-text overflow-hidden">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm overflow-hidden" :style="{ backgroundColor: avatarColor(store.groupSearchResult.id || 'search') }">
           <img
-            v-if="store.groupSearchResult.avatar"
-            :src="store.groupSearchResult.avatar"
+            v-if="store.groupSearchResult.avatar && !imgError"
+            :src="avatarUrl(store.groupSearchResult.avatar)"
             :alt="store.groupSearchResult.name"
             class="w-full h-full object-cover"
+            @error="imgError = true"
           />
-          <Users v-else class="w-5 h-5 text-vscode-text-secondary" />
+          <span v-else>{{ (store.groupSearchResult.name || '群')[0] }}</span>
         </div>
         <div class="flex-1 min-w-0">
           <div class="text-sm font-medium text-vscode-text">{{ store.groupSearchResult.name }}</div>

@@ -17,8 +17,8 @@ const emit = defineEmits<{
 
 const categoryStyles = computed(() => {
   const styles: Record<string, { bg: string; border: string; dot: string }> = {
-    '编程': { bg: 'bg-amber-100', border: 'border-amber-500', dot: 'bg-amber-500' },
-    '学习': { bg: 'bg-blue-100', border: 'border-blue-500', dot: 'bg-blue-500' },
+    '编程': { bg: 'bg-warning-subtle', border: 'border-warning', dot: 'bg-warning' },
+    '学习': { bg: 'bg-primary-subtle', border: 'border-primary', dot: 'bg-primary' },
     '健康': { bg: 'bg-emerald-100', border: 'border-emerald-500', dot: 'bg-emerald-500' },
     '习惯': { bg: 'bg-violet-100', border: 'border-violet-500', dot: 'bg-violet-500' },
     '其他': { bg: 'bg-gray-100', border: 'border-gray-400', dot: 'bg-gray-400' },
@@ -26,12 +26,14 @@ const categoryStyles = computed(() => {
   return styles[props.node.category] || styles['其他']
 })
 
-const categoryIcons: Record<string, string> = {
-  '编程': '💻',
-  '学习': '📚',
-  '健康': '💪',
-  '习惯': '🌱',
-  '其他': '📌',
+import { Code2, BookOpen, Heart, Repeat, Tag } from 'lucide-vue-next'
+
+const categoryIcons: Record<string, any> = {
+  '编程': Code2,
+  '学习': BookOpen,
+  '健康': Heart,
+  '习惯': Repeat,
+  '其他': Tag,
 }
 
 function handleMouseDown(e: MouseEvent) {
@@ -68,7 +70,7 @@ function handleTargetHandleMouseDown(e: MouseEvent) {
     <div class="connection-handle absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-[10px] h-[10px] rounded-full bg-gray-400 hover:bg-gray-600 cursor-crosshair transition-colors" @mousedown="handleSourceHandleMouseDown"></div>
     
     <div class="flex items-center space-x-2">
-      <span class="text-lg">{{ categoryIcons[node.category] || '📌' }}</span>
+      <component :is="categoryIcons[node.category] || Tag" class="w-4 h-4" style="color: var(--color-text-secondary);" />
       <span class="font-medium text-sm text-vscode-text truncate max-w-[100px]">{{ node.taskName }}</span>
     </div>
     

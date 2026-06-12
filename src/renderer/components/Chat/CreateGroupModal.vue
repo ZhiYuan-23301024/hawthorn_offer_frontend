@@ -2,6 +2,7 @@
 import { ref, watch, computed } from 'vue'
 import { X, Search, Loader, Check, Users } from 'lucide-vue-next'
 import { useSocialStore } from '@/stores/social'
+import { avatarUrl, avatarColor } from '@/utils/format'
 import type { UserBriefVO } from '@/api/social'
 
 const props = defineProps<{
@@ -17,6 +18,7 @@ const store = useSocialStore()
 
 const groupName = ref('')
 const friendSearch = ref('')
+const imgErrors = ref<Set<string>>(new Set())
 const selectedMembers = ref<UserBriefVO[]>([])
 const friends = ref<UserBriefVO[]>([])
 const loadingFriends = ref(false)
@@ -81,7 +83,7 @@ async function handleCreate() {
   <Teleport to="body">
     <div
       v-if="show"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      class="fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(36, 34, 32, 0.35);"
       @click.self="emit('close')"
     >
       <div class="bg-vscode-sidebar border border-vscode-border rounded-lg shadow-2xl w-[420px] max-h-[560px] flex flex-col">
@@ -125,7 +127,7 @@ async function handleCreate() {
               >
                 {{ m.nickname }}
                 <button
-                  class="hover:text-red-400 transition-colors"
+                  class="hover:text-danger transition-colors"
                   @click="toggleMember(m)"
                 >
                   <X class="w-3 h-3" />
@@ -163,12 +165,13 @@ async function handleCreate() {
                 :class="isSelected(friend.id) ? 'bg-vscode-info/10' : ''"
                 @click="toggleMember(friend)"
               >
-                <div class="w-8 h-8 rounded-full bg-vscode-active flex items-center justify-center text-xs text-vscode-text overflow-hidden flex-shrink-0">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs overflow-hidden flex-shrink-0" :style="{ backgroundColor: avatarColor(friend.id) }">
                   <img
-                    v-if="friend.avatar"
-                    :src="friend.avatar"
+                    v-if="friend.avatar && !imgErrors.has(friend.id)"
+                    :src="avatarUrl(friend.avatar)"
                     :alt="friend.nickname"
                     class="w-full h-full object-cover"
+                    @error="imgErrors.add(friend.id)"
                   />
                   <span v-else>{{ (friend.nickname || '?')[0] }}</span>
                 </div>

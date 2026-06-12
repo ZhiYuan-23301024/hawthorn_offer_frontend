@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { X, Search, Loader, Users, UserPlus, Send } from 'lucide-vue-next'
 import { useSocialStore } from '@/stores/social'
+import { avatarUrl, avatarColor } from '@/utils/format'
 
 const props = defineProps<{
   show: boolean
@@ -17,6 +18,7 @@ const searchCode = ref('')
 const joinMessage = ref('')
 const showJoinForm = ref(false)
 const joining = ref(false)
+const imgError = ref(false)
 
 watch(() => props.show, (val) => {
   if (!val) {
@@ -54,7 +56,7 @@ async function handleJoin() {
   <Teleport to="body">
     <div
       v-if="show"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      class="fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(36, 34, 32, 0.35);"
       @click.self="emit('close')"
     >
       <div class="bg-vscode-sidebar border border-vscode-border rounded-lg shadow-2xl w-[400px] max-h-[480px] flex flex-col">
@@ -110,14 +112,15 @@ async function handleJoin() {
             class="border border-vscode-border rounded-lg p-3 bg-vscode-bg"
           >
             <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 rounded-full bg-vscode-active flex items-center justify-center text-sm text-vscode-text overflow-hidden">
+              <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm overflow-hidden" :style="{ backgroundColor: avatarColor(store.groupSearchResult.id || 'search') }">
                 <img
-                  v-if="store.groupSearchResult.avatar"
-                  :src="store.groupSearchResult.avatar"
+                  v-if="store.groupSearchResult.avatar && !imgError"
+                  :src="avatarUrl(store.groupSearchResult.avatar)"
                   :alt="store.groupSearchResult.name"
                   class="w-full h-full object-cover"
+                  @error="imgError = true"
                 />
-                <Users v-else class="w-5 h-5 text-vscode-text-secondary" />
+                <span v-else>{{ (store.groupSearchResult.name || '群')[0] }}</span>
               </div>
               <div class="flex-1 min-w-0">
                 <div class="text-sm font-medium text-vscode-text">{{ store.groupSearchResult.name }}</div>

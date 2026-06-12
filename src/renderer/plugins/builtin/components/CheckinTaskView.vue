@@ -98,7 +98,7 @@ onMounted(() => {
       </div>
 
       <button
-        class="w-full py-3 rounded-lg bg-vscode-success hover:bg-green-600 text-white font-semibold transition-colors text-lg"
+        class="w-full py-3 rounded-lg bg-success text-white font-semibold transition-colors text-lg" style="--hover-bg: var(--color-success);"
         @click="completeTask"
       >
         完成任务

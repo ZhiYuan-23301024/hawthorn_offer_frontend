@@ -41,31 +41,38 @@ function handleItemClick(itemId: string) {
 </script>
 
 <template>
-  <aside class="w-12 bg-vscode-sidebar flex flex-col items-center py-4 border-r border-vscode-border flex-shrink-0">
-    <div class="flex-1 flex flex-col items-center space-y-1">
+  <aside
+    class="w-11 flex flex-col items-center py-3 flex-shrink-0 glass-sidebar"
+    style="border-right: 1px solid var(--color-border);"
+  >
+    <div class="flex-1 flex flex-col items-center gap-0.5">
       <button
         v-for="item in sidebarStore.items"
         :key="item.id"
-        class="w-10 h-10 flex items-center justify-center rounded transition-all relative group"
-        :class="{
-          'bg-vscode-active': sidebarStore.activeItem === item.id
+        class="w-9 h-9 flex items-center justify-center rounded-md transition-all relative group cursor-pointer"
+        :style="{
+          backgroundColor: sidebarStore.activeItem === item.id ? 'var(--color-primary-subtle)' : 'transparent',
         }"
         @click="handleItemClick(item.id)"
       >
         <component
           :is="iconComponents[item.icon] || MessageCircle"
           class="w-5 h-5 transition-colors"
-          :class="{
-            'text-vscode-icon-hover': sidebarStore.activeItem === item.id,
-            'text-vscode-icon': sidebarStore.activeItem !== item.id
+          :style="{
+            color: sidebarStore.activeItem === item.id ? 'var(--color-primary-dark)' : 'var(--color-text-tertiary)',
           }"
         />
         <!-- 未读消息角标 -->
         <span
           v-if="item.id === 'chat' && socialStore.totalUnread > 0"
-          class="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 leading-none"
+          class="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] flex items-center justify-center rounded-full text-white text-[10px] font-bold px-1 leading-none"
+          style="background-color: var(--color-danger);"
         >{{ socialStore.totalUnread > 99 ? '99+' : socialStore.totalUnread }}</span>
-        <span class="absolute left-full ml-2 px-2 py-1 bg-vscode-active text-vscode-text text-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+        <!-- 提示文字 -->
+        <span
+          class="absolute left-full ml-2 px-2 py-1 rounded-md text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 glass-float"
+          style="color: var(--color-text-primary);"
+        >
           {{ item.label }}
         </span>
       </button>

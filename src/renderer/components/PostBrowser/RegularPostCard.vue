@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Heart, MessageSquare } from 'lucide-vue-next'
+import { Heart, MessageSquare, Pin, Bean } from 'lucide-vue-next'
 import type { PostListVO } from '@/api/post'
 import { avatarUrl, avatarColor, formatTimeAgo } from '@/utils/format'
 
@@ -30,21 +30,25 @@ function computeRemaining(expiresAt: string | null): string {
 <template>
   <div
     class="px-3 py-2.5 rounded-lg cursor-pointer transition-colors border border-transparent relative"
-    :class="isSelected ? 'bg-[#094771] border-[#007acc]' : 'hover:bg-[#2a2a2a]'"
+    :style="{
+      backgroundColor: isSelected ? 'var(--color-primary-subtle)' : (post.isPinned ? 'var(--color-warning-subtle)' : 'transparent'),
+      borderColor: isSelected ? 'var(--color-primary)' : (post.isPinned ? 'rgba(168,144,108,0.15)' : 'transparent'),
+    }"
     @click="emit('select', post.id)"
+    @mouseenter="(e: MouseEvent) => { if (!isSelected) (e.currentTarget as HTMLElement).style.backgroundColor = post.isPinned ? 'var(--color-warning-subtle)' : 'var(--color-surface-hover)' }"
+    @mouseleave="(e: MouseEvent) => { if (!isSelected) (e.currentTarget as HTMLElement).style.backgroundColor = post.isPinned ? 'var(--color-warning-subtle)' : 'transparent' }"
   >
-    <!-- 置顶标识 -->
     <div v-if="post.isPinned" class="flex items-center gap-1 mb-1">
-      <span class="text-xs text-[#e74c3c] font-medium">📌 置顶</span>
-      <span v-if="post.pinExpiresAt" class="text-xs text-[#888]">
+      <span class="text-xs font-medium" style="color: var(--color-danger);"><Pin class="w-3 h-3 inline-block" style="color:var(--color-danger);" /> 置顶</span>
+      <span v-if="post.pinExpiresAt" class="text-xs" style="color: var(--color-text-tertiary);">
         · 剩余 {{ computeRemaining(post.pinExpiresAt) }}
       </span>
     </div>
 
-    <!-- 内推标识 -->
     <div v-if="post.postType === 'referral'" class="absolute top-2 right-2">
-      <span class="text-xs text-[#4a9eff] bg-[#4a9eff]/15 px-2 py-0.5 rounded font-medium">内推</span>
+      <span class="text-xs px-2 py-0.5 rounded font-medium" style="background-color: var(--color-primary-subtle); color: var(--color-primary-dark);">内推</span>
     </div>
+
     <div class="flex items-start gap-2.5">
       <div
         class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden"
@@ -54,31 +58,28 @@ function computeRemaining(expiresAt: string | null): string {
         <span v-show="imgError || !avatarUrl(post.authorAvatarUrl)">{{ post.authorAvatar || '?' }}</span>
       </div>
       <div class="flex-1 min-w-0">
-        <div class="font-semibold text-sm" :class="isSelected ? 'text-white' : 'text-[#ddd]'">
+        <div class="font-semibold text-sm" :style="{ color: isSelected ? 'var(--color-text-primary)' : 'var(--color-text-primary)' }">
           {{ post.title }}
         </div>
-        <!-- Bounty badge for QA posts -->
         <div v-if="post.postType === 'qa'" class="flex items-center gap-2 mt-0.5">
-          <span class="text-xs text-[#f0c040]">🫘 {{ post.bountyBeans }}</span>
-          <span v-if="post.bountyStatus === 'active'" class="text-xs text-[#4a9eff]">求助中</span>
-          <span v-else-if="post.bountyStatus === 'expired'" class="text-xs text-[#888]">已结束</span>
-          <span v-else-if="post.bountyStatus === 'distributed'" class="text-xs text-[#27ae60]">已分配</span>
+          <span class="text-xs" style="color: var(--color-warning);">{{ post.bountyBeans  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></span>
+          <span v-if="post.bountyStatus === 'active'" class="text-xs" style="color: var(--color-primary);">求助中</span>
+          <span v-else-if="post.bountyStatus === 'expired'" class="text-xs" style="color: var(--color-text-tertiary);">已结束</span>
+          <span v-else-if="post.bountyStatus === 'distributed'" class="text-xs" style="color: var(--color-success);">已分配</span>
         </div>
-
-        <div class="text-xs mt-0.5" :class="isSelected ? 'text-[#b0d4f1]' : 'text-[#aaa]'">
+        <div class="text-sm mt-0.5" :style="{ color: isSelected ? 'var(--color-text-secondary)' : 'var(--color-text-secondary)' }">
           {{ post.authorName }}
         </div>
-        <div
-          class="text-xs mt-1 leading-relaxed line-clamp-2"
-          :class="isSelected ? 'text-[#a0c8e8]' : 'text-[#999]'"
-        >
+        <div class="text-sm mt-1.5 leading-relaxed line-clamp-2" :style="{ color: isSelected ? 'var(--color-text-tertiary)' : 'var(--color-text-tertiary)' }">
           {{ post.excerpt }}
         </div>
-        <div class="flex items-center gap-3 mt-1.5 text-xs" :class="isSelected ? 'text-[#b0d4f1]' : 'text-[#888]'">
+        <div class="flex items-center gap-3 mt-2 text-xs" :style="{ color: isSelected ? 'var(--color-text-tertiary)' : 'var(--color-text-tertiary)' }">
           <button
-            class="flex items-center gap-0.5 hover:text-[#e74c3c] transition-colors"
-            :class="isLiked ? 'text-[#e74c3c]' : ''"
+            class="flex items-center gap-0.5 transition-colors"
+            :style="{ color: isLiked ? 'var(--color-danger)' : 'var(--color-text-tertiary)' }"
             @click.stop="emit('like', post.id)"
+            @mouseenter="(e: MouseEvent) => { if (!isLiked) (e.currentTarget as HTMLElement).style.color = 'var(--color-danger)' }"
+            @mouseleave="(e: MouseEvent) => { if (!isLiked) (e.currentTarget as HTMLElement).style.color = 'var(--color-text-tertiary)' }"
           >
             <Heart class="w-3 h-3" :fill="isLiked ? 'currentColor' : 'none'" />
             {{ post.likeCount }}

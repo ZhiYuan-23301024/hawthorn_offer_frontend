@@ -63,11 +63,11 @@ function getTargetNode(edge: PlanEdge) {
 
 function getEdgeColor(type: string) {
   const colors: Record<string, string> = {
-    'main': '#3b82f6',
-    'branch': '#f97316',
-    'side': '#10b981',
+    'main': '#7B8FA6',
+    'branch': '#A8906C',
+    'side': '#6B8C73',
   }
-  return colors[type] || '#3b82f6'
+  return colors[type] || '#7B8FA6'
 }
 
 function handleMouseDown(e: MouseEvent) {
@@ -111,17 +111,19 @@ function resetZoom() {
   canvasState.offsetY = 0
 }
 
-const categoryIcons: Record<string, string> = {
-  '编程': '💻',
-  '学习': '📚',
-  '健康': '💪',
-  '习惯': '🌱',
-  '其他': '📌',
+import { Code2, BookOpen, Heart, Repeat, Tag, ClipboardList, PartyPopper } from 'lucide-vue-next'
+
+const categoryIcons: Record<string, any> = {
+  '编程': Code2,
+  '学习': BookOpen,
+  '健康': Heart,
+  '习惯': Repeat,
+  '其他': Tag,
 }
 
 const categoryStyles: Record<string, { bg: string; border: string; dot: string }> = {
-  '编程': { bg: 'bg-amber-100', border: 'border-amber-500', dot: 'bg-amber-500' },
-  '学习': { bg: 'bg-blue-100', border: 'border-blue-500', dot: 'bg-blue-500' },
+  '编程': { bg: 'bg-warning-subtle', border: 'border-warning', dot: 'bg-warning' },
+  '学习': { bg: 'bg-primary-subtle', border: 'border-primary', dot: 'bg-primary' },
   '健康': { bg: 'bg-emerald-100', border: 'border-emerald-500', dot: 'bg-emerald-500' },
   '习惯': { bg: 'bg-violet-100', border: 'border-violet-500', dot: 'bg-violet-500' },
   '其他': { bg: 'bg-gray-100', border: 'border-gray-400', dot: 'bg-gray-400' },
@@ -187,15 +189,15 @@ onUnmounted(() => {
     <div class="flex-1 p-4 overflow-hidden">
       <div class="flex items-center space-x-4 mb-4 text-sm">
         <div class="flex items-center space-x-2">
-          <span class="w-3 h-0.5 bg-blue-500"></span>
+          <span class="w-3 h-0.5 bg-primary"></span>
           <span class="text-vscode-text-secondary">主线（蓝色）- 核心路径</span>
         </div>
         <div class="flex items-center space-x-2">
-          <span class="w-3 h-0.5 bg-orange-500"></span>
+          <span class="w-3 h-0.5 bg-warning"></span>
           <span class="text-vscode-text-secondary">支线A（橙色）- 推荐完成</span>
         </div>
         <div class="flex items-center space-x-2">
-          <span class="w-3 h-0.5 bg-green-500" style="border-bottom: 2px dashed;"></span>
+          <span class="w-3 h-0.5 bg-success" style="border-bottom: 2px dashed;"></span>
           <span class="text-vscode-text-secondary">支线B（绿色虚线）- 可选任务</span>
         </div>
       </div>
@@ -207,7 +209,7 @@ onUnmounted(() => {
           ref="canvasRef"
           class="canvas-area relative w-full h-[calc(100%-32px)] overflow-hidden rounded"
           :style="{
-            backgroundImage: 'radial-gradient(circle, #374151 1px, transparent 1px)',
+            backgroundImage: 'radial-gradient(circle, #D4D0CA 1px, transparent 1px)',
             backgroundSize: `${20 * canvasState.scale}px ${20 * canvasState.scale}px`,
             backgroundPosition: `${canvasState.offsetX}px ${canvasState.offsetY}px`,
             cursor: canvasState.isPanning ? 'grabbing' : 'grab'
@@ -224,13 +226,13 @@ onUnmounted(() => {
           >
             <defs>
               <marker id="arrowhead-main-roadmap" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0 L0,6 L9,3 z" fill="#3b82f6" />
+                <path d="M0,0 L0,6 L9,3 z" fill="#7B8FA6" />
               </marker>
               <marker id="arrowhead-branch-roadmap" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0 L0,6 L9,3 z" fill="#f97316" />
+                <path d="M0,0 L0,6 L9,3 z" fill="#A8906C" />
               </marker>
               <marker id="arrowhead-side-roadmap" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0 L0,6 L9,3 z" fill="#10b981" />
+                <path d="M0,0 L0,6 L9,3 z" fill="#6B8C73" />
               </marker>
             </defs>
             
@@ -271,7 +273,7 @@ onUnmounted(() => {
               >
                 <div class="flex items-center justify-between mb-2">
                   <div class="flex items-center space-x-2">
-                    <span class="text-lg">{{ categoryIcons[node.category] || '📌' }}</span>
+                    <component :is="categoryIcons[node.category] || Tag" class="w-4 h-4" style="color: var(--color-text-secondary);" />
                     <span class="font-medium text-sm text-vscode-text">{{ node.taskName }}</span>
                   </div>
                   <button
@@ -307,13 +309,13 @@ onUnmounted(() => {
         </div>
 
         <div v-if="!plan?.nodes.length" class="text-center py-12">
-          <div class="text-4xl mb-4">📋</div>
+          <ClipboardList :size="40" class="mb-4 mx-auto" style="opacity:0.2;color:var(--color-text-secondary);" />
           <p class="text-vscode-text-secondary">该计划暂无任务节点</p>
         </div>
       </div>
 
       <div v-if="progress === 100" class="mt-4 text-center py-4">
-        <div class="text-4xl mb-2">🎉</div>
+        <PartyPopper :size="40" class="mb-2 mx-auto" style="opacity:0.2;color:var(--color-warning);" />
         <h3 class="text-lg font-bold text-vscode-text">恭喜完成所有任务！</h3>
       </div>
     </div>

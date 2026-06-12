@@ -133,71 +133,79 @@ function handleCampusFeatureSelect(featureId: string) {
     { activeSection: featureId }
   )
 }
-
 </script>
 
 <template>
-  <aside class="w-64 bg-vscode-bg border-r border-vscode-border flex flex-col flex-shrink-0">
-    <div v-if="currentPlugin?.id !== 'chat'" class="p-2 border-b border-vscode-border">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold text-vscode-text-secondary uppercase tracking-wider">
-          {{ directoryTitle }}
-        </span>
-      </div>
+  <aside
+    class="w-60 flex flex-col flex-shrink-0"
+    style="background-color: var(--color-surface); border-right: 1px solid var(--color-border);"
+  >
+    <div
+      v-if="currentPlugin?.id !== 'chat'"
+      class="px-4 py-3"
+      style="border-bottom: 1px solid var(--color-divider);"
+    >
+      <span
+        class="text-xs font-semibold tracking-wider uppercase"
+        style="color: var(--color-text-tertiary); font-family: var(--font-display);"
+      >
+        {{ directoryTitle }}
+      </span>
     </div>
 
     <div class="flex-1 overflow-hidden">
       <ExplorerPanel v-if="showExplorer" />
 
-      <div v-else-if="currentPlugin?.id === 'account'" class="p-2">
-        <div class="text-xs font-medium text-vscode-text-secondary mb-2">功能目录</div>
-        <div
-          class="max-h-64 overflow-y-auto pr-1"
-          tabindex="0"
-          role="list"
-          aria-label="个人设置目录"
-        >
+      <div v-else-if="currentPlugin?.id === 'account'" class="p-3">
+        <div class="text-xs font-medium mb-2" style="color: var(--color-text-tertiary);">功能目录</div>
+        <div class="space-y-0.5" tabindex="0" role="list" aria-label="个人设置目录">
           <div
-          v-for="feature in accountFeatures"
-          :key="feature.id"
-          class="flex items-center px-2 py-1.5 rounded cursor-pointer transition-colors"
-          :class="feature.id === accountFeatures[activeAccountIndex]?.id ? 'bg-vscode-selected/60' : 'hover:bg-vscode-selected/20'"
-          role="button"
-          @click="handleAccountFeatureSelect(feature.id)"
-        >
-          <component :is="feature.icon" class="w-4 h-4 mr-2 text-vscode-icon" />
-          <span class="text-sm text-vscode-text">{{ feature.label }}</span>
-          <span class="ml-auto text-xs text-vscode-text-secondary">{{ feature.id === accountFeatures[activeAccountIndex]?.id ? '正在查看' : '' }}</span>
-        </div>
+            v-for="(feature, idx) in accountFeatures"
+            :key="feature.id"
+            class="flex items-center px-3 py-2 rounded-md cursor-pointer transition-colors text-sm"
+            :class="idx === activeAccountIndex ? 'nav-active' : ''"
+            :style="{
+              backgroundColor: idx === activeAccountIndex ? 'var(--color-primary-subtle)' : 'transparent',
+              color: idx === activeAccountIndex ? 'var(--color-primary-dark)' : 'var(--color-text-secondary)',
+            }"
+            role="button"
+            @click="handleAccountFeatureSelect(feature.id)"
+            @mouseenter="(e: MouseEvent) => { if (idx !== activeAccountIndex) (e.target as HTMLElement).style.backgroundColor = 'var(--color-surface-hover)' }"
+            @mouseleave="(e: MouseEvent) => { if (idx !== activeAccountIndex) (e.target as HTMLElement).style.backgroundColor = 'transparent' }"
+          >
+            <component :is="feature.icon" class="w-4 h-4 mr-2.5 flex-shrink-0" :style="{ color: idx === activeAccountIndex ? 'var(--color-primary)' : 'var(--color-text-tertiary)' }" />
+            <span class="font-medium">{{ feature.label }}</span>
+            <span v-if="idx === activeAccountIndex" class="ml-auto text-xs" style="color: var(--color-text-tertiary);">查看中</span>
+          </div>
         </div>
       </div>
 
-      <div v-else-if="currentPlugin?.id === 'campusRecruitment'" class="p-2">
-        <div class="text-xs font-medium text-vscode-text-secondary mb-2">专区目录</div>
-        <div
-          class="max-h-72 overflow-y-auto pr-1"
-          tabindex="0"
-          role="list"
-          aria-label="校招专区目录"
-        >
+      <div v-else-if="currentPlugin?.id === 'campusRecruitment'" class="p-3">
+        <div class="text-xs font-medium mb-2" style="color: var(--color-text-tertiary);">专区目录</div>
+        <div class="space-y-0.5" tabindex="0" role="list" aria-label="校招专区目录">
           <div
-            v-for="feature in campusFeatures"
+            v-for="(feature, idx) in campusFeatures"
             :key="feature.id"
-            class="flex items-center px-2 py-1.5 rounded cursor-pointer transition-colors"
-            :class="feature.id === campusFeatures[activeCampusIndex]?.id ? 'bg-vscode-selected/60' : 'hover:bg-vscode-selected/20'"
+            class="flex items-center px-3 py-2 rounded-md cursor-pointer transition-colors text-sm"
+            :style="{
+              backgroundColor: idx === activeCampusIndex ? 'var(--color-primary-subtle)' : 'transparent',
+              color: idx === activeCampusIndex ? 'var(--color-primary-dark)' : 'var(--color-text-secondary)',
+            }"
             role="button"
             @click="handleCampusFeatureSelect(feature.id)"
+            @mouseenter="(e: MouseEvent) => { if (idx !== activeCampusIndex) (e.target as HTMLElement).style.backgroundColor = 'var(--color-surface-hover)' }"
+            @mouseleave="(e: MouseEvent) => { if (idx !== activeCampusIndex) (e.target as HTMLElement).style.backgroundColor = 'transparent' }"
           >
-            <component :is="feature.icon" class="w-4 h-4 mr-2 text-vscode-icon" />
-            <span class="text-sm text-vscode-text">{{ feature.label }}</span>
-            <span class="ml-auto text-xs text-vscode-text-secondary">{{ feature.id === campusFeatures[activeCampusIndex]?.id ? '正在查看' : '' }}</span>
+            <component :is="feature.icon" class="w-4 h-4 mr-2.5 flex-shrink-0" :style="{ color: idx === activeCampusIndex ? 'var(--color-primary)' : 'var(--color-text-tertiary)' }" />
+            <span class="font-medium">{{ feature.label }}</span>
+            <span v-if="idx === activeCampusIndex" class="ml-auto text-xs" style="color: var(--color-text-tertiary);">查看中</span>
           </div>
         </div>
       </div>
 
       <component v-else-if="currentComponent" :is="currentComponent" />
 
-      <div v-else class="h-full p-4 text-vscode-text-secondary text-sm">
+      <div v-else class="h-full flex items-center justify-center p-4 text-sm" style="color: var(--color-text-tertiary);">
         <p>选择左侧功能查看对应内容</p>
       </div>
     </div>

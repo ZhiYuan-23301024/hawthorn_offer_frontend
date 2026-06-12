@@ -1,5 +1,5 @@
 <script setup lang="ts">import { ref, reactive, watch, onMounted, onUnmounted } from 'vue';
-import { Save, Undo, Redo, Maximize2, ZoomIn, ZoomOut, Trash2 } from 'lucide-vue-next';
+import { Save, Undo, Redo, Maximize2, ZoomIn, ZoomOut, Trash2, ClipboardList } from 'lucide-vue-next';
 import CheckinNode from './CheckinNode.vue';
 import CheckinEdge from './CheckinEdge.vue';
 import type { PlanNode, PlanEdge } from '@/types/checkin';
@@ -258,11 +258,11 @@ function handleSave() {
 }
 function getEdgeColor(type: string) {
  const colors: Record<string, string> = {
- 'main': '#3b82f6',
- 'branch': '#f97316',
- 'side': '#10b981',
+ 'main': '#7B8FA6',
+ 'branch': '#A8906C',
+ 'side': '#6B8C73',
  };
- return colors[type] || '#3b82f6';
+ return colors[type] || '#7B8FA6';
 }
 function closeContextMenu() {
  canvasState.showContextMenu = false;
@@ -386,7 +386,7 @@ onUnmounted(() => {
       ref="canvasRef"
       class="flex-1 relative overflow-hidden canvas-area"
       :style="{
-        backgroundImage: 'radial-gradient(circle, #374151 1px, transparent 1px)',
+        backgroundImage: 'radial-gradient(circle, #D4D0CA 1px, transparent 1px)',
         backgroundSize: `${20 * canvasState.scale}px ${20 * canvasState.scale}px`,
         backgroundPosition: `${canvasState.offsetX}px ${canvasState.offsetY}px`
       }"
@@ -408,13 +408,13 @@ onUnmounted(() => {
       >
         <defs>
           <marker id="arrowhead-main" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-            <path d="M0,0 L0,6 L9,3 z" fill="#3b82f6" />
+            <path d="M0,0 L0,6 L9,3 z" fill="#7B8FA6" />
           </marker>
           <marker id="arrowhead-branch" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-            <path d="M0,0 L0,6 L9,3 z" fill="#f97316" />
+            <path d="M0,0 L0,6 L9,3 z" fill="#A8906C" />
           </marker>
           <marker id="arrowhead-side" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-            <path d="M0,0 L0,6 L9,3 z" fill="#10b981" />
+            <path d="M0,0 L0,6 L9,3 z" fill="#6B8C73" />
           </marker>
         </defs>
         
@@ -466,7 +466,7 @@ onUnmounted(() => {
           class="absolute inset-0 flex items-center justify-center"
         >
           <div class="text-center text-vscode-text-secondary">
-            <div class="text-4xl mb-4">📋</div>
+            <ClipboardList :size="40" class="mb-4 mx-auto" style="opacity:0.2;color:var(--color-text-secondary);" />
             <p class="text-sm">从左侧任务面板拖拽任务到此处开始编排</p>
           </div>
         </div>
@@ -489,21 +489,21 @@ onUnmounted(() => {
           class="w-full px-4 py-2 text-left text-sm hover:bg-vscode-selected flex items-center space-x-2"
           @click="toggleEdgeType('main')"
         >
-          <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+          <span class="w-3 h-3 rounded-full bg-primary"></span>
           <span class="text-vscode-text">主线 (蓝色)</span>
         </button>
         <button
           class="w-full px-4 py-2 text-left text-sm hover:bg-vscode-selected flex items-center space-x-2"
           @click="toggleEdgeType('branch')"
         >
-          <span class="w-3 h-3 rounded-full bg-orange-500"></span>
+          <span class="w-3 h-3 rounded-full bg-warning"></span>
           <span class="text-vscode-text">支线A (橙色)</span>
         </button>
         <button
           class="w-full px-4 py-2 text-left text-sm hover:bg-vscode-selected flex items-center space-x-2"
           @click="toggleEdgeType('side')"
         >
-          <span class="w-3 h-3 rounded-full bg-green-500"></span>
+          <span class="w-3 h-3 rounded-full bg-success"></span>
           <span class="text-vscode-text">支线B (绿色虚线)</span>
         </button>
       </div>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { UserPlus, Edit3, Eye, EyeOff, Loader, Heart, MessageSquare, FileText, ThumbsUp, MessageCircle, UserCheck } from 'lucide-vue-next'
+import { UserPlus, Edit3, Eye, EyeOff, Loader, Heart, MessageSquare, FileText, ThumbsUp, MessageCircle, UserCheck , Bean } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorStore } from '@/stores/editor'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -220,14 +220,14 @@ function openLikedPost(targetId: string, targetType: string) {
 </script>
 
 <template>
-  <div class="h-full overflow-y-auto text-[#ccc]">
+  <div class="h-full overflow-y-auto text-vscode-text">
     <div v-if="loading" class="flex items-center justify-center h-full">
-      <Loader class="w-6 h-6 animate-spin text-[#888]" />
+      <Loader class="w-6 h-6 animate-spin text-vscode-text-secondary" />
     </div>
 
     <template v-else-if="profile">
       <!-- Header -->
-      <div class="px-6 py-5 border-b border-[#333]">
+      <div class="px-6 py-5 border-b border-vscode-border">
         <div class="flex items-start gap-5">
           <div
             class="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-3xl flex-shrink-0 overflow-hidden"
@@ -238,28 +238,28 @@ function openLikedPost(targetId: string, targetType: string) {
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <h2 class="text-xl font-bold text-[#ddd]">{{ profile.nickname }}</h2>
-              <span v-if="profile.chsiVerified" class="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">已认证</span>
+              <h2 class="text-xl font-bold text-vscode-text">{{ profile.nickname }}</h2>
+              <span v-if="profile.chsiVerified" class="text-xs px-1.5 py-0.5 rounded bg-primary-subtle text-primary border border-blue-500/30">已认证</span>
             </div>
-            <div v-if="profile.bio" class="text-sm text-[#999] mt-1">{{ profile.bio }}</div>
-            <div class="text-xs text-[#777] mt-1.5">
-              🫘 {{ profile.beans }} 百斩豆 · 加入于 {{ formatDate(profile.createdAt) }}
+            <div v-if="profile.bio" class="text-sm text-vscode-text-secondary mt-1">{{ profile.bio }}</div>
+            <div class="text-xs text-vscode-text-secondary mt-1.5">
+              {{ profile.beans  }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 百斩豆 · 加入于 {{ formatDate(profile.createdAt) }}
             </div>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
-            <button v-if="isSelf" class="flex items-center gap-1.5 px-3 py-1.5 rounded border border-[#555] text-[#aaa] text-sm hover:bg-[#2a2a2a] transition-colors" @click="handleEditProfile">
+            <button v-if="isSelf" class="flex items-center gap-1.5 px-3 py-1.5 rounded border border-vscode-border text-vscode-text-secondary text-sm hover:bg-vscode-active transition-colors" @click="handleEditProfile">
               <Edit3 class="w-3.5 h-3.5" /> 编辑资料
             </button>
             <template v-else-if="isFriend">
-              <span class="flex items-center gap-1.5 px-3 py-1.5 rounded border border-[#555] text-[#777] text-sm cursor-default">
+              <span class="flex items-center gap-1.5 px-3 py-1.5 rounded border border-vscode-border text-vscode-text-secondary text-sm cursor-default">
                 <UserCheck class="w-3.5 h-3.5" /> 已添加
               </span>
-              <button class="flex items-center gap-1.5 px-3 py-1.5 rounded border border-[#4a9eff] text-[#4a9eff] text-sm hover:bg-[#4a9eff]/10 transition-colors" @click="handleGoChat">
+              <button class="flex items-center gap-1.5 px-3 py-1.5 rounded border border-primary text-primary text-sm hover:bg-primary/10 transition-colors" @click="handleGoChat">
                 <MessageCircle class="w-3.5 h-3.5" /> 去聊天
               </button>
             </template>
             <template v-else>
-              <button class="flex items-center gap-1.5 px-3 py-1.5 rounded border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="showFriendDialog = true">
+              <button class="flex items-center gap-1.5 px-3 py-1.5 rounded border border-danger text-danger text-sm hover:bg-danger/10 transition-colors" @click="showFriendDialog = true">
                 <UserPlus class="w-3.5 h-3.5" /> 加好友
               </button>
             </template>
@@ -268,58 +268,58 @@ function openLikedPost(targetId: string, targetType: string) {
       </div>
 
       <!-- Stats: 4 columns -->
-      <div v-if="stats" class="grid grid-cols-4 gap-3 px-6 py-4 border-b border-[#333]">
+      <div v-if="stats" class="grid grid-cols-4 gap-3 px-6 py-4 border-b border-vscode-border">
         <div class="text-center">
-          <div class="text-lg font-bold text-[#4a9eff]">{{ stats.postCount }}</div>
-          <div class="text-xs text-[#777]">帖子</div>
+          <div class="text-lg font-bold text-primary">{{ stats.postCount }}</div>
+          <div class="text-xs text-vscode-text-secondary">帖子</div>
         </div>
         <div class="text-center">
-          <div class="text-lg font-bold text-[#4a9eff]">{{ stats.commentCount }}</div>
-          <div class="text-xs text-[#777]">回复</div>
+          <div class="text-lg font-bold text-primary">{{ stats.commentCount }}</div>
+          <div class="text-xs text-vscode-text-secondary">回复</div>
         </div>
         <div class="text-center">
-          <div class="text-lg font-bold text-[#4a9eff]">{{ stats.likeReceivedCount }}</div>
-          <div class="text-xs text-[#777]">获赞</div>
+          <div class="text-lg font-bold text-primary">{{ stats.likeReceivedCount }}</div>
+          <div class="text-xs text-vscode-text-secondary">获赞</div>
         </div>
         <div class="text-center">
-          <div class="text-lg font-bold text-[#f0c040]">{{ stats.adoptedCount }}</div>
-          <div class="text-xs text-[#777]">采纳</div>
+          <div class="text-lg font-bold text-warning">{{ stats.adoptedCount }}</div>
+          <div class="text-xs text-vscode-text-secondary">采纳</div>
         </div>
       </div>
 
       <!-- Tabs -->
-      <div class="flex items-center border-b border-[#333] px-6">
+      <div class="flex items-center border-b border-vscode-border px-6">
         <button
           v-for="tab in visibleTabs"
           :key="tab.key"
-          class="flex items-center gap-1.5 px-4 py-2.5 text-sm border-b-2 transition-colors group relative"
-          :class="activeTab === tab.key ? 'text-[#4a9eff] border-[#4a9eff]' : 'text-[#888] border-transparent hover:text-[#aaa]'"
+          class="flex-1 justify-center items-center gap-1.5 px-4 py-2.5 text-sm border-b-2 transition-colors group relative flex"
+          :class="activeTab === tab.key ? 'text-primary border-primary' : 'text-vscode-text-secondary border-transparent hover:text-vscode-text-secondary'"
           :title="isSelf ? '查看全部' : ''"
           @click="activeTab === tab.key && isSelf ? handleTabTitleClick() : (activeTab = tab.key)"
         >
           <component :is="tab.icon" class="w-3.5 h-3.5" />
           {{ tab.label }}
-          <span v-if="isSelf" class="ml-1 text-xs text-[#4a9eff] opacity-0 group-hover:opacity-100 transition-opacity">查看全部</span>
+          <span v-if="isSelf" class="ml-1 text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity">查看全部</span>
           <button
             v-if="isSelf"
-            class="ml-1 p-0.5 rounded hover:bg-[#333] transition-colors"
+            class="ml-1 p-0.5 rounded hover:bg-vscode-active transition-colors"
             @click.stop="togglePrivacy(tab.showKey)"
             :title="privacy[tab.showKey] !== false ? '他人可见' : '已隐藏'"
           >
-            <Eye v-if="privacy[tab.showKey] !== false" class="w-3 h-3 text-[#4a9eff]" />
-            <EyeOff v-else class="w-3 h-3 text-[#777]" />
+            <Eye v-if="privacy[tab.showKey] !== false" class="w-3 h-3 text-primary" />
+            <EyeOff v-else class="w-3 h-3 text-vscode-text-secondary" />
           </button>
         </button>
         <div class="flex-1"></div>
         <div v-if="showSort" class="flex gap-1 pr-2">
           <button
             class="px-2 py-1 text-xs rounded"
-            :class="sortMode === 'latest' ? 'bg-[#4a9eff]/20 text-[#4a9eff]' : 'text-[#888] hover:text-[#aaa]'"
+            :class="sortMode === 'latest' ? 'bg-primary/20 text-primary' : 'text-vscode-text-secondary hover:text-vscode-text-secondary'"
             @click="sortMode = 'latest'"
           >最新</button>
           <button
             class="px-2 py-1 text-xs rounded"
-            :class="sortMode === 'hot' ? 'bg-[#4a9eff]/20 text-[#4a9eff]' : 'text-[#888] hover:text-[#aaa]'"
+            :class="sortMode === 'hot' ? 'bg-primary/20 text-primary' : 'text-vscode-text-secondary hover:text-vscode-text-secondary'"
             @click="sortMode = 'hot'"
           >最热</button>
         </div>
@@ -329,15 +329,15 @@ function openLikedPost(targetId: string, targetType: string) {
       <div class="px-6 py-4">
         <!-- Posts -->
         <div v-if="activeTab === 'posts'">
-          <div v-if="displayPosts.length === 0" class="text-sm text-[#777] text-center py-8">暂无帖子</div>
+          <div v-if="displayPosts.length === 0" class="text-sm text-vscode-text-secondary text-center py-8">暂无帖子</div>
           <div
             v-for="post in displayPosts"
             :key="post.id"
-            class="py-3 border-b border-[#333] last:border-0 cursor-pointer hover:bg-[#2a2a2a] transition-colors rounded px-2 -mx-2"
+            class="py-3 border-b border-vscode-border last:border-0 cursor-pointer hover:bg-vscode-active transition-colors rounded px-2 -mx-2"
             @click="openPost(post.id)"
           >
-            <div class="text-sm font-medium text-[#ccc]">{{ post.title }}</div>
-            <div class="flex items-center gap-3 mt-1 text-xs text-[#777]">
+            <div class="text-sm font-medium text-vscode-text">{{ post.title }}</div>
+            <div class="flex items-center gap-3 mt-1 text-xs text-vscode-text-secondary">
               <span>{{ formatTimeAgo(post.createdAt) }}</span>
               <span v-if="post.likeCount" class="flex items-center gap-1"><Heart class="w-3 h-3" />{{ post.likeCount }}</span>
               <span v-if="post.commentCount" class="flex items-center gap-1"><MessageSquare class="w-3 h-3" />{{ post.commentCount }}</span>
@@ -347,17 +347,17 @@ function openLikedPost(targetId: string, targetType: string) {
 
         <!-- Comments -->
         <div v-if="activeTab === 'comments'">
-          <div v-if="displayComments.length === 0" class="text-sm text-[#777] text-center py-8">暂无回复</div>
+          <div v-if="displayComments.length === 0" class="text-sm text-vscode-text-secondary text-center py-8">暂无回复</div>
           <div
             v-for="c in displayComments"
             :key="c.id"
-            class="py-3 border-b border-[#333] last:border-0"
+            class="py-3 border-b border-vscode-border last:border-0"
           >
-            <div class="text-sm text-[#bbb] line-clamp-2">{{ c.content }}</div>
-            <div class="flex items-center gap-3 mt-1 text-xs text-[#777]">
+            <div class="text-sm text-vscode-text-secondary line-clamp-2">{{ c.content }}</div>
+            <div class="flex items-center gap-3 mt-1 text-xs text-vscode-text-secondary">
               <span>{{ formatTimeAgo(c.createdAt) }}</span>
               <span v-if="c.likeCount" class="flex items-center gap-1"><Heart class="w-3 h-3" />{{ c.likeCount }}</span>
-              <a v-if="c.postTitle" class="text-[#4a9eff] hover:underline cursor-pointer truncate max-w-[200px]" @click.stop="c.targetId && openPost(c.targetId)">
+              <a v-if="c.postTitle" class="text-primary hover:underline cursor-pointer truncate max-w-[200px]" @click.stop="c.targetId && openPost(c.targetId)">
                 @{{ c.postTitle }}
               </a>
             </div>
@@ -366,41 +366,41 @@ function openLikedPost(targetId: string, targetType: string) {
 
         <!-- Likes -->
         <div v-if="activeTab === 'likes'">
-          <div v-if="displayLikes.length === 0" class="text-sm text-[#777] text-center py-8">暂无点赞</div>
+          <div v-if="displayLikes.length === 0" class="text-sm text-vscode-text-secondary text-center py-8">暂无点赞</div>
           <div
             v-for="item in displayLikes"
             :key="`${item.targetId}-${item.targetType}`"
-            class="py-3 border-b border-[#333] last:border-0 cursor-pointer hover:bg-[#2a2a2a] transition-colors rounded px-2 -mx-2"
+            class="py-3 border-b border-vscode-border last:border-0 cursor-pointer hover:bg-vscode-active transition-colors rounded px-2 -mx-2"
             @click="item.targetType === 'post' && openLikedPost(item.targetId, item.targetType)"
           >
             <div class="flex items-center gap-2">
-              <span class="text-xs px-1.5 py-0.5 rounded" :class="item.targetType === 'post' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'">
+              <span class="text-xs px-1.5 py-0.5 rounded" :class="item.targetType === 'post' ? 'bg-primary-subtle text-primary' : 'bg-success-subtle text-success'">
                 {{ item.targetType === 'post' ? '帖子' : '回复' }}
               </span>
-              <span class="text-sm text-[#bbb] line-clamp-1">{{ item.targetText || '(内容已删除)' }}</span>
+              <span class="text-sm text-vscode-text-secondary line-clamp-1">{{ item.targetText || '(内容已删除)' }}</span>
             </div>
-            <div class="text-xs text-[#777] mt-1">{{ formatTimeAgo(item.likeTime) }}</div>
+            <div class="text-xs text-vscode-text-secondary mt-1">{{ formatTimeAgo(item.likeTime) }}</div>
           </div>
         </div>
       </div>
     </template>
 
-    <div v-else class="flex items-center justify-center h-full text-sm text-[#888]">
+    <div v-else class="flex items-center justify-center h-full text-sm text-vscode-text-secondary">
       用户不存在
     </div>
 
     <!-- Friend Request Dialog -->
     <Teleport to="body">
-      <div v-if="showFriendDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="showFriendDialog = false">
-        <div class="bg-[#1e1e1e] border border-[#333] rounded-lg p-6 w-[400px]">
-          <h3 class="text-lg font-semibold text-[#ccc] mb-4">发送好友申请</h3>
-          <p class="text-sm text-[#888] mb-3">
-            向 <span class="text-[#4a9eff]">{{ profile?.nickname }}</span> 发送好友申请
+      <div v-if="showFriendDialog" class="fixed inset-0 z-50 flex items-center justify-center " @click.self="showFriendDialog = false">
+        <div class="bg-vscode-bg border border-vscode-border rounded-lg p-6 w-[400px]">
+          <h3 class="text-lg font-semibold text-vscode-text mb-4">发送好友申请</h3>
+          <p class="text-sm text-vscode-text-secondary mb-3">
+            向 <span class="text-primary">{{ profile?.nickname }}</span> 发送好友申请
           </p>
-          <textarea v-model="friendMessage" class="w-full bg-[#2d2d2d] border border-[#444] rounded px-3 py-2 text-sm text-[#ccc] outline-none focus:border-[#4a9eff] resize-none" rows="3" placeholder="你好，我想加你为好友..."></textarea>
+          <textarea v-model="friendMessage" class="w-full bg-vscode-active border border-vscode-border rounded px-3 py-2 text-sm text-vscode-text outline-none focus:border-primary resize-none" rows="3" placeholder="你好，我想加你为好友..."></textarea>
           <div class="flex gap-3 justify-end mt-4">
-            <button class="px-4 py-2 border border-[#555] text-[#aaa] rounded-md text-sm hover:bg-[#2a2a2a]" @click="showFriendDialog = false">取消</button>
-            <button class="px-4 py-2 bg-[#4a9eff] text-white rounded-md text-sm hover:bg-[#3a8eef] disabled:opacity-50" :disabled="!friendMessage.trim() || sendingRequest" @click="handleSendFriendRequest">
+            <button class="px-4 py-2 border border-vscode-border text-vscode-text-secondary rounded-md text-sm hover:bg-vscode-active" @click="showFriendDialog = false">取消</button>
+            <button class="px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary-dark disabled:opacity-50" :disabled="!friendMessage.trim() || sendingRequest" @click="handleSendFriendRequest">
               {{ sendingRequest ? '发送中...' : '发送申请' }}
             </button>
           </div>

@@ -6,6 +6,7 @@ import { useEditorStore } from '@/stores/editor'
 import { useAuthStore } from '@/stores/auth'
 import { pinyin } from 'pinyin-pro'
 import { API_BASE_URL } from '@/api/http'
+import { avatarColor } from '@/utils/format'
 import ChatView from './ChatView.vue'
 
 function getAvatarUrl(path: string): string {
@@ -21,6 +22,8 @@ const authStore = useAuthStore()
 const searchQuery = ref('')
 const showFriends = ref(true)
 const showGroups = ref(true)
+const friendImgErrors = ref<Set<string>>(new Set())
+const groupImgErrors = ref<Set<string>>(new Set())
 
 // 登录后拉取通讯录
 watch(() => authStore.isAuthenticated, (authed) => {
@@ -129,22 +132,11 @@ function handleOpenGroupChat(group: { id: string; name: string; isHidden: boolea
 <template>
   <div class="h-full flex flex-col bg-vscode-bg">
     <!-- 搜索栏 -->
-    <div class="p-2">
-      <div class="relative">
-        <Search class="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-vscode-text-secondary" />
-        <input
-          v-model="searchQuery"
-          type="text"
-          class="w-full bg-vscode-sidebar border border-vscode-border rounded pl-8 pr-8 py-1.5 text-xs text-vscode-text focus:outline-none focus:border-vscode-info/50 placeholder-vscode-text-secondary"
-          placeholder="搜索联系人..."
-        />
-        <button
-          v-if="searchQuery"
-          class="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-vscode-active transition-colors text-vscode-text-secondary"
-          @click="searchQuery = ''"
-        >
-          <X class="w-3.5 h-3.5" />
-        </button>
+    <div class="px-3 py-2" style="border-bottom: 1px solid var(--color-divider);">
+      <div class="flex items-center rounded-md px-2.5 py-1.5 input-base" style="background: var(--color-surface);">
+        <Search class="w-3.5 h-3.5 mr-1.5 flex-shrink-0" style="color: var(--color-text-tertiary);" />
+        <input v-model="searchQuery" type="text" class="bg-transparent text-xs outline-none flex-1" style="color: var(--color-text-primary);" placeholder="搜索联系人..." />
+        <button v-if="searchQuery" class="p-0.5 rounded hover:bg-vscode-active transition-colors flex-shrink-0" style="color: var(--color-text-tertiary);" @click="searchQuery = ''"><X class="w-3.5 h-3.5" /></button>
       </div>
     </div>
 
@@ -185,12 +177,13 @@ function handleOpenGroupChat(group: { id: string; name: string; isHidden: boolea
                 class="flex items-center gap-3 px-3 py-2 hover:bg-vscode-active/50 transition-colors cursor-pointer"
                 @click="handleOpenFriendChat(friend)"
               >
-                <div class="w-9 h-9 rounded-full bg-vscode-active flex items-center justify-center text-xs text-vscode-text overflow-hidden flex-shrink-0">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs overflow-hidden flex-shrink-0" :style="{ backgroundColor: avatarColor(friend.id) }">
                   <img
-                    v-if="friend.avatar"
+                    v-if="friend.avatar && !friendImgErrors.has(friend.id)"
                     :src="getAvatarUrl(friend.avatar)"
                     :alt="friend.nickname"
                     class="w-full h-full object-cover"
+                    @error="friendImgErrors.add(friend.id)"
                   />
                   <span v-else>{{ (friend.nickname || '?')[0] }}</span>
                 </div>
@@ -219,12 +212,13 @@ function handleOpenGroupChat(group: { id: string; name: string; isHidden: boolea
               class="flex items-center gap-3 px-3 py-2 hover:bg-vscode-active/50 transition-colors cursor-pointer"
               @click="handleOpenGroupChat(group)"
             >
-              <div class="w-9 h-9 rounded-full bg-vscode-active flex items-center justify-center text-xs text-vscode-text overflow-hidden flex-shrink-0">
+              <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs overflow-hidden flex-shrink-0" :style="{ backgroundColor: avatarColor(group.id) }">
                 <img
-                  v-if="group.avatar"
+                  v-if="group.avatar && !groupImgErrors.has(group.id)"
                   :src="getAvatarUrl(group.avatar)"
                   :alt="group.name"
                   class="w-full h-full object-cover"
+                  @error="groupImgErrors.add(group.id)"
                 />
                 <span v-else>{{ (group.name || '群')[0] }}</span>
               </div>

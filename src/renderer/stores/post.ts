@@ -33,6 +33,10 @@ export const usePostStore = defineStore('post', () => {
   const keyword = computed(() => activeTab.value === 'resume' ? resumeKeyword.value : regularKeyword.value)
   const sort = ref('hot')
   const loading = ref(false)
+  const loadingMore = ref(false)
+
+  const hasMorePosts = computed(() => postPage.value * 10 < postTotal.value)
+  const hasMoreResumePosts = computed(() => resumePostPage.value * 10 < resumePostTotal.value)
 
   const resumePostList = ref<ResumePostListVO[]>([])
   const resumePostTotal = ref(0)
@@ -56,88 +60,162 @@ export const usePostStore = defineStore('post', () => {
     saveLikedIds(val)
   }, { deep: false })
 
-  async function fetchResumePostList(page = 1, kw?: string) {
-    loading.value = true
+  async function fetchResumePostList(page = 1, kw?: string, append = false) {
+    if (append) {
+      loadingMore.value = true
+    } else {
+      loading.value = true
+    }
     try {
       const kwParam = kw !== undefined ? kw : keyword.value
       const res = await postApi.getResumePostList(page, 10, kwParam || undefined)
       if (res.code === 200) {
-        resumePostList.value = (res.data.items || []).map(item => ({
+        const items = (res.data.items || []).map(item => ({
           ...item,
           commentCount: item.commentCount || 0
         }))
+        if (append) {
+          resumePostList.value = [...resumePostList.value, ...items]
+        } else {
+          resumePostList.value = items
+        }
         resumePostTotal.value = res.data.total
         resumePostPage.value = page
       }
     } finally {
-      loading.value = false
+      if (append) {
+        loadingMore.value = false
+      } else {
+        loading.value = false
+      }
     }
   }
 
-  async function fetchPostList(page = 1, kw?: string, s?: string) {
-    loading.value = true
+  async function fetchPostList(page = 1, kw?: string, s?: string, append = false) {
+    if (append) {
+      loadingMore.value = true
+    } else {
+      loading.value = true
+    }
     try {
       const kwParam = kw !== undefined ? kw : keyword.value
       const sParam = s !== undefined ? s : sort.value
       const res = await postApi.getPostList(page, 10, kwParam || undefined, sParam)
       if (res.code === 200) {
-        postList.value = (res.data.items || []).map(item => ({
+        const items = (res.data.items || []).map(item => ({
           ...item,
           likeCount: item.likeCount || 0,
           commentCount: item.commentCount || 0
         }))
+        if (append) {
+          postList.value = [...postList.value, ...items]
+        } else {
+          postList.value = items
+        }
         postTotal.value = res.data.total
         postPage.value = page
         // 从服务端同步点赞状态（处理跨标签页/跨设备同步）
         syncLikedIdsFromList(res.data.items || [])
       }
     } finally {
-      loading.value = false
+      if (append) {
+        loadingMore.value = false
+      } else {
+        loading.value = false
+      }
     }
   }
 
   const qaFilter = ref('')
 
-  async function fetchQaPosts(page = 1, kw?: string, s?: string, bs?: string) {
-    loading.value = true
+  async function fetchQaPosts(page = 1, kw?: string, s?: string, bs?: string, append = false) {
+    if (append) {
+      loadingMore.value = true
+    } else {
+      loading.value = true
+    }
     try {
       const kwParam = kw !== undefined ? kw : keyword.value
       const sParam = s !== undefined ? s : sort.value
       const bsParam = bs !== undefined ? bs : qaFilter.value
       const res = await postApi.getPostList(page, 10, kwParam || undefined, sParam, 'qa', bsParam || undefined)
       if (res.code === 200) {
-        postList.value = (res.data.items || []).map(item => ({
+        const items = (res.data.items || []).map(item => ({
           ...item,
           likeCount: item.likeCount || 0,
           commentCount: item.commentCount || 0
         }))
+        if (append) {
+          postList.value = [...postList.value, ...items]
+        } else {
+          postList.value = items
+        }
         postTotal.value = res.data.total
         postPage.value = page
         syncLikedIdsFromList(res.data.items || [])
       }
     } finally {
-      loading.value = false
+      if (append) {
+        loadingMore.value = false
+      } else {
+        loading.value = false
+      }
     }
   }
 
-  async function fetchMyPosts(page = 1, keyword?: string) {
+  async function fetchMyPosts(page = 1, keyword?: string, append = false) {
     const authStore = useAuthStore()
-    loading.value = true
+    if (append) {
+      loadingMore.value = true
+    } else {
+      loading.value = true
+    }
     try {
       let url = `/api/posts?page=${page}&size=10&sort=latest&myOwn=true`
       if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`
       const res = await apiGet<ApiResponse<PageResponse<PostListVO>>>(url, authStore.token || undefined)
       if (res.code === 200 && res.data) {
-        postList.value = (res.data.items || []).map(item => ({
+        const items = (res.data.items || []).map(item => ({
           ...item,
           likeCount: item.likeCount || 0,
           commentCount: item.commentCount || 0
         }))
+        if (append) {
+          postList.value = [...postList.value, ...items]
+        } else {
+          postList.value = items
+        }
         postTotal.value = res.data.total
         postPage.value = page
       }
     } finally {
-      loading.value = false
+      if (append) {
+        loadingMore.value = false
+      } else {
+        loading.value = false
+      }
+    }
+  }
+
+  async function loadMorePosts() {
+    if (loading.value || loadingMore.value) return
+    const nextPage = postPage.value + 1
+    if (nextPage > Math.ceil(postTotal.value / 10)) return
+
+    const kw = keyword.value || undefined
+    if (activeTab.value === 'resume') {
+      await fetchResumePostList(nextPage, kw, true)
+    } else if (activeTab.value === 'qa') {
+      const f = qaFilter.value
+      if (f === 'hot' || f === 'latest') {
+        await fetchQaPosts(nextPage, kw, f, undefined, true)
+      } else {
+        await fetchQaPosts(nextPage, kw, 'latest', f, true)
+      }
+    } else if (activeTab.value === 'myOwn') {
+      await fetchMyPosts(nextPage, kw, true)
+    } else {
+      await fetchPostList(nextPage, kw, sort.value, true)
     }
   }
 
@@ -273,12 +351,13 @@ export const usePostStore = defineStore('post', () => {
   }
 
   return {
-    activeTab, resumeKeyword, regularKeyword, keyword, sort, loading,
+    activeTab, resumeKeyword, regularKeyword, keyword, sort, loading, loadingMore,
+    hasMorePosts, hasMoreResumePosts,
     resumePostList, resumePostTotal, resumePostPage,
     postList, postTotal, postPage,
     selectedId, selectedType, currentDetail, comments, loadingDetail,
     likedIds, qaFilter,
-    fetchResumePostList, fetchPostList, fetchQaPosts, fetchMyPosts, selectPost, toggleLike,
+    fetchResumePostList, fetchPostList, fetchQaPosts, fetchMyPosts, loadMorePosts, selectPost, toggleLike,
     setTab, setKeyword, setSort, fetchComments,
     myResumeId, checkMyResumePost, clearMyResumeId, clearLikedIds
   }

@@ -151,6 +151,13 @@ onUnmounted(() => {
   document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 
+function onScroll(event: Event) {
+  const el = event.target as HTMLElement
+  if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
+    postStore.loadMorePosts()
+  }
+}
+
 function onVisibilityChange() {
   if (document.visibilityState === 'visible') {
     const kw = postStore.keyword || undefined
@@ -264,7 +271,7 @@ watch(() => postStore.resumePostList.length, () => {
     </div>
 
     <!-- Post list -->
-    <div class="flex-1 overflow-y-auto px-1.5 py-1.5 space-y-1">
+    <div class="flex-1 overflow-y-auto px-1.5 py-1.5 space-y-1" @scroll="onScroll">
       <!-- Loading -->
       <div v-if="isLoading" class="flex items-center justify-center py-10">
         <div class="text-sm text-[#888]">加载中...</div>
@@ -329,6 +336,11 @@ watch(() => postStore.resumePostList.length, () => {
           @pin-changed="postStore.fetchMyPosts(1, postStore.keyword || undefined)"
         />
       </template>
+
+      <!-- Load more indicator -->
+      <div v-if="postStore.loadingMore" class="flex items-center justify-center py-4">
+        <div class="text-xs text-[#666]">加载更多...</div>
+      </div>
     </div>
 
     <!-- Publish / View resume button -->

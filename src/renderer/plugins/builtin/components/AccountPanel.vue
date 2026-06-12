@@ -16,7 +16,7 @@ type HeatPoint = {
 }
 
 const props = withDefaults(defineProps<{
-  activeSection?: 'all' | 'profile' | 'avatar' | 'password' | 'chsi' | 'activity' | 'chsi-review' | 'cdkey' | 'cdkey-admin'
+  activeSection?: 'all' | 'profile' | 'avatar' | 'password' | 'chsi' | 'activity' | 'chsi-review' | 'cdkey'
 }>(), {
   activeSection: 'all'
 })
@@ -83,7 +83,7 @@ const heatMap = computed(() => {
 
 const activeSection = computed(() => props.activeSection || 'all')
 
-const showSection = (section: 'profile' | 'avatar' | 'password' | 'chsi' | 'activity' | 'chsi-review' | 'cdkey' | 'cdkey-admin') => {
+const showSection = (section: 'profile' | 'avatar' | 'password' | 'chsi' | 'activity' | 'chsi-review' | 'cdkey') => {
   return activeSection.value === 'all' || activeSection.value === section
 }
 
@@ -479,11 +479,12 @@ const cdkeyMessage = ref('')
 const cdkeyMessageType = ref<'success' | 'error'>('success')
 const cdkeyBalance = ref(0)
 
-const adminAmount = ref(100)
-const adminCount = ref(10)
-const adminCodes = ref<string[]>([])
-const adminMessage = ref('')
-const adminMessageType = ref<'success' | 'error'>('success')
+
+	const adminAmount = ref(100)
+	const adminCount = ref(10)
+	const adminCodes = ref<string[]>([])
+	const adminMessage = ref('')
+	const adminMessageType = ref<'success' | 'error'>('success')
 
 const cdkeyAmounts = [10, 50, 100, 300, 500, 1000, 5000]
 
@@ -512,6 +513,7 @@ async function doRedeemCdkey() {
     cdkeyMessageType.value = 'error'
   }
 }
+
 
 async function doGenerateCdkeys() {
   adminMessage.value = ''
@@ -542,7 +544,6 @@ function downloadCdkeyTxt() {
   a.click()
   URL.revokeObjectURL(url)
 }
-
 onMounted(readAuth)
 watch(() => authStore.message, (next) => {
   if (next) {
@@ -811,6 +812,24 @@ watch(activeSection, () => {
       <!-- CDKEY 兑换 -->
       <section v-if="showSection('cdkey')" class="border border-vscode-border rounded p-3 space-y-2">
         <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">CDKEY 兑换</h3>
+
+        <!-- 购买链接 -->
+        <div class="text-xs text-vscode-text-secondary">购买百斩豆</div>
+        <div class="grid grid-cols-4 gap-1.5">
+          <a
+            v-for="opt in cdkeyAmounts"
+            :key="opt"
+            :href="'https://pay.ldxp.cn/item/' + ({
+              10: 'm2c9kk', 50: 'hbtvr7', 100: 'svzd3e', 300: 'wtrnn0', 500: 'x6ueof', 1000: '9vz3pi', 5000: '35wcu4'
+            })[opt]"
+            target="_blank"
+            class="flex flex-col items-center bg-vscode-active border border-vscode-border rounded px-1.5 py-1.5 hover:border-[#4a9eff] no-underline transition-colors"
+          >
+            <span class="text-[#f0c040] font-medium text-xs">🫘{{ opt }}</span>
+            <span class="text-[10px] text-vscode-text-secondary">购买</span>
+          </a>
+        </div>
+
         <div class="text-xs text-vscode-text-secondary">格式：HAWTHORN-XXXX-XXXX</div>
         <input
           v-model="cdkeyCode"
@@ -828,41 +847,43 @@ watch(activeSection, () => {
           </button>
           <span class="text-xs text-vscode-text-secondary">余额：🫘 {{ cdkeyBalance }}</span>
         </div>
-      </section>
 
-      <!-- CDKEY 管理（仅管理员） -->
-      <section v-if="canReviewChsi && showSection('cdkey-admin')" class="border border-vscode-border rounded p-3 space-y-2">
-        <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">CDKEY 管理 — 批量生成</h3>
-        <div class="flex items-center gap-3">
-          <label class="text-xs text-vscode-text-secondary">
-            面值
-            <select v-model="adminAmount" class="ml-1 bg-vscode-active border border-vscode-border px-2 py-1 rounded text-sm">
-              <option v-for="a in cdkeyAmounts" :key="a" :value="a">{{ a }}</option>
-            </select>
-          </label>
-          <label class="text-xs text-vscode-text-secondary">
-            数量
-            <input v-model.number="adminCount" type="number" min="1" max="1000" class="ml-1 w-20 bg-vscode-active border border-vscode-border px-2 py-1 rounded text-sm" />
-          </label>
-        </div>
-        <div class="flex items-center gap-2">
-          <button class="px-3 py-1 bg-vscode-selected rounded text-sm" @click="doGenerateCdkeys">
-            生成 CDKEY
-          </button>
-          <button v-if="adminCodes.length > 0" class="px-3 py-1 border border-vscode-border rounded text-sm" @click="downloadCdkeyTxt">
-            <span class="inline-flex gap-1 items-center"><Download class="w-4 h-4"/> 下载 TXT</span>
-          </button>
-        </div>
-        <div v-if="adminMessage" class="text-xs" :class="adminMessageType === 'success' ? 'text-emerald-500' : 'text-vscode-warning'">
-          {{ adminMessage }}
-        </div>
-        <textarea
-          v-if="adminCodes.length > 0"
-          readonly
-          :value="adminCodes.join('\n')"
-          rows="6"
-          class="w-full bg-vscode-active border border-vscode-border px-2 py-1 rounded text-xs font-mono"
-        />
+        <!-- CDKEY 管理（仅管理员可见） -->
+        <template v-if="canReviewChsi">
+          <div class="border-t border-vscode-border pt-3 mt-2">
+            <h4 class="text-xs text-vscode-text-secondary mb-2">批量生成 CDKEY</h4>
+            <div class="flex items-center gap-3 mb-2">
+              <label class="text-xs text-vscode-text-secondary">
+                面值
+                <select v-model="adminAmount" class="ml-1 bg-vscode-active border border-vscode-border px-2 py-1 rounded text-sm">
+                  <option v-for="a in cdkeyAmounts" :key="a" :value="a">{{ a }}</option>
+                </select>
+              </label>
+              <label class="text-xs text-vscode-text-secondary">
+                数量
+                <input v-model.number="adminCount" type="number" min="1" max="1000" class="ml-1 w-20 bg-vscode-active border border-vscode-border px-2 py-1 rounded text-sm" />
+              </label>
+            </div>
+            <div class="flex items-center gap-2 mb-2">
+              <button class="px-3 py-1 bg-vscode-selected rounded text-sm" @click="doGenerateCdkeys">
+                生成 CDKEY
+              </button>
+              <button v-if="adminCodes.length > 0" class="px-3 py-1 border border-vscode-border rounded text-sm" @click="downloadCdkeyTxt">
+                <span class="inline-flex gap-1 items-center"><Download class="w-4 h-4"/> 下载 TXT</span>
+              </button>
+            </div>
+            <div v-if="adminMessage" class="text-xs mb-2" :class="adminMessageType === 'success' ? 'text-emerald-500' : 'text-vscode-warning'">
+              {{ adminMessage }}
+            </div>
+            <textarea
+              v-if="adminCodes.length > 0"
+              readonly
+              :value="adminCodes.join('\n')"
+              rows="6"
+              class="w-full bg-vscode-active border border-vscode-border px-2 py-1 rounded text-xs font-mono"
+            />
+          </div>
+        </template>
       </section>
 
       <section v-if="showSection('activity')" class="border border-vscode-border rounded p-3 space-y-2">

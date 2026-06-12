@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, markRaw, ref, watch } from 'vue'
-import { FilePlus, UserCircle, Search, LogOut, User, ShieldCheck, Building2, Briefcase, CalendarClock, BadgeCheck, Gift, Download } from 'lucide-vue-next'
+import { FilePlus, UserCircle, Search, LogOut, User, ShieldCheck, Building2, Briefcase, CalendarClock, BadgeCheck, Gift } from 'lucide-vue-next'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useEditorStore } from '@/stores/editor'
 import { useAuthStore } from '@/stores/auth'
@@ -23,7 +23,6 @@ const accountFeatures = computed(() => {
 
   if (authStore.user?.chsiReviewer) {
     base.push({ id: 'chsi-review', label: '认证审核', icon: ShieldCheck })
-    base.push({ id: 'cdkey-admin', label: 'CDKEY 管理', icon: Download })
   }
 
   return base

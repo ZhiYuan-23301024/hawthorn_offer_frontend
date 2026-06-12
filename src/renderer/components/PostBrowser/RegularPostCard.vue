@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Heart, MessageSquare } from 'lucide-vue-next'
 import type { PostListVO } from '@/api/post'
 import { avatarUrl, avatarColor, formatTimeAgo } from '@/utils/format'
 
-defineProps<{
+const props = defineProps<{
   post: PostListVO
   isSelected: boolean
   isLiked: boolean
@@ -13,6 +14,8 @@ const emit = defineEmits<{
   select: [id: string]
   like: [id: string]
 }>()
+
+const imgError = ref(false)
 
 function computeRemaining(expiresAt: string | null): string {
   if (!expiresAt) return ''
@@ -26,7 +29,7 @@ function computeRemaining(expiresAt: string | null): string {
 
 <template>
   <div
-    class="px-3 py-2.5 rounded-lg cursor-pointer transition-colors border border-transparent"
+    class="px-3 py-2.5 rounded-lg cursor-pointer transition-colors border border-transparent relative"
     :class="isSelected ? 'bg-[#094771] border-[#007acc]' : 'hover:bg-[#2a2a2a]'"
     @click="emit('select', post.id)"
   >
@@ -37,14 +40,18 @@ function computeRemaining(expiresAt: string | null): string {
         · 剩余 {{ computeRemaining(post.pinExpiresAt) }}
       </span>
     </div>
+
+    <!-- 内推标识 -->
+    <div v-if="post.postType === 'referral'" class="absolute top-2 right-2">
+      <span class="text-xs text-[#4a9eff] bg-[#4a9eff]/15 px-2 py-0.5 rounded font-medium">内推</span>
+    </div>
     <div class="flex items-start gap-2.5">
       <div
         class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden"
-        :style="avatarUrl(post.authorAvatarUrl) ? {} : { backgroundColor: avatarColor(post.userId) }"
-        :class="isSelected ? 'bg-[#2b6cb0]' : 'bg-[#555]'"
+        :style="{ backgroundColor: avatarColor(post.userId) }"
       >
-        <img v-if="avatarUrl(post.authorAvatarUrl)" :src="avatarUrl(post.authorAvatarUrl)" class="w-full h-full object-cover" />
-        <span v-else>{{ post.authorAvatar }}</span>
+        <img v-show="!imgError" :src="avatarUrl(post.authorAvatarUrl) || ''" class="w-full h-full object-cover" @error="imgError = true" />
+        <span v-show="imgError || !avatarUrl(post.authorAvatarUrl)">{{ post.authorAvatar || '?' }}</span>
       </div>
       <div class="flex-1 min-w-0">
         <div class="font-semibold text-sm" :class="isSelected ? 'text-white' : 'text-[#ddd]'">
@@ -57,6 +64,7 @@ function computeRemaining(expiresAt: string | null): string {
           <span v-else-if="post.bountyStatus === 'expired'" class="text-xs text-[#888]">已结束</span>
           <span v-else-if="post.bountyStatus === 'distributed'" class="text-xs text-[#27ae60]">已分配</span>
         </div>
+
         <div class="text-xs mt-0.5" :class="isSelected ? 'text-[#b0d4f1]' : 'text-[#aaa]'">
           {{ post.authorName }}
         </div>

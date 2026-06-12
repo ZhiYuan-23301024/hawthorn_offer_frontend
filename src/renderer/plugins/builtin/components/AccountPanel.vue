@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { UserCircle, LogOut, PenLine, ShieldCheck, Flame, Gift, Download } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { API_BASE_URL, apiGet, apiPost, type ApiResponse } from '@/api/http'
+import { avatarUrl, avatarColor } from '@/utils/format'
 import type { ChsiVerificationStatus } from '@/types'
 
 const authStore = useAuthStore()
@@ -89,9 +90,11 @@ const showSection = (section: 'profile' | 'avatar' | 'password' | 'chsi' | 'acti
 
 const canReviewChsi = computed(() => !!authStore.user?.chsiReviewer)
 
-const avatarUrl = computed(() => {
-  return toAbsoluteAssetUrl(authStore.user?.avatar || '')
+const accountAvatarUrl = computed(() => {
+  return avatarUrl(authStore.user?.avatar)
 })
+const accountAvatarError = ref(false)
+watch(() => authStore.user?.avatar, () => { accountAvatarError.value = false })
 
 const heatIntensity = (count: number) => {
   if (count <= 0) return 'bg-gray-700'
@@ -654,12 +657,14 @@ watch(activeSection, () => {
         <h3 class="text-xs uppercase tracking-wider text-vscode-text-secondary">个人信息</h3>
         <div class="flex items-center gap-2">
           <img
-            v-if="avatarPreviewUrl || avatarUrl"
-            :src="avatarPreviewUrl || avatarUrl"
+            v-if="(avatarPreviewUrl || accountAvatarUrl) && !accountAvatarError"
+            :src="avatarPreviewUrl || accountAvatarUrl"
             class="w-12 h-12 rounded-full object-cover border border-vscode-border"
+            @error="accountAvatarError = true"
           />
-          <div v-else class="w-12 h-12 rounded-full bg-vscode-active border border-vscode-border flex items-center justify-center">
-            <UserCircle class="w-8 h-8 text-vscode-icon" />
+          <div v-else class="w-12 h-12 rounded-full border border-vscode-border flex items-center justify-center text-white font-bold text-lg"
+            :style="{ backgroundColor: avatarColor(authStore.user?.id || '') }">
+            <span>{{ authStore.user?.nickname?.charAt(0) || '?' }}</span>
           </div>
           <div class="text-xs">
             <p>邮箱：{{ authStore.user?.email }}</p>

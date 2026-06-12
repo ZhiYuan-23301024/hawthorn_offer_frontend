@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, getCurrentInstance, onMounted, ref, watch } from 'vue'
+import { computed, getCurrentInstance, onMounted, onUnmounted, ref, watch } from 'vue'
 import {
   CheckCircle2,
   Download,
@@ -111,6 +111,10 @@ function formatSize(value?: number | null) {
   return `${(value / 1024 / 1024).toFixed(1)} MB`
 }
 
+function notifySidebarRefresh(resumeId?: string) {
+  window.dispatchEvent(new CustomEvent('resume-list-refresh', { detail: { resumeId } }))
+}
+
 async function loadResumes(preferredId = selectedId.value) {
   clearMessages()
   if (!authStore.isAuthenticated) {
@@ -135,7 +139,7 @@ async function loadResumes(preferredId = selectedId.value) {
       selectedId.value = next.id
       if (isDetailMode.value) {
         await selectResume(next.id)
-      } else if (!editorStore.activeTabId?.startsWith('personal-resume:')) {
+      } else if (editorStore.activeTabId !== RESUME_DETAIL_TAB_ID) {
         openResumeTab(next.id, next.resumeName)
       }
     } else {
@@ -150,10 +154,12 @@ async function loadResumes(preferredId = selectedId.value) {
   }
 }
 
+const RESUME_DETAIL_TAB_ID = 'personal-resume-detail'
+
 function openResumeTab(id: string, title = '个人简历', startEditing = false) {
   if (!selfComponent) return
-  editorStore.openComponentTab(
-    `personal-resume:${id}`,
+  editorStore.openOrUpdateComponentTab(
+    RESUME_DETAIL_TAB_ID,
     title || '个人简历',
     selfComponent,
     { mode: 'detail', resumeId: id, startEditing }
@@ -258,6 +264,7 @@ async function saveResume() {
         await loadResumes(res.data.id)
         openResumeTab(res.data.id, resumeName.value.trim())
         editing.value = false
+        notifySidebarRefresh(res.data.id)
       } else {
         errorMessage.value = res.message || '保存失败'
       }
@@ -271,9 +278,10 @@ async function saveResume() {
     if (res.code === 200) {
       successMessage.value = '个人简历已创建'
       const newId = res.data.resumeId
-      await selectResume(newId)
+      await loadResumes(newId)
       openResumeTab(newId, resumeName.value.trim())
       editing.value = false
+      notifySidebarRefresh(newId)
     } else {
       errorMessage.value = res.message || '创建失败'
     }
@@ -295,6 +303,7 @@ async function removeResume() {
     if (res.code === 200) {
       successMessage.value = '个人简历已删除'
       await loadResumes('')
+      notifySidebarRefresh()
     } else {
       errorMessage.value = res.message || '删除失败'
     }
@@ -313,6 +322,7 @@ async function markDefault() {
     if (res.code === 200) {
       successMessage.value = '已设为默认简历'
       await loadResumes(res.data.id)
+      notifySidebarRefresh(res.data.id)
     } else {
       errorMessage.value = res.message || '设置默认失败'
     }
@@ -345,6 +355,7 @@ async function handleImportFile(event: Event) {
         editing.value = true
       }
       openResumeTab(res.data.id, res.data.resumeName, true)
+      notifySidebarRefresh(res.data.id)
     } else {
       errorMessage.value = res.message || '导入失败'
     }
@@ -368,6 +379,7 @@ async function handleReplaceFile(event: Event) {
       successMessage.value = '简历文件已替换'
       await loadResumes(res.data.id)
       editing.value = true
+      notifySidebarRefresh(res.data.id)
     } else {
       errorMessage.value = res.message || '替换失败'
     }
@@ -439,6 +451,29 @@ watch(() => authStore.isAuthenticated, () => {
   } else if (!isDetailMode.value) {
     loadResumes('')
   }
+})
+
+watch(() => props.resumeId, (newId, oldId) => {
+  if (!isDetailMode.value || !newId || newId === oldId) return
+  if (newId === 'new') {
+    startNew()
+  } else {
+    selectResume(newId)
+  }
+})
+
+function handleResumeListRefresh(e: Event) {
+  if (!isDetailMode.value && e instanceof CustomEvent) {
+    loadResumes(e.detail?.resumeId || '')
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('resume-list-refresh', handleResumeListRefresh)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resume-list-refresh', handleResumeListRefresh)
 })
 </script>
 

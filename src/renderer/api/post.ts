@@ -27,6 +27,8 @@ export interface PostListVO {
   bountyRemaining?: number
   bountyStatus?: string
   bountyExpiresAt?: string
+  referralCode?: string
+  referralLink?: string
 }
 
 export interface ResumePostListVO {
@@ -37,6 +39,11 @@ export interface ResumePostListVO {
   authorAvatar: string
   authorAvatarUrl: string | null
   commentCount: number
+  price: number
+  promoText: string
+  likeCount: number
+  isLiked: boolean
+  deleted?: boolean
   createdAt: string
   updatedAt: string
 }
@@ -51,11 +58,20 @@ export interface PageResponse<T> {
 export interface ResumePostDetail {
   id: string
   userId: string
+  resumeId: string
   resumeName: string
   content: string
+  promoText: string
+  price: number
+  likeCount: number
+  isLiked: boolean
+  hasPurchased: boolean
+  isAnonymous?: boolean
+  deleted?: boolean
   authorName: string
   authorAvatar: string
   authorAvatarUrl: string | null
+  commentCount: number
   createdAt: string
   updatedAt: string
 }
@@ -78,6 +94,11 @@ export interface PostDetail {
   bountyStatus?: string
   bountyExpiresAt?: string
   bountyStartedAt?: string
+  referralCode?: string
+  referralLink?: string
+  authorName?: string
+  authorAvatar?: string
+  authorAvatarUrl?: string | null
 }
 
 export interface CommentVO {
@@ -118,20 +139,29 @@ export function getResumePostDetail(id: string) {
   return apiGet<ApiResponse<ResumePostDetail>>(`/api/posts/resumes/${id}`, getToken())
 }
 
-export function getMyResumePost() {
-  return apiGet<ApiResponse<ResumePostDetail>>('/api/posts/resumes/me', getToken())
+export function createResumePost(resumeId: string, promoText: string, price: number) {
+  return apiPost<ApiResponse<{ resumeId: string }>>('/api/posts/resumes',
+    { resumeId, promoText, price }, getToken())
 }
 
-export function createResumePost(resumeName: string, content: string) {
-  return apiPost<ApiResponse<{ resumeId: string }>>('/api/posts/resumes', { resumeName, content }, getToken())
-}
-
-export function updateResumePost(id: string, resumeName: string, content: string) {
-  return apiPut<ApiResponse<ResumePostDetail>>(`/api/posts/resumes/${id}`, { resumeName, content }, getToken())
+export function updateResumePost(id: string, data: { resumeId?: string; promoText?: string; price?: number }) {
+  return apiPut<ApiResponse<ResumePostDetail>>(`/api/posts/resumes/${id}`, data, getToken())
 }
 
 export function deleteResumePost(id: string) {
   return apiDelete<ApiResponse<void>>(`/api/posts/resumes/${id}`, getToken())
+}
+
+export function purchaseResumePost(id: string) {
+  return apiPost<ApiResponse<{ balance: number }>>(`/api/posts/resumes/${id}/purchase`, {}, getToken())
+}
+
+export function likeResumePost(id: string) {
+  return apiPost<ApiResponse<void>>(`/api/posts/resumes/${id}/like`, {}, getToken())
+}
+
+export function unlikeResumePost(id: string) {
+  return apiPost<ApiResponse<void>>(`/api/posts/resumes/${id}/unlike`, {}, getToken())
 }
 
 // ===== 常规帖 API =====
@@ -148,14 +178,14 @@ export function getPostDetail(id: string) {
   return apiGet<ApiResponse<PostDetail>>(`/api/posts/${id}`, getToken())
 }
 
-export function createPost(title: string, content: string, isAnonymous: boolean, postType = 'normal', bountyBeans = 0, bountyDuration = 0) {
+export function createPost(title: string, content: string, isAnonymous: boolean, postType = 'normal', bountyBeans = 0, bountyDuration = 0, referralCode?: string, referralLink?: string) {
   return apiPost<ApiResponse<{ postId: string }>>('/api/posts', {
-    title, content, isAnonymous, postType, bountyBeans, bountyDuration
+    title, content, isAnonymous, postType, bountyBeans, bountyDuration, referralCode, referralLink
   }, getToken())
 }
 
-export function updatePost(id: string, title: string, content: string) {
-  return apiPut<ApiResponse<PostDetail>>(`/api/posts/${id}`, { title, content }, getToken())
+export function updatePost(id: string, title: string, content: string, referralCode?: string, referralLink?: string) {
+  return apiPut<ApiResponse<PostDetail>>(`/api/posts/${id}`, { title, content, referralCode, referralLink }, getToken())
 }
 
 export function likePost(id: string) {
@@ -271,4 +301,18 @@ export function rewardComment(postId: string, commentId: string, beans: number) 
 
 export function getBountyRewards(postId: string) {
   return apiGet<ApiResponse<BountyRewardVO[]>>(`/api/posts/${postId}/bounty/rewards`, getToken())
+}
+
+// ===== 打赏 API =====
+
+export interface TipResponse {
+  balance: number
+}
+
+export function tipPost(id: string, beans: number) {
+  return apiPost<ApiResponse<TipResponse>>(`/api/posts/${id}/tip`, { beans }, getToken())
+}
+
+export function tipResumePost(id: string, beans: number) {
+  return apiPost<ApiResponse<TipResponse>>(`/api/posts/resumes/${id}/tip`, { beans }, getToken())
 }

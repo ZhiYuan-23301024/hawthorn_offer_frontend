@@ -30,6 +30,7 @@ const showFriendDialog = ref(false)
 const friendMessage = ref('')
 const sendingRequest = ref(false)
 const isFriend = ref(false)
+const avatarImgError = ref(false)
 
 const isSelf = computed(() => authStore.user?.id === props.userId)
 
@@ -45,6 +46,7 @@ const cardStyle = computed(() => {
 watch(() => props.show, async (val) => {
   if (val && props.userId) {
     loading.value = true
+    avatarImgError.value = false
     try {
       const [pRes, sRes] = await Promise.all([
         getUserProfile(props.userId),
@@ -123,10 +125,9 @@ async function handleSendRequest() {
         <div class="flex items-center gap-3 mb-3">
           <div
             class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden"
-            :style="profile.avatar ? {} : { backgroundColor: avatarColor(profile.id) }"
-            :class="profile.avatar ? 'bg-[#6b46c1]' : ''"
+            :style="{ backgroundColor: avatarColor(profile.id) }"
           >
-            <img v-if="profile.avatar" :src="avatarUrl(profile.avatar)" class="w-full h-full object-cover" />
+            <img v-if="profile.avatar && !avatarImgError" :src="avatarUrl(profile.avatar)" @error="avatarImgError = true" class="w-full h-full object-cover" />
             <span v-else>{{ profile.nickname?.charAt(0) || '?' }}</span>
           </div>
           <div class="min-w-0 flex-1">

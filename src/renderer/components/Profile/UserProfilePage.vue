@@ -43,6 +43,7 @@ const sortMode = ref<'latest' | 'hot'>('latest')
 const showFriendDialog = ref(false)
 const friendMessage = ref('')
 const sendingRequest = ref(false)
+const avatarImgError = ref(false)
 const isFriend = ref(false)
 
 const TABS = [
@@ -101,7 +102,7 @@ const sortedComments = computed(() => {
 
 onMounted(() => loadAll())
 
-watch(() => props.userId, () => loadAll())
+watch(() => props.userId, () => { avatarImgError.value = false; loadAll() })
 
 async function loadAll() {
   loading.value = true
@@ -230,10 +231,9 @@ function openLikedPost(targetId: string, targetType: string) {
         <div class="flex items-start gap-5">
           <div
             class="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-3xl flex-shrink-0 overflow-hidden"
-            :style="profile.avatar ? {} : { backgroundColor: avatarColor(profile.id) }"
-            :class="profile.avatar ? 'bg-[#6b46c1]' : ''"
+            :style="{ backgroundColor: avatarColor(profile.id) }"
           >
-            <img v-if="profile.avatar" :src="avatarUrl(profile.avatar)" class="w-full h-full object-cover" />
+            <img v-if="profile.avatar && !avatarImgError" :src="avatarUrl(profile.avatar)" @error="avatarImgError = true" class="w-full h-full object-cover" />
             <span v-else>{{ profile.nickname?.charAt(0) || '?' }}</span>
           </div>
           <div class="flex-1 min-w-0">

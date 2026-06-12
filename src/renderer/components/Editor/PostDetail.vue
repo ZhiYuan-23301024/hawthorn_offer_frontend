@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed, ref } from 'vue'
-import { Heart, Edit3, Trash2 } from 'lucide-vue-next'
+import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
+import { Heart, Edit3, Trash2, Coffee } from 'lucide-vue-next'
 import { usePostStore } from '@/stores/post'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorStore } from '@/stores/editor'
@@ -16,7 +16,7 @@ import UserProfilePage from '@/components/Profile/UserProfilePage.vue'
 
 const props = defineProps<{
   postId: string
-  postType: 'resume' | 'regular' | 'qa'
+  postType: 'resume' | 'regular' | 'qa' | 'referral'
 }>()
 
 const postStore = usePostStore()
@@ -96,9 +96,9 @@ const postListItem = computed<PostListVO | null>(() =>
   postStore.postList.find(p => p.id === props.postId) ?? null
 )
 
-const authorName = computed(() => resumeData.value?.authorName ?? postListItem.value?.authorName ?? '')
-const authorAvatar = computed(() => resumeData.value?.authorAvatar ?? postListItem.value?.authorAvatar ?? '')
-const authorAvatarUrl = computed(() => resumeData.value?.authorAvatarUrl ?? postListItem.value?.authorAvatarUrl ?? null)
+const authorName = computed(() => resumeData.value?.authorName ?? postData.value?.authorName ?? postListItem.value?.authorName ?? '')
+const authorAvatar = computed(() => resumeData.value?.authorAvatar ?? postData.value?.authorAvatar ?? postListItem.value?.authorAvatar ?? '')
+const authorAvatarUrl = computed(() => resumeData.value?.authorAvatarUrl ?? postData.value?.authorAvatarUrl ?? postListItem.value?.authorAvatarUrl ?? null)
 const titleOrName = computed(() => resumeData.value?.resumeName ?? postData.value?.title ?? '')
 const bodyContent = computed(() => resumeData.value?.content ?? postData.value?.content ?? '')
 const detailCreatedAt = computed(() => resumeData.value?.createdAt ?? postData.value?.createdAt ?? '')
@@ -113,6 +113,9 @@ const isOwner = computed(() => {
 })
 
 const isQaPost = computed(() => (detail.value as any)?.postType === 'qa')
+const isReferralPost = computed(() => (postData.value as any)?.postType === 'referral' || postListItem.value?.postType === 'referral')
+const referralCode = computed(() => (postData.value as any)?.referralCode || postListItem.value?.referralCode || '')
+const referralLink = computed(() => (postData.value as any)?.referralLink || postListItem.value?.referralLink || '')
 const bountyBeansTotal = computed(() => (detail.value as any)?.bountyBeans ?? 0)
 const bountyRemaining = computed(() => (detail.value as any)?.bountyRemaining ?? 0)
 const bountyStatus = computed(() => (detail.value as any)?.bountyStatus ?? '')
@@ -136,21 +139,138 @@ const bountyTimeLeft = computed(() => {
 
 function handleEdit() {
   const label = props.postType === 'resume' ? '编辑简历' : '编辑帖子'
-  if (props.postType === 'regular' && postData.value) {
+  const isRef = isReferralPost.value
+  if ((props.postType === 'regular' || props.postType === 'referral') && postData.value) {
     editorStore.openComponentTab(`post:editor:${props.postId}`, label, PostEditor, {
-      postType: 'regular',
+      postType: isRef ? 'referral' : 'regular',
       editPostId: props.postId,
       editTitle: postData.value.title || '',
-      editContent: postData.value.content || ''
+      editContent: postData.value.content || '',
+      editReferralCode: isRef ? (referralCode.value || '') : undefined,
+      editReferralLink: isRef ? (referralLink.value || '') : undefined
     })
   } else if (props.postType === 'resume' && resumeData.value) {
     editorStore.openComponentTab(`post:editor:${props.postId}`, label, PostEditor, {
       postType: 'resume',
       editPostId: props.postId,
       editResumeName: resumeData.value.resumeName || '',
-      editContent: resumeData.value.content || ''
+      editPromoText: resumeData.value.promoText || '',
+      editPrice: resumeData.value.price || 50,
+      editResumeId: resumeData.value.resumeId || ''
     })
   }
+}
+
+const purchasing = ref(false)
+const purchaseError = ref('')
+const avatarImgError = ref(false)
+watch([() => props.postId, authorAvatarUrl], () => { avatarImgError.value = false })
+
+// Tip dialog state
+const showTipDialog = ref(false)
+const tipAmount = ref(10)
+const tipPresets = [5, 10, 20, 50]
+const tipCustomInput = ref('')
+const showTipConfirm = ref(false)
+const tipping = ref(false)
+const tipError = ref('')
+
+const maxTipBeans = computed(() => authStore.user?.beans ?? 0)
+
+function openTipDialog() {
+  tipAmount.value = Math.min(10, maxTipBeans.value)
+  tipCustomInput.value = ''
+  showTipConfirm.value = false
+  tipError.value = ''
+  showTipDialog.value = true
+}
+
+function selectTipPreset(amount: number) {
+  tipAmount.value = amount
+  tipCustomInput.value = ''
+}
+
+function applyCustomTip() {
+  const val = parseFloat(tipCustomInput.value as any)
+  if (!isNaN(val) && val >= 1) {
+    if (!Number.isInteger(val)) {
+      tipError.value = '豆子数必须为整数'
+      return
+    }
+    tipError.value = ''
+    tipAmount.value = Math.min(Math.floor(val), maxTipBeans.value)
+  }
+}
+
+function goToTipConfirm() {
+  if (tipAmount.value < 1) {
+    tipError.value = '打赏豆子数至少为1'
+    return
+  }
+  if (tipAmount.value > maxTipBeans.value) {
+    tipError.value = '豆子不足'
+    return
+  }
+  tipError.value = ''
+  showTipConfirm.value = true
+}
+
+async function handleTipConfirm() {
+  tipping.value = true
+  tipError.value = ''
+  try {
+    const beans = tipAmount.value
+    let res
+    if (props.postType === 'resume') {
+      res = await postApi.tipResumePost(props.postId, beans)
+    } else {
+      res = await postApi.tipPost(props.postId, beans)
+    }
+    if (res.code === 200 && res.data) {
+      if (authStore.user) {
+        authStore.user.beans = res.data.balance
+      }
+      showTipDialog.value = false
+      showTipConfirm.value = false
+      alert(`打赏成功！消耗 🫘 ${beans} 百斩豆`)
+    } else {
+      tipError.value = res.message || '打赏失败'
+      showTipConfirm.value = false
+    }
+  } catch (e: any) {
+    tipError.value = e.message || '打赏失败'
+    showTipConfirm.value = false
+  } finally {
+    tipping.value = false
+  }
+}
+
+function handleTipClick() {
+  if (!useRequireAuth()) return
+  if (isOwner.value) {
+    alert('不能打赏自己的帖子')
+    return
+  }
+  openTipDialog()
+}
+
+async function handlePurchase() {
+  const price = resumeData.value?.price ?? 50
+  if (!confirm(`支付 🫘 ${price} 豆查看完整简历？`)) return
+  purchasing.value = true
+  purchaseError.value = ''
+  try {
+    await postStore.purchaseResumePost(props.postId)
+  } catch (e: any) {
+    purchaseError.value = e.message || '购买失败'
+  } finally {
+    purchasing.value = false
+  }
+}
+
+async function handleResumeLike() {
+  if (!useRequireAuth()) return
+  await postStore.toggleLike(props.postId, 'resume')
 }
 
 async function handleDelete() {
@@ -164,8 +284,11 @@ async function handleDelete() {
   try {
     if (props.postType === 'resume') {
       await postApi.deleteResumePost(props.postId)
-      postStore.clearMyResumeId()
-      postStore.fetchResumePostList(1)
+      // 刷新当前分栏的列表
+      const sub = postStore.resumeSubTab
+      if (sub === 'purchased') postStore.fetchPurchasedResumePosts()
+      else if (sub === 'mine') postStore.fetchMyResumePosts()
+      else postStore.fetchResumePostList(1)
     } else {
       const resp = await postApi.deletePost(props.postId)
       const refund = (resp.code === 200 && resp.data?.refund) ? resp.data.refund : 0
@@ -300,24 +423,20 @@ function onVisibilityChange() {
     <!-- Post content: scrollable, takes up to half the height -->
     <div class="overflow-y-auto flex-shrink-0" style="max-height: 45%">
     <!-- Resume detail -->
-    <template v-if="postType === 'resume'">
+    <template v-if="postType === 'resume' && resumeData">
       <div class="flex items-center gap-3 mb-5">
-        <div
-          class="w-12 h-12 rounded-full bg-[#2b6cb0] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-          @mouseenter="!resumeData?.isAnonymous && onAuthorMouseEnter($event, detailUserId)"
-          @mouseleave="onAuthorMouseLeave"
-          @click="!resumeData?.isAnonymous && onAuthorClick(detailUserId)"
-        >
-          <img
-            v-if="authorAvatarUrl"
-            :src="avatarUrl(authorAvatarUrl)"
-            class="w-full h-full object-cover"
-          />
+        <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+              :style="{ backgroundColor: avatarColor(detailUserId) }"
+	          @mouseenter="!resumeData?.isAnonymous && onAuthorMouseEnter($event, detailUserId)"
+	          @mouseleave="onAuthorMouseLeave"
+	          @click="!resumeData?.isAnonymous && onAuthorClick(detailUserId)">
+          <img v-if="authorAvatarUrl && !avatarImgError" :src="avatarUrl(authorAvatarUrl)" class="w-full h-full object-cover" @error="avatarImgError = true" />
           <span v-else>{{ authorAvatar || authorName?.charAt(0) || '?' }}</span>
         </div>
         <div class="flex-1">
-          <div class="text-lg font-semibold text-[#ddd]">
+          <div class="text-lg font-semibold text-[#ddd] flex items-center gap-2">
             {{ titleOrName }}
+            <span v-if="resumeData?.deleted" class="text-xs text-[#e74c3c] bg-[#e74c3c]/10 px-2 py-0.5 rounded font-normal">已删除</span>
           </div>
           <div class="text-xs text-[#888] mt-0.5">
             <span
@@ -332,17 +451,51 @@ function onVisibilityChange() {
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#4a9eff] text-[#4a9eff] text-sm hover:bg-[#4a9eff]/10 transition-colors" @click="handleEdit">
-            <Edit3 class="w-3.5 h-3.5" /> 编辑
-          </button>
-          <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="handleDelete">
-            <Trash2 class="w-3.5 h-3.5" /> 删除
-          </button>
+          <span class="text-[#f0c040] font-semibold text-sm">🫘 {{ resumeData.price }}</span>
+          <template v-if="!resumeData.deleted">
+            <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#f0c040] text-[#f0c040] text-sm hover:bg-[#f0c040]/10 transition-colors" @click="handleTipClick">
+              <Coffee class="w-3.5 h-3.5" /> 打赏
+            </button>
+            <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#4a9eff] text-[#4a9eff] text-sm hover:bg-[#4a9eff]/10 transition-colors" @click="handleEdit">
+              <Edit3 class="w-3.5 h-3.5" /> 编辑
+            </button>
+            <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="handleDelete">
+              <Trash2 class="w-3.5 h-3.5" /> 删除
+            </button>
+            <button
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-colors"
+              :class="resumeData.isLiked ? 'bg-[#e74c3c]/20 border-[#e74c3c] text-[#e74c3c]' : 'bg-[#2d2d2d] border-[#555] text-[#888] hover:border-[#e74c3c] hover:text-[#e74c3c]'"
+              @click="handleResumeLike"
+            >
+              <Heart class="w-4 h-4" :fill="resumeData.isLiked ? 'currentColor' : 'none'" />
+              <span class="text-sm">{{ resumeData.likeCount || 0 }}</span>
+            </button>
+          </template>
         </div>
       </div>
 
-      <div class="text-sm leading-relaxed whitespace-pre-wrap text-[#bbb]" @click="onPostContentClick">
-        {{ bodyContent }}
+      <div class="mb-4 p-3 bg-[#2a2a2a] rounded-md" @click="onPostContentClick">
+        <p class="text-sm text-[#ccc] whitespace-pre-wrap">{{ resumeData.promoText }}</p>
+      </div>
+
+      <div class="mb-4">
+        <h3 class="text-sm text-[#888] mb-2">
+          {{ resumeData.hasPurchased || isOwner ? '简历内容' : '简历预览（前200字）' }}
+        </h3>
+        <div class="p-3 bg-[#252525] border border-[#333] rounded-md">
+          <pre class="text-sm text-[#ccc] whitespace-pre-wrap font-sans">{{ resumeData.content }}</pre>
+        </div>
+        <div v-if="!resumeData.deleted && !resumeData.hasPurchased && !isOwner" class="mt-2 p-3 bg-[#2d2510] border border-[#4a3a10] rounded-md text-center">
+          <p class="text-sm text-[#f0c040] mb-2">🔒 支付 🫘 {{ resumeData.price }} 豆查看完整简历</p>
+          <p v-if="purchaseError" class="text-xs text-[#e74c3c] mb-2">{{ purchaseError }}</p>
+          <button class="px-6 py-2 bg-[#f0c040] text-[#1e1e1e] rounded-md text-sm font-medium hover:bg-[#e0b030] transition-colors disabled:opacity-50"
+            :disabled="purchasing" @click="handlePurchase">
+            {{ purchasing ? '处理中...' : '支付解锁' }}
+          </button>
+        </div>
+        <div v-else-if="resumeData.hasPurchased && !isOwner" class="mt-2 text-xs text-[#27ae60]">
+          ✅ 已购买，可查看完整内容
+        </div>
       </div>
     </template>
 
@@ -360,21 +513,38 @@ function onVisibilityChange() {
         </div>
       </div>
 
+      <!-- Referral info card (referral posts only) -->
+      <div v-if="isReferralPost" class="mb-4 p-4 border border-[#4a9eff]/30 rounded-md bg-[#4a9eff]/5">
+        <div class="flex flex-col gap-2 text-sm">
+          <div class="flex items-center gap-2">
+            <span class="text-[#888]">内推码</span>
+            <span class="text-[#4a9eff] font-medium">{{ referralCode }}</span>
+          </div>
+          <div v-if="referralLink" class="flex items-center gap-2">
+            <span class="text-[#888]">内推链接</span>
+            <a
+              :href="referralLink"
+              target="_blank"
+              class="text-[#4a9eff] hover:text-[#6ab4ff] underline transition-colors break-all"
+            >{{ referralLink }}</a>
+          </div>
+        </div>
+      </div>
+
       <div class="flex items-center gap-3 mb-5">
         <div
           class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-          :style="postListItem?.authorAvatarUrl ? {} : { backgroundColor: avatarColor(detailUserId) }"
-          :class="postListItem?.authorAvatarUrl ? 'bg-[#6b46c1]' : ''"
+          :style="{ backgroundColor: avatarColor(detailUserId) }"
           @mouseenter="!postListItem?.isAnonymous && onAuthorMouseEnter($event, detailUserId)"
           @mouseleave="onAuthorMouseLeave"
           @click="!postListItem?.isAnonymous && onAuthorClick(detailUserId)"
         >
           <img
-            v-if="postListItem?.authorAvatarUrl"
-            :src="avatarUrl(postListItem.authorAvatarUrl)"
+            v-if="authorAvatarUrl && !avatarImgError"
+            :src="avatarUrl(authorAvatarUrl)"
             class="w-full h-full object-cover"
-          />
-          <span v-else>{{ postListItem?.authorAvatar || '?' }}</span>
+            @error="avatarImgError = true" />
+          <span v-else>{{ authorAvatar || '?' }}</span>
         </div>
         <div class="flex-1">
           <div class="text-lg font-semibold text-[#ddd]">
@@ -387,8 +557,8 @@ function onVisibilityChange() {
               @mouseenter="onAuthorMouseEnter($event, detailUserId)"
               @mouseleave="onAuthorMouseLeave"
               @click="onAuthorClick(detailUserId)"
-            >{{ postListItem?.authorName }}</span>
-            <span v-else>{{ postListItem?.authorName }}</span>
+            >{{ authorName }}</span>
+            <span v-else>{{ authorName }}</span>
             <span v-if="detailCreatedAt" class="ml-2">{{ formatTime(detailCreatedAt) }}</span>
           </div>
           <div v-if="isPostPinned && postListItem?.pinExpiresAt" class="text-xs text-[#e74c3c] mt-0.5">
@@ -402,13 +572,13 @@ function onVisibilityChange() {
           <button v-if="isOwner" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="handleDelete">
             <Trash2 class="w-3.5 h-3.5" /> 删除
           </button>
-          <button v-if="isOwner && postType === 'regular' && !isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="showPinDialog = true">
+          <button v-if="isOwner && (postType === 'regular' || postType === 'referral') && !isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="showPinDialog = true">
             📌 置顶
           </button>
-          <button v-if="isOwner && postType === 'regular' && isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="showPinDialog = true">
+          <button v-if="isOwner && (postType === 'regular' || postType === 'referral') && isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#e74c3c] text-[#e74c3c] text-sm hover:bg-[#e74c3c]/10 transition-colors" @click="showPinDialog = true">
             📌 续费置顶
           </button>
-          <button v-if="isOwner && postType === 'regular' && isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#888] text-[#888] text-sm hover:bg-[#888]/10 transition-colors" @click="handleUnpin">
+          <button v-if="isOwner && (postType === 'regular' || postType === 'referral') && isPostPinned" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#888] text-[#888] text-sm hover:bg-[#888]/10 transition-colors" @click="handleUnpin">
             取消置顶
           </button>
           <button
@@ -430,7 +600,8 @@ function onVisibilityChange() {
     </div>
 
     <!-- Comments (regular / QA posts only) -->
-    <CommentSection ref="commentSectionRef" v-if="postType !== 'resume'" :target-id="postId" :target-type="postType === 'qa' ? 'regular' : postType" :post-type="isQaPost ? 'qa' : 'normal'" :bounty-remaining="bountyRemaining" :bounty-status="bountyStatus" :post-author-id="detailUserId" class="flex-1 min-h-0" />
+    <CommentSection v-if="!resumeData?.deleted" ref="commentSectionRef" :target-id="postId" target-type="post" :post-type="isQaPost ? 'qa' : (postType === 'resume' ? 'resume' : 'normal')" :bounty-remaining="bountyRemaining" :bounty-status="bountyStatus" :post-author-id="detailUserId" class="flex-1 min-h-0" />
+    <div v-else class="flex-1 flex items-center justify-center text-sm text-[#666]">帖子已删除，评论已关闭</div>
   </div>
 
   <div v-else-if="postStore.loadingDetail" class="h-full flex items-center justify-center">
@@ -492,6 +663,67 @@ function onVisibilityChange() {
         <button class="px-4 py-2 border border-[#555] text-[#aaa] rounded-md text-sm hover:bg-[#2a2a2a]" @click="showPinDialog = false">取消</button>
         <button v-if="maxRenewHours > 0" class="px-4 py-2 bg-[#4a9eff] text-white rounded-md text-sm hover:bg-[#3a8eef]" @click="handlePin">确认{{ isPostPinned ? '续费' : '置顶' }}</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 打赏弹窗 -->
+  <div v-if="showTipDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="showTipDialog = false">
+    <div class="bg-[#1e1e1e] border border-[#333] rounded-lg p-6 w-[400px]">
+      <template v-if="!showTipConfirm">
+        <h3 class="text-lg font-semibold text-[#ccc] mb-4">🫘 打赏帖子</h3>
+        <div class="text-sm text-[#aaa] mb-4">选择打赏金额，豆子将直接转给帖主</div>
+        <div class="text-xs text-[#888] mb-3">你的余额：🫘 {{ maxTipBeans }}</div>
+
+        <!-- Presets -->
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button
+            v-for="preset in tipPresets"
+            :key="preset"
+            class="px-4 py-2 text-sm rounded-md border transition-colors"
+            :class="preset <= maxTipBeans ? (tipAmount === preset && !tipCustomInput ? 'bg-[#f0c040]/20 border-[#f0c040] text-[#f0c040]' : 'border-[#444] text-[#aaa] hover:border-[#f0c040] hover:text-[#f0c040]') : 'border-[#333] text-[#555] cursor-not-allowed'"
+            @click="preset <= maxTipBeans && selectTipPreset(preset)"
+          >🫘 {{ preset }}</button>
+        </div>
+
+        <!-- Custom input -->
+        <div class="mb-4">
+          <label class="text-sm text-[#aaa] block mb-1.5">自定义金额</label>
+          <input
+            v-model.number="tipCustomInput"
+            type="number"
+            min="1"
+            :max="maxTipBeans"
+            step="1"
+            placeholder="输入豆子数"
+            class="w-full bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-2 text-sm text-[#ccc] outline-none focus:border-[#f0c040] placeholder:text-[#666]"
+            :class="[tipCustomInput && !Number.isInteger(tipCustomInput) ? '!border-[#e74c3c]' : '']"
+            @input="applyCustomTip"
+          />
+        </div>
+
+        <p v-if="tipError" class="text-xs text-[#e74c3c] mb-3">{{ tipError }}</p>
+
+        <div class="flex gap-3 justify-end">
+          <button class="px-4 py-2 border border-[#555] text-[#aaa] rounded-md text-sm hover:bg-[#2a2a2a]" @click="showTipDialog = false">取消</button>
+          <button class="px-4 py-2 bg-[#f0c040] text-[#1e1e1e] rounded-md text-sm font-medium hover:bg-[#e0b030] disabled:opacity-50" :disabled="tipAmount < 1" @click="goToTipConfirm">
+            确认打赏 🫘 {{ tipAmount }}
+          </button>
+        </div>
+      </template>
+
+      <!-- Confirm step -->
+      <template v-else>
+        <h3 class="text-lg font-semibold text-[#ccc] mb-4">确认支付</h3>
+        <div class="text-sm text-[#aaa] mb-2">是否支付 🫘 {{ tipAmount }} 百斩豆？</div>
+        <div class="text-xs text-[#888] mb-4">打赏给帖主，豆子将从你的账户扣除</div>
+        <p v-if="tipError" class="text-xs text-[#e74c3c] mb-3">{{ tipError }}</p>
+        <div class="flex gap-3 justify-end">
+          <button class="px-4 py-2 border border-[#555] text-[#aaa] rounded-md text-sm hover:bg-[#2a2a2a]" @click="showTipConfirm = false">取消</button>
+          <button class="px-4 py-2 bg-[#f0c040] text-[#1e1e1e] rounded-md text-sm font-medium hover:bg-[#e0b030] disabled:opacity-50" :disabled="tipping" @click="handleTipConfirm">
+            {{ tipping ? '处理中...' : '确认支付' }}
+          </button>
+        </div>
+      </template>
     </div>
   </div>
 

@@ -51,6 +51,25 @@ export const useEditorStore = defineStore('editor', () => {
     activeTabId.value = tabId
   }
 
+  function openOrUpdateComponentTab(tabId: string, title: string, component: any, componentProps?: Record<string, unknown>) {
+    const existingTab = tabs.value.find(tab => tab.id === tabId)
+    if (existingTab) {
+      existingTab.title = title
+      existingTab.componentProps = componentProps
+      activeTabId.value = existingTab.id
+      return
+    }
+
+    const newTab: EditorTab = {
+      id: tabId,
+      title,
+      component: markRaw(component),
+      componentProps
+    }
+    tabs.value.push(newTab)
+    activeTabId.value = newTab.id
+  }
+
   function closeTab(tabId: string) {
     const index = tabs.value.findIndex(tab => tab.id === tabId)
     if (index !== -1) {
@@ -86,6 +105,7 @@ export const useEditorStore = defineStore('editor', () => {
     modifiedTabs,
     openFile,
     openComponentTab,
+    openOrUpdateComponentTab,
     setActiveTab,
     closeTab,
     updateContent,

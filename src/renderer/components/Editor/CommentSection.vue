@@ -14,7 +14,7 @@ import UserProfilePage from '@/components/Profile/UserProfilePage.vue'
 
 const props = defineProps<{
   targetId: string
-  targetType: 'resume' | 'regular'
+  targetType: 'resume' | 'regular' | 'post'
   postType?: string
   bountyRemaining?: number
   bountyStatus?: string
@@ -80,7 +80,15 @@ const sortMode = ref<'hot' | 'latest'>('hot')
 const isOwner = computed(() => authStore.user?.id != null && authStore.user.id === props.postAuthorId)
 const expandedReplies = ref<Set<string>>(new Set())
 const commentLikedIds = ref<Set<string>>(new Set())
+const avatarImgErrors = ref<Set<string>>(new Set())
 const commentExpanded = ref(false)
+	/** 本地更新帖子列表中的评论数（正数增加，负数减少） */
+	function bumpLocalCommentCount(delta: number) {
+	  const regItem = postStore.postList.find(p => p.id === props.targetId)
+	  if (regItem) regItem.commentCount = Math.max(0, (regItem.commentCount || 0) + delta)
+	  const resItem = postStore.resumePostList.find(p => p.id === props.targetId)
+	  if (resItem) resItem.commentCount = Math.max(0, (resItem.commentCount || 0) + delta)
+	}
 const commentTextarea = ref<HTMLTextAreaElement | null>(null)
 const replyTextarea = ref<HTMLTextAreaElement | null>(null)
 
@@ -164,9 +172,7 @@ async function handleSendComment() {
   isAnonymousComment.value = false
   commentExpanded.value = false
   nextTick(() => autoResize(commentTextarea.value))
-  // 更新帖子列表中的评论数
-  const listItem = postStore.postList.find(p => p.id === props.targetId)
-  if (listItem) listItem.commentCount += 1
+  bumpLocalCommentCount(1)
   await postStore.fetchComments(props.targetId, props.targetType)
 }
 
@@ -188,9 +194,7 @@ async function handleSendReply() {
   isAnonymousReply.value = false
   replyExpanded.value = false
   nextTick(() => autoResize(replyTextarea.value))
-  // 更新帖子列表中的评论数
-  const listItem = postStore.postList.find(p => p.id === props.targetId)
-  if (listItem) listItem.commentCount += 1
+  bumpLocalCommentCount(1)
   // Auto-expand the parent comment so the new reply is visible
   const next = new Set(expandedReplies.value)
   next.add(parentId)
@@ -252,6 +256,7 @@ async function handleDeleteComment(commentId: string) {
     const resp = await postApi.deleteComment(commentId)
     if (resp.code === 200) {
       await postStore.fetchComments(props.targetId, props.targetType)
+      bumpLocalCommentCount(-1)
     }
   } catch { /* ignore */ }
 }
@@ -283,47 +288,91 @@ const totalCommentCount = computed(() => countAll(postStore.comments))
 
 // Bounty dialog
 const showBountyDialog = ref(false)
+const showBountyConfirm = ref(false)
 const bountyDialogType = ref<'adopt' | 'reward'>('reward')
 const bountyDialogComment = ref<CommentVO | null>(null)
 const bountyDialogBeans = ref(10)
+const bountyPresets = [5, 10, 20, 50]
+const bountyCustomInput = ref('')
+const bountyError = ref('')
+const bountySubmitting = ref(false)
 
 function openBountyDialog(type: 'adopt' | 'reward', comment: CommentVO) {
   if (!useRequireAuth()) return
   bountyDialogType.value = type
   bountyDialogComment.value = comment
   bountyDialogBeans.value = props.bountyRemaining || 10
+  bountyCustomInput.value = ''
+  showBountyConfirm.value = false
+  bountyError.value = ''
+  bountySubmitting.value = false
   showBountyDialog.value = true
+}
+
+function selectBountyPreset(amount: number) {
+  bountyDialogBeans.value = amount
+  bountyCustomInput.value = ''
+}
+
+function applyBountyCustom() {
+  const val = parseFloat(bountyCustomInput.value as any)
+  if (!isNaN(val) && val >= 1) {
+    if (!Number.isInteger(val)) {
+      bountyError.value = '豆子数必须为整数'
+      return
+    }
+    bountyError.value = ''
+    bountyDialogBeans.value = Math.floor(val)
+  }
+}
+
+function goToBountyConfirm() {
+  if (bountyDialogBeans.value < 1) {
+    bountyError.value = '豆子数至少为1'
+    return
+  }
+  bountyError.value = ''
+  showBountyConfirm.value = true
 }
 
 async function handleBountyConfirm() {
   if (!bountyDialogComment.value) return
   const commentId = bountyDialogComment.value.id
   const beans = bountyDialogBeans.value
+  bountySubmitting.value = true
   try {
     if (bountyDialogType.value === 'adopt') {
       const resp = await postApi.adoptComment(props.targetId, commentId, beans)
       if (resp.code === 200) {
         const data = resp.data!
+        showBountyDialog.value = false
+        showBountyConfirm.value = false
         if (data.fromAccount > 0) {
           alert(`超出求助余额 ${data.fromAccount} 豆子已从账户扣除`)
         }
       } else {
-        alert(resp.message || '采纳失败')
+        bountyError.value = resp.message || '采纳失败'
+        showBountyConfirm.value = false
         return
       }
     } else {
       const resp = await postApi.rewardComment(props.targetId, commentId, beans)
       if (resp.code !== 200) {
-        alert(resp.message || '打赏失败')
+        bountyError.value = resp.message || '打赏失败'
+        showBountyConfirm.value = false
         return
       }
+      showBountyDialog.value = false
+      showBountyConfirm.value = false
     }
-    showBountyDialog.value = false
     await postStore.fetchComments(props.targetId, props.targetType)
     // 刷新帖子详情以更新剩余豆子数
     await postStore.selectPost(props.targetId, (props.postType as PostTab) || 'regular')
   } catch {
-    alert('操作失败')
+    bountyError.value = '操作失败'
+    showBountyConfirm.value = false
+  } finally {
+    bountySubmitting.value = false
   }
 }
 
@@ -363,12 +412,12 @@ defineExpose({ cancelReply })
           <div
             class="rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 mt-0.5 overflow-hidden"
             :class="[entry.depth > 0 ? 'w-6 h-6' : 'w-8 h-8', !entry.comment.isAnonymous ? 'cursor-pointer hover:opacity-80 transition-opacity' : '']"
-            :style="entry.comment.avatarUrl ? {} : { backgroundColor: avatarColor(entry.comment.userId) }"
+            :style="{ backgroundColor: avatarColor(entry.comment.userId) }"
             @mouseenter="!entry.comment.isAnonymous && onAvatarMouseEnter($event, entry.comment.userId)"
             @mouseleave="onAvatarMouseLeave"
             @click.stop="!entry.comment.isAnonymous && onAvatarClick(entry.comment.userId)"
           >
-            <img v-if="avatarUrl(entry.comment.avatarUrl)" :src="avatarUrl(entry.comment.avatarUrl)" class="w-full h-full object-cover" />
+            <img v-if="avatarUrl(entry.comment.avatarUrl) && !avatarImgErrors.has(entry.comment.id)" :src="avatarUrl(entry.comment.avatarUrl)" class="w-full h-full object-cover" @error="avatarImgErrors.add(entry.comment.id)" />
             <span v-else>{{ entry.comment.nickname?.charAt(0) || '?' }}</span>
           </div>
 
@@ -414,7 +463,7 @@ defineExpose({ cancelReply })
           <!-- Delete button (own, non-deleted comments only) -->
           <button
             v-if="entry.comment.content && authStore.user?.id && entry.comment.userId === authStore.user.id"
-            class="flex items-center gap-0.5 text-xs flex-shrink-0 pt-0.5 text-[#888] hover:text-[#e74c3c] transition-colors"
+            class="flex items-center gap-0.5 text-xs flex-shrink-0 self-center text-[#888] hover:text-[#e74c3c] transition-colors"
             @click.stop="handleDeleteComment(entry.comment.id)"
           >
             <Trash2 class="w-3.5 h-3.5" />
@@ -423,7 +472,7 @@ defineExpose({ cancelReply })
           <!-- Like button (non-deleted comments only) -->
           <button
             v-if="entry.comment.content"
-            class="flex items-center gap-0.5 text-xs flex-shrink-0 pt-0.5 transition-colors"
+            class="flex items-center gap-0.5 text-xs flex-shrink-0 self-center transition-colors"
             :class="commentLikedIds.has(entry.comment.id) ? 'text-[#e74c3c]' : 'text-[#888] hover:text-[#e74c3c]'"
             @click.stop="handleLikeComment(entry.comment)"
           >
@@ -435,12 +484,12 @@ defineExpose({ cancelReply })
           <template v-if="props.postType === 'qa' && entry.comment.content">
             <button
               v-if="isOwner && props.bountyStatus === 'active' && !entry.comment.isAdopted && entry.comment.userId !== authStore.user?.id"
-              class="text-xs px-2 py-0.5 rounded border border-[#f0c040]/50 text-[#f0c040] hover:bg-[#f0c040]/10 transition-colors flex-shrink-0"
+              class="text-xs px-2 py-0.5 rounded border border-[#f0c040]/50 text-[#f0c040] hover:bg-[#f0c040]/10 transition-colors flex-shrink-0 self-center"
               @click.stop="openBountyDialog('adopt', entry.comment)"
             >采纳</button>
             <button
               v-if="entry.comment.userId !== authStore.user?.id"
-              class="text-xs px-2 py-0.5 rounded border border-[#4a9eff]/50 text-[#4a9eff] hover:bg-[#4a9eff]/10 transition-colors flex-shrink-0"
+              class="text-xs px-2 py-0.5 rounded border border-[#4a9eff]/50 text-[#4a9eff] hover:bg-[#4a9eff]/10 transition-colors flex-shrink-0 self-center"
               @click.stop="openBountyDialog('reward', entry.comment)"
             >打赏</button>
           </template>
@@ -527,32 +576,73 @@ defineExpose({ cancelReply })
 
     <!-- Bounty dialog -->
     <div v-if="showBountyDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="showBountyDialog = false">
-      <div class="bg-[#1e1e1e] border border-[#333] rounded-lg p-6 w-[380px]">
-        <h3 class="text-lg font-semibold text-[#ccc] mb-4">
-          {{ bountyDialogType === 'adopt' ? '采纳回答' : '打赏回答' }}
-        </h3>
-        <div class="text-sm text-[#aaa] mb-3">
-          {{ bountyDialogType === 'adopt' ? '采纳后将标记为已采纳，豆子立即发放' : '直接打赏豆子给回答者' }}
-        </div>
-        <div v-if="bountyDialogType === 'adopt' && props.bountyRemaining && props.bountyRemaining > 0" class="text-xs text-[#888] mb-3">
-          求助剩余：🫘 {{ props.bountyRemaining }}
-        </div>
-        <div class="mb-4">
-          <label class="block text-sm text-[#aaa] mb-1.5">豆子数</label>
-          <input
-            v-model.number="bountyDialogBeans"
-            type="number"
-            min="1"
-            class="w-full bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-2 text-sm text-[#ccc] outline-none focus:border-[#4a9eff]"
-          />
-          <div v-if="bountyDialogType === 'adopt' && props.bountyRemaining && bountyDialogBeans > props.bountyRemaining" class="text-xs text-[#e74c3c] mt-1">
-            超出求助余额 {{ bountyDialogBeans - (props.bountyRemaining || 0) }} 豆子，将继续从账户扣除
+      <div class="bg-[#1e1e1e] border border-[#333] rounded-lg p-6 w-[400px]">
+        <template v-if="!showBountyConfirm">
+          <h3 class="text-lg font-semibold text-[#ccc] mb-4">
+            {{ bountyDialogType === 'adopt' ? '采纳回答' : '打赏回答' }}
+          </h3>
+          <div class="text-sm text-[#aaa] mb-3">
+            {{ bountyDialogType === 'adopt' ? '采纳后将标记为已采纳，豆子立即发放' : '直接打赏豆子给回答者' }}
           </div>
-        </div>
-        <div class="flex gap-3 justify-end">
-          <button class="px-4 py-2 border border-[#555] text-[#aaa] rounded-md text-sm hover:bg-[#2a2a2a]" @click="showBountyDialog = false">取消</button>
-          <button class="px-4 py-2 bg-[#4a9eff] text-white rounded-md text-sm hover:bg-[#3a8eef]" @click="handleBountyConfirm">确认</button>
-        </div>
+          <div v-if="bountyDialogType === 'adopt' && props.bountyRemaining && props.bountyRemaining > 0" class="text-xs text-[#888] mb-3">
+            求助剩余：🫘 {{ props.bountyRemaining }}
+          </div>
+
+          <!-- Presets -->
+          <div class="flex flex-wrap gap-2 mb-4">
+            <button
+              v-for="preset in bountyPresets"
+              :key="preset"
+              class="px-4 py-2 text-sm rounded-md border transition-colors"
+              :class="bountyDialogBeans === preset && !bountyCustomInput ? 'bg-[#4a9eff]/20 border-[#4a9eff] text-[#4a9eff]' : 'border-[#444] text-[#aaa] hover:border-[#4a9eff] hover:text-[#4a9eff]'"
+              @click="selectBountyPreset(preset)"
+            >🫘 {{ preset }}</button>
+          </div>
+
+          <!-- Custom input -->
+          <div class="mb-4">
+            <label class="block text-sm text-[#aaa] mb-1.5">自定义金额</label>
+            <input
+              v-model.number="bountyCustomInput"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="输入豆子数"
+              class="w-full bg-[#2d2d2d] border border-[#444] rounded-md px-3 py-2 text-sm text-[#ccc] outline-none focus:border-[#4a9eff] placeholder:text-[#666]"
+              :class="[bountyCustomInput && !Number.isInteger(bountyCustomInput) ? '!border-[#e74c3c]' : '']"
+              @input="applyBountyCustom"
+            />
+            <div v-if="bountyDialogType === 'adopt' && props.bountyRemaining && bountyDialogBeans > (props.bountyRemaining || 0)" class="text-xs text-[#e74c3c] mt-1">
+              超出求助余额 {{ bountyDialogBeans - (props.bountyRemaining || 0) }} 豆子，将继续从账户扣除
+            </div>
+          </div>
+
+          <p v-if="bountyError" class="text-xs text-[#e74c3c] mb-3">{{ bountyError }}</p>
+
+          <div class="flex gap-3 justify-end">
+            <button class="px-4 py-2 border border-[#555] text-[#aaa] rounded-md text-sm hover:bg-[#2a2a2a]" @click="showBountyDialog = false">取消</button>
+            <button class="px-4 py-2 bg-[#4a9eff] text-white rounded-md text-sm hover:bg-[#3a8eef] disabled:opacity-50" :disabled="bountyDialogBeans < 1" @click="goToBountyConfirm">
+              确认{{ bountyDialogType === 'adopt' ? '采纳' : '打赏' }} 🫘 {{ bountyDialogBeans }}
+            </button>
+          </div>
+        </template>
+
+        <!-- Confirm step -->
+        <template v-else>
+          <h3 class="text-lg font-semibold text-[#ccc] mb-4">确认支付</h3>
+          <div class="text-sm text-[#aaa] mb-2">是否支付 🫘 {{ bountyDialogBeans }} 百斩豆？</div>
+          <div class="text-xs text-[#888] mb-4">
+            {{ bountyDialogType === 'adopt' ? '采纳该回答，豆子将立即发放给回答者' : '打赏给回答者，豆子将从你的账户扣除' }}
+            <span v-if="bountyDialogType === 'adopt' && props.bountyRemaining && bountyDialogBeans > (props.bountyRemaining || 0)" class="text-[#e74c3c]">（超出求助余额部分将从账户扣除）</span>
+          </div>
+          <p v-if="bountyError" class="text-xs text-[#e74c3c] mb-3">{{ bountyError }}</p>
+          <div class="flex gap-3 justify-end">
+            <button class="px-4 py-2 border border-[#555] text-[#aaa] rounded-md text-sm hover:bg-[#2a2a2a]" @click="showBountyConfirm = false">取消</button>
+            <button class="px-4 py-2 bg-[#4a9eff] text-white rounded-md text-sm hover:bg-[#3a8eef] disabled:opacity-50" :disabled="bountySubmitting" @click="handleBountyConfirm">
+              {{ bountySubmitting ? '处理中...' : '确认支付' }}
+            </button>
+          </div>
+        </template>
       </div>
     </div>
   </div>

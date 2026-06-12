@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, markRaw, ref, watch } from 'vue'
-import { FilePlus, UserCircle, Search, LogOut, User, ShieldCheck, Building2, Briefcase, CalendarClock, BadgeCheck, Gift } from 'lucide-vue-next'
+import { FilePlus, UserCircle, Search, LogOut, User, ShieldCheck, Building2, Briefcase, CalendarClock, BadgeCheck, Gift, Download, Home } from 'lucide-vue-next'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useEditorStore } from '@/stores/editor'
 import { useAuthStore } from '@/stores/auth'
 import ExplorerPanel from '@/plugins/builtin/components/ExplorerPanel.vue'
+import UserProfilePage from '@/components/Profile/UserProfilePage.vue'
 import { pluginManager } from '@/plugins/pluginManager'
 
 const workspaceStore = useWorkspaceStore()
@@ -13,6 +14,7 @@ const authStore = useAuthStore()
 
 const accountFeatures = computed(() => {
   const base = [
+    { id: 'profile-page', label: '个人主页', icon: Home },
     { id: 'profile', label: '个人信息', icon: User },
     { id: 'avatar', label: '修改头像', icon: FilePlus },
     { id: 'password', label: '修改密码', icon: LogOut },
@@ -97,6 +99,17 @@ function handleAccountFeatureSelect(featureId: string) {
   if (index >= 0) {
     activeAccountIndex.value = index
   }
+
+  if (featureId === 'profile-page' && authStore.user?.id) {
+    editorStore.openComponentTab(
+      `profile:${authStore.user.id}`,
+      '个人主页',
+      UserProfilePage,
+      { userId: authStore.user.id }
+    )
+    return
+  }
+
   editorStore.openComponentTab(
     `account:${featureId}`,
     `${directoryTitle.value}/${accountFeatures.value.find(item => item.id === featureId)?.label || '详情'}`,

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import { X, MessageSquare, FileText, Image, Loader, BellOff, Bell, UserX, Link, Search } from 'lucide-vue-next'
+import { X, MessageSquare, FileText, Image, Loader, BellOff, Bell, UserX, Link, Search, ExternalLink } from 'lucide-vue-next'
 import type { ConversationVO, MemberVO, MessageVO } from '@/api/social'
 import { getConversationDetail, getMessages, searchMessages } from '@/api/social'
 import { useSocialStore } from '@/stores/social'
 import { useEditorStore } from '@/stores/editor'
 import { useAuthStore } from '@/stores/auth'
 import { API_BASE_URL } from '@/api/http'
+import UserProfilePage from '@/components/Profile/UserProfilePage.vue'
 
 const props = defineProps<{
   show: boolean
@@ -189,6 +190,16 @@ function handleDeleteFriend() {
   }
 }
 
+function handleViewProfile() {
+  if (!friendInfo.value) return
+  editorStore.openComponentTab(
+    `profile:${friendInfo.value.userId}`,
+    friendInfo.value.nickname || '用户主页',
+    UserProfilePage,
+    { userId: friendInfo.value.userId }
+  )
+}
+
 function handleToggleMute() {
   if (detail.value) {
     store.toggleMute(props.conversationId)
@@ -246,12 +257,12 @@ function handleToggleMute() {
             <!-- 操作按钮 -->
             <div class="flex gap-2">
               <button
-                class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded hover:bg-vscode-active transition-colors text-vscode-text"
-                @click="handleToggleMute"
+                v-if="friendInfo"
+                class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded text-[#4a9eff] hover:bg-[#4a9eff]/10 transition-colors"
+                @click="handleViewProfile"
               >
-                <BellOff v-if="detail.isMuted" class="w-3.5 h-3.5" />
-                <Bell v-else class="w-3.5 h-3.5" />
-                {{ detail.isMuted ? '已免打扰' : '免打扰' }}
+                <ExternalLink class="w-3.5 h-3.5" />
+                个人主页
               </button>
               <button
                 class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded hover:bg-red-400/10 transition-colors text-red-400"

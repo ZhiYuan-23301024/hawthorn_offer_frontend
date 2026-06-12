@@ -3,11 +3,14 @@ import { ref, computed, nextTick, watch } from 'vue'
 import { Heart, ChevronDown, ChevronUp, Send, Trash2, Maximize2, Minimize2 } from 'lucide-vue-next'
 import { usePostStore } from '@/stores/post'
 import { useAuthStore } from '@/stores/auth'
+import { useEditorStore } from '@/stores/editor'
 import * as postApi from '@/api/post'
 import type { CommentVO } from '@/api/post'
 import type { PostTab } from '@/stores/post'
 import { formatTimeAgo, avatarUrl, avatarColor } from '@/utils/format'
 import { useRequireAuth } from '@/composables/useRequireAuth'
+import UserHoverCard from '@/components/Profile/UserHoverCard.vue'
+import UserProfilePage from '@/components/Profile/UserProfilePage.vue'
 
 const props = defineProps<{
   targetId: string
@@ -20,6 +23,53 @@ const props = defineProps<{
 
 const postStore = usePostStore()
 const authStore = useAuthStore()
+const editorStore = useEditorStore()
+
+// Hover card state
+const hoverUserId = ref<string | null>(null)
+const hoverAnchorEl = ref<HTMLElement | null>(null)
+const showHoverCard = ref(false)
+let hoverTimer: ReturnType<typeof setTimeout> | null = null
+let hoverCloseTimer: ReturnType<typeof setTimeout> | null = null
+
+function onAvatarMouseEnter(e: MouseEvent, userId: string) {
+  if (hoverTimer) clearTimeout(hoverTimer)
+  if (hoverCloseTimer) clearTimeout(hoverCloseTimer)
+  hoverUserId.value = userId
+  hoverAnchorEl.value = e.currentTarget as HTMLElement
+  hoverTimer = setTimeout(() => { showHoverCard.value = true }, 300)
+}
+
+function onAvatarMouseLeave() {
+  if (hoverTimer) clearTimeout(hoverTimer)
+  hoverCloseTimer = setTimeout(() => {
+    showHoverCard.value = false
+    hoverUserId.value = null
+    hoverAnchorEl.value = null
+  }, 750)
+}
+
+function onHoverCardMouseEnter() {
+  if (hoverCloseTimer) clearTimeout(hoverCloseTimer)
+}
+
+function onHoverCardMouseLeave() {
+  showHoverCard.value = false
+  hoverUserId.value = null
+  hoverAnchorEl.value = null
+}
+
+function onAvatarClick(userId: string) {
+  showHoverCard.value = false
+  if (hoverTimer) clearTimeout(hoverTimer)
+  if (hoverCloseTimer) clearTimeout(hoverCloseTimer)
+  editorStore.openComponentTab(
+    `profile:${userId}`,
+    '用户主页',
+    UserProfilePage,
+    { userId }
+  )
+}
 
 const newComment = ref('')
 const replyToId = ref<string | null>(null)
@@ -312,8 +362,11 @@ defineExpose({ cancelReply })
           <!-- Avatar -->
           <div
             class="rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 mt-0.5 overflow-hidden"
-            :class="entry.depth > 0 ? 'w-6 h-6' : 'w-8 h-8'"
+            :class="[entry.depth > 0 ? 'w-6 h-6' : 'w-8 h-8', !entry.comment.isAnonymous ? 'cursor-pointer hover:opacity-80 transition-opacity' : '']"
             :style="entry.comment.avatarUrl ? {} : { backgroundColor: avatarColor(entry.comment.userId) }"
+            @mouseenter="!entry.comment.isAnonymous && onAvatarMouseEnter($event, entry.comment.userId)"
+            @mouseleave="onAvatarMouseLeave"
+            @click.stop="!entry.comment.isAnonymous && onAvatarClick(entry.comment.userId)"
           >
             <img v-if="avatarUrl(entry.comment.avatarUrl)" :src="avatarUrl(entry.comment.avatarUrl)" class="w-full h-full object-cover" />
             <span v-else>{{ entry.comment.nickname?.charAt(0) || '?' }}</span>
@@ -322,7 +375,13 @@ defineExpose({ cancelReply })
           <!-- Body -->
           <div class="flex-1 min-w-0">
             <div v-if="entry.comment.content" class="text-xs">
-              <span class="font-semibold text-[#ccc]">{{ entry.comment.nickname }}</span>
+              <span
+                class="font-semibold"
+                :class="!entry.comment.isAnonymous ? 'text-[#ccc] cursor-pointer hover:text-[#4a9eff] transition-colors' : 'text-[#ccc]'"
+                @mouseenter="!entry.comment.isAnonymous && onAvatarMouseEnter($event, entry.comment.userId)"
+                @mouseleave="onAvatarMouseLeave"
+                @click.stop="!entry.comment.isAnonymous && onAvatarClick(entry.comment.userId)"
+              >{{ entry.comment.nickname }}</span>
               <span v-if="entry.comment.isAnonymous && entry.comment.isPostAuthor" class="ml-1 text-xs px-1.5 py-0.5 rounded bg-[#4a9eff]/20 text-[#4a9eff] font-medium">楼主</span>
               <span v-else-if="entry.comment.isAnonymous && isSelfComment(entry.comment)" class="ml-1 text-xs px-1.5 py-0.5 rounded bg-[#27ae60]/20 text-[#27ae60] font-medium">本人</span>
               <span v-if="(entry.comment.bountyBeans ?? 0) > 0" class="ml-1 text-xs text-[#f0c040]">🫘+{{ entry.comment.bountyBeans }}</span>
@@ -497,4 +556,14 @@ defineExpose({ cancelReply })
       </div>
     </div>
   </div>
+
+  <UserHoverCard
+    v-if="hoverUserId"
+    :user-id="hoverUserId"
+    :show="showHoverCard"
+    :anchor-el="hoverAnchorEl"
+    @close="showHoverCard = false; hoverUserId = null; hoverAnchorEl = null"
+    @mouseenter="onHoverCardMouseEnter"
+    @mouseleave="onHoverCardMouseLeave"
+  />
 </template>

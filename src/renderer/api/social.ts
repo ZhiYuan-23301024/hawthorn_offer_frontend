@@ -292,3 +292,84 @@ export function updateGroupAvatar(convId: string, file: File) {
   formData.append('file', file)
   return apiUpload<ApiResponse<string>>(`/api/social/conversations/${convId}/avatar`, formData, getToken())
 }
+
+// ============================================================
+// Phase 4 — 个人主页 API
+// ============================================================
+
+export interface UserProfileVO {
+  id: string
+  nickname: string
+  avatar: string
+  bio: string
+  email: string
+  chsiVerified: boolean
+  beans: number
+  createdAt: string
+  privacySettings: Record<string, boolean>
+}
+
+export interface UserStatsVO {
+  postCount: number
+  commentCount: number
+  likeReceivedCount: number
+  adoptedCount: number
+}
+
+export interface UserLikedItemVO {
+  targetId: string
+  targetType: string   // 'post' or 'comment'
+  targetText: string   // post title or comment content (truncated)
+  likeTime: string
+}
+
+export interface UserCommentVO {
+  id: string
+  content: string
+  likeCount: number
+  createdAt: string
+  targetId: string
+  targetType: string
+  postTitle?: string
+  isAnonymous: boolean
+}
+
+/** 获取用户公开资料 */
+export function getUserProfile(userId: string) {
+  return apiGet<ApiResponse<UserProfileVO>>(`/api/users/${userId}/profile`, getToken())
+}
+
+/** 获取用户统计数据 */
+export function getUserStats(userId: string) {
+  return apiGet<ApiResponse<UserStatsVO>>(`/api/users/${userId}/stats`, getToken())
+}
+
+/** 获取用户帖子列表 */
+export function getUserPosts(userId: string) {
+  return apiGet<ApiResponse<any[]>>(`/api/users/${userId}/posts`, getToken())
+}
+
+/** 获取用户评论列表 */
+export function getUserComments(userId: string) {
+  return apiGet<ApiResponse<UserCommentVO[]>>(`/api/users/${userId}/comments`, getToken())
+}
+
+/** 获取用户活动热力图 */
+export function getUserActivity(userId: string, days = 365) {
+  return apiGet<ApiResponse<any[]>>(`/api/users/${userId}/activity?days=${days}`, getToken())
+}
+
+/** 获取我的隐私设置 */
+export function getMyPrivacy() {
+  return apiGet<ApiResponse<Record<string, boolean>>>('/api/users/me/privacy', getToken())
+}
+
+/** 更新我的隐私设置 */
+export function updateMyPrivacy(settings: Record<string, boolean>) {
+  return apiPut<ApiResponse<Record<string, boolean>>>('/api/users/me/privacy', settings, getToken())
+}
+
+/** 获取用户点赞列表 */
+export function getUserLikes(userId: string) {
+  return apiGet<ApiResponse<UserLikedItemVO[]>>(`/api/users/${userId}/likes`, getToken())
+}

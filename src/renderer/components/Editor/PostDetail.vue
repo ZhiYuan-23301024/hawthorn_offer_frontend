@@ -11,6 +11,8 @@ import { avatarUrl, avatarColor } from '@/utils/format'
 import { useRequireAuth } from '@/composables/useRequireAuth'
 import CommentSection from './CommentSection.vue'
 import PostEditor from './PostEditor.vue'
+import UserHoverCard from '@/components/Profile/UserHoverCard.vue'
+import UserProfilePage from '@/components/Profile/UserProfilePage.vue'
 
 const props = defineProps<{
   postId: string
@@ -30,6 +32,52 @@ const showPinDialog = ref(false)
 const pinHours = ref(1)
 const pinPresets = [1, 6, 12, 24, 72, 168]
 const pinPresetLabels = ['1h', '6h', '12h', '1天', '3天', '7天']
+
+// Hover card state
+const hoverUserId = ref<string | null>(null)
+const hoverAnchorEl = ref<HTMLElement | null>(null)
+const showHoverCard = ref(false)
+let hoverTimer: ReturnType<typeof setTimeout> | null = null
+let hoverCloseTimer: ReturnType<typeof setTimeout> | null = null
+
+function onAuthorMouseEnter(e: MouseEvent, userId: string) {
+  if (hoverTimer) clearTimeout(hoverTimer)
+  if (hoverCloseTimer) clearTimeout(hoverCloseTimer)
+  hoverUserId.value = userId
+  hoverAnchorEl.value = e.currentTarget as HTMLElement
+  hoverTimer = setTimeout(() => { showHoverCard.value = true }, 300)
+}
+
+function onAuthorMouseLeave() {
+  if (hoverTimer) clearTimeout(hoverTimer)
+  hoverCloseTimer = setTimeout(() => {
+    showHoverCard.value = false
+    hoverUserId.value = null
+    hoverAnchorEl.value = null
+  }, 750)
+}
+
+function onHoverCardMouseEnter() {
+  if (hoverCloseTimer) clearTimeout(hoverCloseTimer)
+}
+
+function onHoverCardMouseLeave() {
+  showHoverCard.value = false
+  hoverUserId.value = null
+  hoverAnchorEl.value = null
+}
+
+function onAuthorClick(userId: string) {
+  showHoverCard.value = false
+  if (hoverTimer) clearTimeout(hoverTimer)
+  if (hoverCloseTimer) clearTimeout(hoverCloseTimer)
+  editorStore.openComponentTab(
+    `profile:${userId}`,
+    '用户主页',
+    UserProfilePage,
+    { userId }
+  )
+}
 
 function onPostContentClick() {
   commentSectionRef.value?.cancelReply()
@@ -255,7 +303,10 @@ function onVisibilityChange() {
     <template v-if="postType === 'resume'">
       <div class="flex items-center gap-3 mb-5">
         <div
-          class="w-12 h-12 rounded-full bg-[#2b6cb0] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden"
+          class="w-12 h-12 rounded-full bg-[#2b6cb0] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+          @mouseenter="!resumeData?.isAnonymous && onAuthorMouseEnter($event, detailUserId)"
+          @mouseleave="onAuthorMouseLeave"
+          @click="!resumeData?.isAnonymous && onAuthorClick(detailUserId)"
         >
           <img
             v-if="authorAvatarUrl"
@@ -269,7 +320,15 @@ function onVisibilityChange() {
             {{ titleOrName }}
           </div>
           <div class="text-xs text-[#888] mt-0.5">
-            {{ authorName }} · {{ formatTime(detailCreatedAt) }}
+            <span
+              v-if="!resumeData?.isAnonymous"
+              class="cursor-pointer hover:text-[#4a9eff] transition-colors"
+              @mouseenter="onAuthorMouseEnter($event, detailUserId)"
+              @mouseleave="onAuthorMouseLeave"
+              @click="onAuthorClick(detailUserId)"
+            >{{ authorName }}</span>
+            <span v-else>{{ authorName }}</span>
+            · {{ formatTime(detailCreatedAt) }}
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -303,9 +362,12 @@ function onVisibilityChange() {
 
       <div class="flex items-center gap-3 mb-5">
         <div
-          class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden"
+          class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
           :style="postListItem?.authorAvatarUrl ? {} : { backgroundColor: avatarColor(detailUserId) }"
           :class="postListItem?.authorAvatarUrl ? 'bg-[#6b46c1]' : ''"
+          @mouseenter="!postListItem?.isAnonymous && onAuthorMouseEnter($event, detailUserId)"
+          @mouseleave="onAuthorMouseLeave"
+          @click="!postListItem?.isAnonymous && onAuthorClick(detailUserId)"
         >
           <img
             v-if="postListItem?.authorAvatarUrl"
@@ -319,7 +381,14 @@ function onVisibilityChange() {
             {{ titleOrName }}
           </div>
           <div class="text-xs text-[#888] mt-0.5">
-            {{ postListItem?.authorName }}
+            <span
+              v-if="!postListItem?.isAnonymous"
+              class="cursor-pointer hover:text-[#4a9eff] transition-colors"
+              @mouseenter="onAuthorMouseEnter($event, detailUserId)"
+              @mouseleave="onAuthorMouseLeave"
+              @click="onAuthorClick(detailUserId)"
+            >{{ postListItem?.authorName }}</span>
+            <span v-else>{{ postListItem?.authorName }}</span>
             <span v-if="detailCreatedAt" class="ml-2">{{ formatTime(detailCreatedAt) }}</span>
           </div>
           <div v-if="isPostPinned && postListItem?.pinExpiresAt" class="text-xs text-[#e74c3c] mt-0.5">
@@ -425,4 +494,14 @@ function onVisibilityChange() {
       </div>
     </div>
   </div>
+
+  <UserHoverCard
+    v-if="hoverUserId"
+    :user-id="hoverUserId"
+    :show="showHoverCard"
+    :anchor-el="hoverAnchorEl"
+    @close="showHoverCard = false; hoverUserId = null; hoverAnchorEl = null"
+    @mouseenter="onHoverCardMouseEnter"
+    @mouseleave="onHoverCardMouseLeave"
+  />
 </template>

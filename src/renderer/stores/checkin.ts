@@ -39,67 +39,6 @@ export const useCheckinStore = defineStore('checkin', () => {
         throw new Error('Invalid data format: expected array')
       }
       
-      const paramConfigs: Record<string, any[]> = {
-        'test-quiz-task': [
-          {
-            name: '题目编号',
-            key: 'questionId',
-            type: 'number',
-            default: 1,
-            min: 1,
-            max: 3,
-            placeholder: '输入 1-3 的数字'
-          },
-          {
-            name: '显示提示',
-            key: 'showHints',
-            type: 'boolean',
-            default: true
-          },
-          {
-            name: '难度筛选',
-            key: 'difficulty',
-            type: 'select',
-            default: 'all',
-            options: [
-              { label: '全部', value: 'all' },
-              { label: '简单', value: 'easy' },
-              { label: '中等', value: 'medium' },
-              { label: '困难', value: 'hard' }
-            ]
-          }
-        ],
-        'programming-quiz': [
-          {
-            name: '题目编号',
-            key: 'questionId',
-            type: 'number',
-            default: 1,
-            min: 1,
-            max: 3,
-            placeholder: '输入 1-3 的数字'
-          },
-          {
-            name: '显示提示',
-            key: 'showHints',
-            type: 'boolean',
-            default: true
-          },
-          {
-            name: '难度筛选',
-            key: 'difficulty',
-            type: 'select',
-            default: 'all',
-            options: [
-              { label: '全部', value: 'all' },
-              { label: '简单', value: 'easy' },
-              { label: '中等', value: 'medium' },
-              { label: '困难', value: 'hard' }
-            ]
-          }
-        ]
-      }
-      
       availableTasks.value = plugins.map((plugin: any) => ({
         id: plugin.id,
         name: plugin.name,
@@ -113,7 +52,7 @@ export const useCheckinStore = defineStore('checkin', () => {
         hasUpdate: false,
         sourceUrl: '',
         readme: '',
-        params: plugin.params || paramConfigs[plugin.id]
+        params: plugin.params || undefined
       }))
       
       console.log(`[checkin.fetchTasks] 映射后 availableTasks 数量=${availableTasks.value.length}`)
@@ -141,36 +80,7 @@ export const useCheckinStore = defineStore('checkin', () => {
         latestVersion: '1.0.0',
         hasUpdate: false,
         sourceUrl: '',
-        readme: '# 编程刷题测试软件\n\n刷刷题',
-        params: [
-          {
-            name: '题目编号',
-            key: 'questionId',
-            type: 'number',
-            default: 1,
-            min: 1,
-            max: 3,
-            placeholder: '输入 1-3 的数字'
-          },
-          {
-            name: '显示提示',
-            key: 'showHints',
-            type: 'boolean',
-            default: true
-          },
-          {
-            name: '难度筛选',
-            key: 'difficulty',
-            type: 'select',
-            default: 'all',
-            options: [
-              { label: '全部', value: 'all' },
-              { label: '简单', value: 'easy' },
-              { label: '中等', value: 'medium' },
-              { label: '困难', value: 'hard' }
-            ]
-          }
-        ]
+        readme: '# 编程刷题测试软件\n\n刷刷题'
       },
       {
         id: '1',

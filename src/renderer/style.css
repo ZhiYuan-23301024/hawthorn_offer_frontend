@@ -91,68 +91,7 @@
   --transition-slow:   300ms ease;
 }
 
-/* ══ 暗色模式 ══ */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-primary:        #8FA3B8;
-    --color-primary-light:  #6B8099;
-    --color-primary-dark:   #A8BCC9;
-    --color-primary-subtle: #1E2830;
-    --color-primary-rgb:        143, 163, 184;
-    --color-primary-light-rgb:  107, 128, 153;
-    --color-primary-dark-rgb:   168, 188, 201;
-    --color-primary-subtle-rgb: 30, 40, 48;
 
-    --color-cta:            #C4AD96;
-    --color-cta-dark:       #D4C0AC;
-    --color-cta-subtle:     #2A2520;
-    --color-cta-rgb:        196, 173, 150;
-    --color-cta-dark-rgb:   212, 192, 172;
-    --color-cta-subtle-rgb: 42, 37, 32;
-
-    --color-bg:             #1E1C1A;
-    --color-surface:        #282624;
-    --color-surface-hover:  #33302D;
-    --color-surface-raised: #33302D;
-    --color-bg-rgb:             30, 28, 26;
-    --color-surface-rgb:        40, 38, 36;
-    --color-surface-hover-rgb:  51, 48, 45;
-    --color-surface-raised-rgb: 51, 48, 45;
-
-    --color-text-primary:   #E8E4E0;
-    --color-text-secondary: #A8A39E;
-    --color-text-tertiary:  #6B6661;
-    --color-text-primary-rgb:   232, 228, 224;
-    --color-text-secondary-rgb: 168, 163, 158;
-    --color-text-tertiary-rgb:  107, 102, 97;
-
-    --color-border:         #3D3A36;
-    --color-border-focus:   #8FA3B8;
-    --color-divider:        #302D2A;
-    --color-border-rgb:       61, 58, 54;
-    --color-border-focus-rgb: 143, 163, 184;
-    --color-divider-rgb:      48, 45, 42;
-
-    --color-success:        #6B8C73;
-    --color-success-subtle: #2A332B;
-    --color-warning:        #C4AD96;
-    --color-warning-subtle: #2A2520;
-    --color-danger:         #C48F8F;
-    --color-danger-subtle:  #2A2020;
-    --color-success-rgb:        107, 140, 115;
-    --color-success-subtle-rgb: 42, 51, 43;
-    --color-warning-rgb:        196, 173, 150;
-    --color-warning-subtle-rgb: 42, 37, 32;
-    --color-danger-rgb:         196, 143, 143;
-    --color-danger-subtle-rgb:  42, 32, 32;
-
-    --glass-card-bg:        rgba(40, 38, 36, 0.90);
-    --glass-card-border:    rgba(143, 163, 184, 0.06);
-    --glass-card-shadow:    0 1px 3px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
-    --glass-sidebar-bg:     rgba(30, 28, 26, 0.94);
-    --glass-float-bg:       rgba(40, 38, 36, 0.88);
-  }
-}
 
 /* ══════════════════════════════════════════════════════════════
    全局基础

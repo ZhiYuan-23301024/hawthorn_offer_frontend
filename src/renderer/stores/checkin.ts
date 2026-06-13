@@ -17,19 +17,23 @@ export const useCheckinStore = defineStore('checkin', () => {
     error.value = null
     try {
       const url = `${API_BASE_URL}/plugins?page=1&size=20`
-      console.log('Fetching tasks from:', url)
+      console.log(`[checkin.fetchTasks] >>> GET ${url}`)
       
       const response = await fetch(url)
+      console.log(`[checkin.fetchTasks] <<< status=${response.status}, ok=${response.ok}, contentType=${response.headers.get('content-type')}`)
       if (!response.ok) {
+        const body = await response.text().catch(() => '(无法读取)')
+        console.error(`[checkin.fetchTasks] 请求失败! body=`, body)
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = await response.json()
       
-      console.log('Raw response data:', data)
+      console.log(`[checkin.fetchTasks] 原始响应类型: ${typeof data}, isArray: ${Array.isArray(data)}`)
+      console.log(`[checkin.fetchTasks] 原始 keys:`, Object.keys(data || {}))
       
       const plugins = Array.isArray(data) ? data : (data.records || data.content || data.data || [])
       
-      console.log('Extracted plugins:', plugins)
+      console.log(`[checkin.fetchTasks] 解析到 ${plugins.length} 个插件, ids=`, plugins.map((p: any) => p.id))
       
       if (!Array.isArray(plugins)) {
         throw new Error('Invalid data format: expected array')
@@ -112,11 +116,11 @@ export const useCheckinStore = defineStore('checkin', () => {
         params: plugin.params || paramConfigs[plugin.id]
       }))
       
-      console.log('Available tasks after mapping:', availableTasks.value)
+      console.log(`[checkin.fetchTasks] 映射后 availableTasks 数量=${availableTasks.value.length}`)
       syncInstalledStatus()
     } catch (err) {
       error.value = '获取任务列表失败，使用本地缓存'
-      console.error('Failed to fetch tasks:', err)
+      console.error('[checkin.fetchTasks] 请求失败，降级到本地缓存:', err)
       loadLocalFallback()
     } finally {
       isLoading.value = false
@@ -350,30 +354,46 @@ export const useCheckinStore = defineStore('checkin', () => {
   }
 
   async function installTask(taskId: string) {
+    console.log(`[checkin.installTask] >>> 开始安装任务: ${taskId}`)
     const task = availableTasks.value.find(t => t.id === taskId)
-    if (task && !installedTasks.value.find(t => t.id === taskId)) {
-      try {
-        const instance = await taskPluginLoader.install(taskId)
-        // 从安装后的插件 manifest 获取 params
-        if (instance?.manifest?.params) {
-          task.params = instance.manifest.params
-        }
-      } catch (err) {
-        console.warn('Failed to install plugin:', err)
-      }
-      installedTasks.value.push(task)
-      saveInstalledTasks()
+    if (!task) {
+      console.warn(`[checkin.installTask] 任务 ${taskId} 不在 availableTasks 中!`)
+      return
     }
+    if (installedTasks.value.find(t => t.id === taskId)) {
+      console.log(`[checkin.installTask] 任务 ${taskId} 已安装，跳过`)
+      return
+    }
+    try {
+      console.log(`[checkin.installTask] 调用 taskPluginLoader.install(${taskId})`)
+      const instance = await taskPluginLoader.install(taskId)
+      console.log(`[checkin.installTask] taskPluginLoader.install 返回:`, instance ? 'OK' : 'NULL')
+      if (instance?.manifest?.params) {
+        task.params = instance.manifest.params
+        console.log(`[checkin.installTask] 已从 manifest 同步 params, 数量=${instance.manifest.params.length}`)
+      } else {
+        console.log(`[checkin.installTask] manifest 无 params，使用默认配置`)
+      }
+    } catch (err) {
+      console.error(`[checkin.installTask] 插件安装失败!`, err)
+    }
+    installedTasks.value.push(task)
+    saveInstalledTasks()
+    console.log(`[checkin.installTask] installedTasks 现在共 ${installedTasks.value.length} 个`)
   }
 
   async function uninstallTask(taskId: string) {
+    console.log(`[checkin.uninstallTask] >>> 开始卸载任务: ${taskId}`)
     try {
+      console.log(`[checkin.uninstallTask] 调用 taskPluginLoader.uninstall(${taskId})`)
       await taskPluginLoader.uninstall(taskId)
+      console.log(`[checkin.uninstallTask] taskPluginLoader.uninstall 完成`)
     } catch (err) {
-      console.warn('Failed to uninstall plugin:', err)
+      console.error(`[checkin.uninstallTask] 插件卸载失败!`, err)
     }
     installedTasks.value = installedTasks.value.filter(t => t.id !== taskId)
     saveInstalledTasks()
+    console.log(`[checkin.uninstallTask] installedTasks 现在共 ${installedTasks.value.length} 个`)
   }
 
   function createPlan(name: string, description?: string): CheckinPlan {

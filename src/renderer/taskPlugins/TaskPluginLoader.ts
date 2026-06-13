@@ -52,12 +52,22 @@ export class PluginLoader implements PluginAPI {
   }
 
   async install(pluginId: string): Promise<PluginInstance> {
-    const manifest = await this.fetchManifest(pluginId)
-    const code = await this.downloadPlugin(pluginId)
+    console.log(`[PluginLoader.install] ====== 开始安装插件: ${pluginId} ======`)
 
+    console.log(`[PluginLoader.install] Step1: 请求 manifest -> /plugins/${pluginId}/manifest`)
+    const manifest = await this.fetchManifest(pluginId)
+    console.log(`[PluginLoader.install] Step1 完成: manifest =`, JSON.stringify(manifest, null, 2))
+
+    console.log(`[PluginLoader.install] Step2: 请求代码 -> /plugins/${pluginId}/download`)
+    const code = await this.downloadPlugin(pluginId)
+    console.log(`[PluginLoader.install] Step2 完成: code 长度=${code.length}, 前200字符=`, code.substring(0, 200))
+
+    console.log(`[PluginLoader.install] Step3: 持久化到本地`)
     await this.persistToLocal(pluginId, code, manifest)
 
+    console.log(`[PluginLoader.install] Step4: 编译组件`)
     const component = await this.compileComponent(code)
+    console.log(`[PluginLoader.install] Step4 完成: component 类型=`, typeof component, ', keys=', Object.keys(component || {}))
     
     const instance: PluginInstance = {
       manifest, 
@@ -68,9 +78,11 @@ export class PluginLoader implements PluginAPI {
     
     this.plugins.value.set(pluginId, instance)
     this.pluginCache.value.set(pluginId, code)
+    console.log(`[PluginLoader.install] Step5: 上报安装 -> POST /plugins/${pluginId}/install`)
     this.reportInstall(pluginId)
     
     this.onInstall?.(pluginId)
+    console.log(`[PluginLoader.install] ====== 安装完成: ${pluginId} ======`)
     return instance
   }
 
@@ -87,70 +99,102 @@ export class PluginLoader implements PluginAPI {
   }
 
   private async fetchManifest(pluginId: string): Promise<PluginManifest> {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/manifest`)
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/manifest`
+    console.log(`[PluginLoader.fetchManifest] >>> GET ${url}`)
+    const response = await fetch(url)
+    console.log(`[PluginLoader.fetchManifest] <<< status=${response.status}, ok=${response.ok}`)
     if (!response.ok) {
+      const body = await response.text().catch(() => '(无法读取响应体)')
+      console.error(`[PluginLoader.fetchManifest] 请求失败! body=`, body)
       throw new Error(`Failed to fetch manifest: ${response.statusText}`)
     }
-    return response.json()
+    const json = await response.json()
+    console.log(`[PluginLoader.fetchManifest] 返回 JSON:`, JSON.stringify(json, null, 2))
+    return json
   }
 
   private async downloadPlugin(pluginId: string): Promise<string> {
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/download`)
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/download`
+    console.log(`[PluginLoader.downloadPlugin] >>> GET ${url}`)
+    const response = await fetch(url)
+    console.log(`[PluginLoader.downloadPlugin] <<< status=${response.status}, ok=${response.ok}, contentType=${response.headers.get('content-type')}`)
     if (!response.ok) {
+      const body = await response.text().catch(() => '(无法读取响应体)')
+      console.error(`[PluginLoader.downloadPlugin] 请求失败! body=`, body)
       throw new Error(`Failed to download plugin: ${response.statusText}`)
     }
-    return response.text()
+    const code = await response.text()
+    console.log(`[PluginLoader.downloadPlugin] 返回代码长度=${code.length}, 前200字符:`, code.substring(0, 200))
+    return code
   }
 
   private async compileComponent(code: string): Promise<any> {
+    console.log(`[PluginLoader.compileComponent] 开始编译, 代码长度=${code.length}`)
     const blob = new Blob([code], { type: 'application/javascript' })
     const url = URL.createObjectURL(blob)
     try {
       // @ts-ignore
       const module = await import(/* @vite-ignore */ url)
+      console.log(`[PluginLoader.compileComponent] 编译成功, module keys=`, Object.keys(module))
       return module.default || module
+    } catch (err) {
+      console.error(`[PluginLoader.compileComponent] 编译失败!`, err)
+      console.error(`[PluginLoader.compileComponent] 失败的代码前500字符:`, code.substring(0, 500))
+      throw err
     } finally {
       URL.revokeObjectURL(url)
     }
   }
 
   private async reportInstall(pluginId: string): Promise<void> {
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/install`
+    console.log(`[PluginLoader.reportInstall] >>> POST ${url}`)
     try {
-      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/install`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'X-User-Id': 'test-user-001'
         }
       })
+      console.log(`[PluginLoader.reportInstall] <<< status=${response.status}`)
     } catch (err) {
-      console.warn('Failed to report installation:', err)
+      console.warn('[PluginLoader.reportInstall] 上报失败 (可忽略):', err)
     }
   }
 
   async uninstall(pluginId: string): Promise<void> {
+    console.log(`[PluginLoader.uninstall] ====== 开始卸载插件: ${pluginId} ======`)
     const instance = this.plugins.value.get(pluginId)
     if (instance) {
       instance.component?.unmount?.()
       this.plugins.value.delete(pluginId)
+      console.log(`[PluginLoader.uninstall] 已从内存移除组件和实例`)
+    } else {
+      console.log(`[PluginLoader.uninstall] 内存中未找到该插件实例`)
     }
     this.pluginCache.value.delete(pluginId)
 
+    console.log(`[PluginLoader.uninstall] Step1: 从本地文件系统清除`)
     await this.removeFromLocal(pluginId)
     
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/uninstall`
+    console.log(`[PluginLoader.uninstall] Step2: 上报卸载 -> POST ${url}`)
     try {
-      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/uninstall`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'X-User-Id': 'test-user-001'
         }
       })
+      console.log(`[PluginLoader.uninstall] 上报卸载 <<< status=${response.status}`)
     } catch (err) {
-      console.warn('Failed to report uninstallation:', err)
+      console.warn('[PluginLoader.uninstall] 上报卸载失败 (可忽略):', err)
     }
     
     this.onUninstall?.(pluginId)
+    console.log(`[PluginLoader.uninstall] ====== 卸载完成: ${pluginId} ======`)
   }
 
   private async removeFromLocal(pluginId: string): Promise<void> {
@@ -172,26 +216,33 @@ export class PluginLoader implements PluginAPI {
   }
 
   async restoreInstalledPlugins(): Promise<PluginInstance[]> {
+    console.log(`[PluginLoader.restore] ====== 开始从本地恢复插件 ======`)
     if (!window.electronAPI) {
-      console.log('[PluginLoader] 非 Electron 环境，跳过本地插件恢复')
+      console.log('[PluginLoader.restore] 非 Electron 环境，跳过本地插件恢复')
       return []
     }
 
     try {
+      console.log(`[PluginLoader.restore] Step1: 读取本地插件清单`)
       const installedManifests: PluginManifest[] = await window.electronAPI.loadInstalledPlugins()
-      console.log(`[PluginLoader] 发现 ${installedManifests.length} 个本地已安装插件`)
+      console.log(`[PluginLoader.restore] 发现 ${installedManifests.length} 个本地已安装插件, ids=`, installedManifests.map(m => m.id))
 
       const restored: PluginInstance[] = []
 
       for (const manifest of installedManifests) {
+        console.log(`[PluginLoader.restore] 正在恢复插件: id=${manifest.id}, name=${manifest.name}`)
         try {
+          console.log(`[PluginLoader.restore]   -> 加载本地代码: ${manifest.id}`)
           const code = await window.electronAPI.loadPluginCode(manifest.id)
           if (!code) {
-            console.warn(`[PluginLoader] 插件 ${manifest.id} 本地代码缺失，跳过`)
+            console.warn(`[PluginLoader.restore]   -> 插件 ${manifest.id} 本地代码缺失，跳过`)
             continue
           }
+          console.log(`[PluginLoader.restore]   -> 代码长度=${code.length}, 前200字符:`, code.substring(0, 200))
 
+          console.log(`[PluginLoader.restore]   -> 编译组件: ${manifest.id}`)
           const component = await this.compileComponent(code)
+          console.log(`[PluginLoader.restore]   -> 编译成功, component 类型=`, typeof component)
 
           const instance: PluginInstance = {
             manifest,
@@ -203,15 +254,16 @@ export class PluginLoader implements PluginAPI {
           this.plugins.value.set(manifest.id, instance)
           this.pluginCache.value.set(manifest.id, code)
           restored.push(instance)
-          console.log(`[PluginLoader] 已恢复插件: ${manifest.id}`)
+          console.log(`[PluginLoader.restore]   -> 已恢复插件: ${manifest.id}`)
         } catch (err) {
-          console.error(`[PluginLoader] 恢复插件 ${manifest.id} 失败:`, err)
+          console.error(`[PluginLoader.restore]   -> 恢复插件 ${manifest.id} 失败:`, err)
         }
       }
 
+      console.log(`[PluginLoader.restore] ====== 恢复完成, 共 ${restored.length} 个 ======`)
       return restored
     } catch (err) {
-      console.error('[PluginLoader] 读取本地插件清单失败:', err)
+      console.error('[PluginLoader.restore] 读取本地插件清单失败:', err)
       return []
     }
   }

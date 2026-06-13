@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { CheckinTask, CheckinPlan, PlanNode, PlanEdge, PlanTask } from '@/types/checkin'
+import type { CheckinTask, CheckinPlan, PlanNode, PlanEdge, PlanTask, PlanShare } from '@/types/checkin'
 import { taskPluginLoader } from '@/taskPlugins/TaskPluginLoader'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
@@ -9,6 +9,7 @@ export const useCheckinStore = defineStore('checkin', () => {
   const availableTasks = ref<CheckinTask[]>([])
   const installedTasks = ref<CheckinTask[]>([])
   const myPlans = ref<CheckinPlan[]>([])
+  const availableServerPlans = ref<PlanShare[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
@@ -401,19 +402,122 @@ export const useCheckinStore = defineStore('checkin', () => {
     return availableTasks.value.filter(t => !installedTasks.value.find(it => it.id === t.id))
   }
 
-  /** 重置打卡状态（退出登录时调用） */
-  function reset() {
-    availableTasks.value = []
-    installedTasks.value = []
-    myPlans.value = []
-    isLoading.value = false
+  async function fetchPlansFromServer(category?: string) {
+    isLoading.value = true
     error.value = null
+    try {
+      const params = new URLSearchParams()
+      params.set('page', '0')
+      params.set('size', '50')
+      if (category) params.set('category', category)
+
+      const url = `${API_BASE_URL}/plans?${params.toString()}`
+      console.log(`[checkin.fetchPlans] >>> GET ${url}`)
+
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      const plans = Array.isArray(data) ? data : (data.records || data.content || data.data || [])
+      availableServerPlans.value = plans
+      console.log(`[checkin.fetchPlans] 获取到 ${plans.length} 个计划`)
+    } catch (err) {
+      error.value = '获取计划列表失败'
+      console.error('[checkin.fetchPlans] 请求失败:', err)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function uploadPlanToServer(planId: string) {
+    const plan = myPlans.value.find(p => p.id === planId)
+    if (!plan) {
+      console.error(`[checkin.uploadPlan] 计划 ${planId} 不存在`)
+      return
+    }
+    try {
+      const planData = {
+        name: plan.name,
+        nodes: plan.nodes,
+        edges: plan.edges,
+      }
+      const body = {
+        name: plan.name,
+        description: plan.description || '',
+        author: '匿名用户',
+        category: '综合',
+        planData: JSON.stringify(planData),
+      }
+      const response = await fetch(`${API_BASE_URL}/plans`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const result = await response.json()
+      console.log(`[checkin.uploadPlan] 上传成功: ${result.id}`)
+      await fetchPlansFromServer()
+    } catch (err) {
+      console.error('[checkin.uploadPlan] 上传失败:', err)
+      throw err
+    }
+  }
+
+  async function downloadPlanFromServer(serverPlanId: string) {
+    try {
+      console.log(`[checkin.downloadPlan] >>> 下载计划: ${serverPlanId}`)
+      const response = await fetch(`${API_BASE_URL}/plans/${serverPlanId}/download`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const planDataStr = await response.text()
+      const planData = JSON.parse(planDataStr)
+
+      const nodes: PlanNode[] = (planData.nodes || []).map((n: any) => ({
+        ...n,
+        id: `node-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        completed: false,
+        completedAt: undefined,
+      }))
+
+      const nodeIdMap = new Map<string, string>()
+      ;(planData.nodes || []).forEach((n: any, i: number) => {
+        nodeIdMap.set(n.id, nodes[i].id)
+      })
+
+      const edges: PlanEdge[] = (planData.edges || []).map((e: any) => ({
+        ...e,
+        id: `edge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        sourceNodeId: nodeIdMap.get(e.sourceNodeId) || e.sourceNodeId,
+        targetNodeId: nodeIdMap.get(e.targetNodeId) || e.targetNodeId,
+      }))
+
+      const newPlan: CheckinPlan = {
+        id: `plan-${Date.now()}`,
+        name: `[商店] ${planData.name || '未命名计划'}`,
+        description: planData.description || '',
+        createdAt: new Date().toISOString().split('T')[0],
+        nodes,
+        edges,
+      }
+
+      myPlans.value.push(newPlan)
+      saveMyPlans()
+      console.log(`[checkin.downloadPlan] 下载成功，新计划ID: ${newPlan.id}`)
+    } catch (err) {
+      console.error('[checkin.downloadPlan] 下载失败:', err)
+      throw err
+    }
   }
 
   return {
     availableTasks,
     installedTasks,
     myPlans,
+    availableServerPlans,
     isLoading,
     error,
     fetchTasksFromAPI,
@@ -429,6 +533,8 @@ export const useCheckinStore = defineStore('checkin', () => {
     renamePlan,
     completeTask,
     getUninstalledTasks,
-    reset
+    fetchPlansFromServer,
+    uploadPlanToServer,
+    downloadPlanFromServer
   }
 })

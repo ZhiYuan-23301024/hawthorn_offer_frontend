@@ -77,3 +77,15 @@ export interface TaskNode {
   order: number
   connections?: string[]
 }
+
+export interface PlanShare {
+  id: string
+  name: string
+  description: string
+  author: string
+  category: string
+  downloads: number
+  status: string
+  createdAt: string
+  updatedAt: string
+}

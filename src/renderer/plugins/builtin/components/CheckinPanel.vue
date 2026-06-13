@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Check, Plus, Download, Trash2, Edit3, X, ChevronRight, Play, Info } from 'lucide-vue-next'
+import { Check, Plus, Download, Trash2, Edit3, X, ChevronRight, Play, Info, Upload } from 'lucide-vue-next'
 import { useCheckinStore } from '@/stores/checkin'
 import { useEditorStore } from '@/stores/editor'
 import CheckinPlanEditor from './CheckinPlanEditor.vue'
@@ -14,6 +14,7 @@ const editorStore = useEditorStore()
 const expandedSections = ref({
   installed: true,
   uninstalled: true,
+  planStore: false,
   mycheckin: true
 })
 const showCreatePlanModal = ref(false)
@@ -104,12 +105,29 @@ function getDifficultyColor(difficulty: string) {
   }
 }
 
-function toggleSection(section: 'installed' | 'uninstalled' | 'mycheckin') {
+function toggleSection(section: 'installed' | 'uninstalled' | 'planStore' | 'mycheckin') {
   expandedSections.value[section] = !expandedSections.value[section]
+}
+
+async function uploadPlan(planId: string) {
+  try {
+    await checkinStore.uploadPlanToServer(planId)
+  } catch (err) {
+    console.error('上传计划失败:', err)
+  }
+}
+
+async function downloadPlan(planId: string) {
+  try {
+    await checkinStore.downloadPlanFromServer(planId)
+  } catch (err) {
+    console.error('下载计划失败:', err)
+  }
 }
 
 onMounted(() => {
   loadData()
+  checkinStore.fetchPlansFromServer()
 })
 </script>
 
@@ -222,6 +240,52 @@ onMounted(() => {
       </div>
     </div>
 
+    <div class="border-b border-vscode-border">
+      <button
+        class="w-full flex items-center justify-between p-2 hover:bg-vscode-selected/50 transition-colors"
+        @click="toggleSection('planStore')"
+      >
+        <div class="flex items-center">
+          <component
+            :is="expandedSections.planStore ? ChevronRight : ChevronRight"
+            class="w-3 h-3 text-vscode-icon mr-1 rotate-90"
+            :class="{ 'rotate-0': !expandedSections.planStore }"
+          />
+          <span class="text-xs font-semibold text-vscode-text-secondary uppercase tracking-wider">
+            计划商店
+          </span>
+          <span class="text-xs text-vscode-text-secondary ml-1">({{ checkinStore.availableServerPlans.length }})</span>
+        </div>
+      </button>
+      <div v-show="expandedSections.planStore" class="px-2 pb-2">
+        <div v-if="checkinStore.availableServerPlans.length === 0" class="text-center text-vscode-text-secondary text-xs py-4">
+          暂无共享计划
+        </div>
+        <div
+          v-for="plan in checkinStore.availableServerPlans"
+          :key="plan.id"
+          class="flex items-center p-2 rounded hover:bg-vscode-selected transition-colors mb-1"
+        >
+          <div class="w-6 h-6 rounded-full bg-vscode-border flex items-center justify-center mr-2 flex-shrink-0">
+            <Download class="w-3 h-3 text-vscode-text-secondary" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm text-vscode-text truncate">{{ plan.name }}</div>
+            <div class="text-xs text-vscode-text-secondary truncate">
+              {{ plan.description || plan.author || '无简介' }} · {{ plan.downloads }} 下载
+            </div>
+          </div>
+          <button
+            class="flex items-center px-2 py-0.5 rounded bg-vscode-active hover:bg-vscode-hover text-vscode-icon-hover text-xs font-medium transition-colors ml-2"
+            @click="downloadPlan(plan.id)"
+          >
+            <Download class="w-3 h-3 mr-1" />
+            下载
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div>
       <div class="flex items-center justify-between p-2">
         <button
@@ -267,6 +331,13 @@ onMounted(() => {
               <div class="text-xs text-vscode-text-secondary truncate">{{ plan.description }}</div>
             </div>
             <div class="flex items-center ml-2">
+              <button
+                class="p-1 rounded hover:bg-vscode-selected transition-colors mr-1"
+                @click.stop="uploadPlan(plan.id)"
+                title="上传到商店"
+              >
+                <Upload class="w-3 h-3 text-vscode-text-secondary hover:text-vscode-icon" />
+              </button>
               <button
                 class="p-1 rounded hover:bg-vscode-selected transition-colors mr-1"
                 @click.stop="openRenameModal(plan)"

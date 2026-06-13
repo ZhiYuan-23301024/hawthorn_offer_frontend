@@ -513,6 +513,80 @@ export const useCheckinStore = defineStore('checkin', () => {
     }
   }
 
+  async function generatePlanWithAI(prompt: string, file?: File): Promise<CheckinPlan> {
+    const formData = new FormData()
+
+    const taskInfos = availableTasks.value.map(t => ({
+      id: t.id,
+      name: t.name,
+      description: t.description,
+      category: t.category,
+      params: t.params?.map(p => ({
+        name: p.name,
+        key: p.key,
+        type: p.type,
+        defaultValue: p.default,
+      })) || [],
+    }))
+
+    const requestBlob = new Blob([JSON.stringify({
+      prompt,
+      availableTasks: taskInfos,
+    })], { type: 'application/json' })
+    formData.append('request', requestBlob)
+
+    if (file) {
+      formData.append('file', file)
+    }
+
+    console.log(`[checkin.generatePlan] >>> POST ${API_BASE_URL}/plans/generate`)
+    const response = await fetch(`${API_BASE_URL}/plans/generate`, {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '')
+      throw new Error(`HTTP error! status: ${response.status}, body: ${errText}`)
+    }
+
+    const planDataStr = await response.text()
+    const planData = JSON.parse(planDataStr)
+
+    const nodes: PlanNode[] = (planData.nodes || []).map((n: any) => ({
+      ...n,
+      id: `node-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      completed: false,
+      completedAt: undefined,
+    }))
+
+    const nodeIdMap = new Map<string, string>()
+    ;(planData.nodes || []).forEach((n: any, i: number) => {
+      nodeIdMap.set(n.id, nodes[i].id)
+    })
+
+    const edges: PlanEdge[] = (planData.edges || []).map((e: any) => ({
+      ...e,
+      id: `edge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      sourceNodeId: nodeIdMap.get(e.sourceNodeId) || e.sourceNodeId,
+      targetNodeId: nodeIdMap.get(e.targetNodeId) || e.targetNodeId,
+    }))
+
+    const newPlan: CheckinPlan = {
+      id: `plan-${Date.now()}`,
+      name: planData.name || 'AI生成的计划',
+      description: planData.description || '',
+      createdAt: new Date().toISOString().split('T')[0],
+      nodes,
+      edges,
+    }
+
+    myPlans.value.push(newPlan)
+    saveMyPlans()
+    console.log(`[checkin.generatePlan] AI生成成功，新计划ID: ${newPlan.id}`)
+    return newPlan
+  }
+
   return {
     availableTasks,
     installedTasks,
@@ -535,6 +609,7 @@ export const useCheckinStore = defineStore('checkin', () => {
     getUninstalledTasks,
     fetchPlansFromServer,
     uploadPlanToServer,
-    downloadPlanFromServer
+    downloadPlanFromServer,
+    generatePlanWithAI
   }
 })

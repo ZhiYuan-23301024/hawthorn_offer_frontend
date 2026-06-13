@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Check, Plus, Download, Trash2, Edit3, X, ChevronRight, Play, Info, Upload } from 'lucide-vue-next'
+import { Check, Plus, Download, Trash2, Edit3, X, ChevronRight, Play, Info, Upload, Sparkles, Loader2 } from 'lucide-vue-next'
 import { useCheckinStore } from '@/stores/checkin'
 import { useEditorStore } from '@/stores/editor'
 import CheckinPlanEditor from './CheckinPlanEditor.vue'
@@ -19,9 +19,14 @@ const expandedSections = ref({
 })
 const showCreatePlanModal = ref(false)
 const showRenameModal = ref(false)
+const showAIGenerateModal = ref(false)
 const newPlanName = ref('')
 const renamePlanName = ref('')
 const editingPlanId = ref<string | null>(null)
+const aiPrompt = ref('')
+const aiFile = ref<File | null>(null)
+const aiLoading = ref(false)
+const aiError = ref('')
 
 async function loadData() {
   await checkinStore.fetchTasksFromAPI()
@@ -122,6 +127,38 @@ async function downloadPlan(planId: string) {
     await checkinStore.downloadPlanFromServer(planId)
   } catch (err) {
     console.error('下载计划失败:', err)
+  }
+}
+
+function openAIGenerateModal() {
+  aiPrompt.value = ''
+  aiFile.value = null
+  aiError.value = ''
+  showAIGenerateModal.value = true
+}
+
+function onAIFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files && input.files.length > 0) {
+    aiFile.value = input.files[0]
+  }
+}
+
+async function generateWithAI() {
+  if (!aiPrompt.value.trim()) return
+  aiLoading.value = true
+  aiError.value = ''
+  try {
+    const newPlan = await checkinStore.generatePlanWithAI(
+      aiPrompt.value.trim(),
+      aiFile.value || undefined
+    )
+    showAIGenerateModal.value = false
+    openPlanEditor(newPlan)
+  } catch (err: any) {
+    aiError.value = err.message || 'AI生成失败，请重试'
+  } finally {
+    aiLoading.value = false
   }
 }
 
@@ -309,6 +346,13 @@ onMounted(() => {
           <Plus class="w-3 h-3 mr-1" />
           新建
         </button>
+        <button
+          class="flex items-center px-2 py-0.5 rounded bg-vscode-active hover:bg-vscode-hover text-vscode-icon-hover text-xs font-medium transition-colors ml-1"
+          @click="openAIGenerateModal"
+        >
+          <Sparkles class="w-3 h-3 mr-1" />
+          AI生成
+        </button>
       </div>
       <div v-show="expandedSections.mycheckin" class="px-2 pb-2">
         <div v-if="checkinStore.myPlans.length === 0" class="text-center text-vscode-text-secondary text-xs py-4">
@@ -446,6 +490,71 @@ onMounted(() => {
           @click="renamePlan"
         >
           确定
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="showAIGenerateModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-vscode-sidebar rounded-lg p-4 w-[480px] shadow-xl max-h-[80vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-semibold text-vscode-text flex items-center">
+          <Sparkles class="w-4 h-4 mr-1.5 text-vscode-warning" />
+          AI 生成任务计划
+        </h3>
+        <button class="p-1 hover:bg-vscode-selected rounded transition-colors" @click="showAIGenerateModal = false">
+          <X class="w-4 h-4 text-vscode-text-secondary" />
+        </button>
+      </div>
+      <div>
+        <label class="block text-xs text-vscode-text-secondary mb-1">描述你想要的任务计划</label>
+        <textarea
+          v-model="aiPrompt"
+          placeholder="例如：我想制定一个为期30天的Java后端学习计划，每天包括刷题、项目实践和知识点复习..."
+          class="w-full px-3 py-2 bg-vscode-input rounded text-vscode-text text-sm border border-vscode-border focus:border-vscode-active focus:outline-none resize-none"
+          rows="4"
+          :disabled="aiLoading"
+        ></textarea>
+        <p class="text-xs text-vscode-text-secondary mt-1">AI 会参考当前已安装的任务来编排计划</p>
+      </div>
+      <div class="mt-3">
+        <label class="block text-xs text-vscode-text-secondary mb-1">上传参考文件（可选，支持 .txt .md .json）</label>
+        <div class="flex items-center">
+          <label class="flex items-center px-3 py-1.5 rounded bg-vscode-input border border-vscode-border text-vscode-text-secondary text-xs cursor-pointer hover:border-vscode-active transition-colors">
+            <Upload class="w-3 h-3 mr-1" />
+            {{ aiFile ? aiFile.name : '选择文件' }}
+            <input type="file" accept=".txt,.md,.json" class="hidden" @change="onAIFileChange" :disabled="aiLoading" />
+          </label>
+          <button
+            v-if="aiFile"
+            class="ml-2 text-xs text-vscode-text-secondary hover:text-vscode-error"
+            @click="aiFile = null"
+            :disabled="aiLoading"
+          >
+            <X class="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+      <div v-if="aiError" class="mt-3 p-2 rounded bg-red-500/10 border border-red-500/30 text-xs text-red-400">
+        {{ aiError }}
+      </div>
+      <div class="flex justify-end space-x-2 mt-4 pt-4 border-t border-vscode-border">
+        <button
+          class="px-4 py-1.5 text-sm rounded transition-colors hover:bg-vscode-selected text-vscode-text-secondary"
+          @click="showAIGenerateModal = false"
+          :disabled="aiLoading"
+        >
+          取消
+        </button>
+        <button
+          class="px-4 py-1.5 text-sm rounded bg-vscode-active text-vscode-icon-hover hover:bg-vscode-hover transition-colors flex items-center"
+          :disabled="!aiPrompt.trim() || aiLoading"
+          :class="{ 'opacity-50 cursor-not-allowed': !aiPrompt.trim() || aiLoading }"
+          @click="generateWithAI"
+        >
+          <Loader2 v-if="aiLoading" class="w-3 h-3 mr-1 animate-spin" />
+          <Sparkles v-else class="w-3 h-3 mr-1" />
+          {{ aiLoading ? '生成中...' : '生成计划' }}
         </button>
       </div>
     </div>

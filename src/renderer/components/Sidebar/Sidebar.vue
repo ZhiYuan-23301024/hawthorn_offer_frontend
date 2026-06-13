@@ -17,6 +17,7 @@ onMounted(() => {
   unreadPollTimer = setInterval(() => {
     if (authStore.isAuthenticated) {
       socialStore.fetchConversations()
+      socialStore.fetchFriendRequests()
     }
   }, 10000)
 })
@@ -43,7 +44,7 @@ function handleItemClick(itemId: string) {
 <template>
   <aside
     class="w-12 flex flex-col items-center py-4 flex-shrink-0 glass-sidebar"
-    style="border-right: 1px solid var(--color-border);"
+    style="border-right: 1px solid var(--color-border); position: relative; z-index: 50;"
   >
     <!-- All icons in one group -->
     <div class="flex flex-col items-center gap-2">

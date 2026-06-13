@@ -98,6 +98,13 @@ export const useEditorStore = defineStore('editor', () => {
     modifiedTabs.value.delete(tabId)
   }
 
+  /** 关闭所有标签页（退出登录时调用） */
+  function closeAllTabs() {
+    tabs.value = []
+    activeTabId.value = null
+    modifiedTabs.value = new Set()
+  }
+
   return {
     tabs,
     activeTabId,
@@ -110,7 +117,8 @@ export const useEditorStore = defineStore('editor', () => {
     closeTab,
     updateContent,
     markModified,
-    saveTab
+    saveTab,
+    closeAllTabs
   }
 }
 )

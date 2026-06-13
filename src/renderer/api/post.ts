@@ -38,6 +38,7 @@ export interface ResumePostListVO {
   authorName: string
   authorAvatar: string
   authorAvatarUrl: string | null
+  isAnonymous: boolean
   commentCount: number
   price: number
   promoText: string

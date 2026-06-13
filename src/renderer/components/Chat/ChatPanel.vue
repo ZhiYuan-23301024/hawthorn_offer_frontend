@@ -26,7 +26,7 @@ const showCreateGroup = ref(false)
 const showAddFriend = ref(false)
 const showGroupSearch = ref(false)
 
-onMounted(() => { store.fetchConversations() })
+onMounted(() => { store.fetchConversations(); store.fetchFriendRequests() })
 watch(() => authStore.isAuthenticated, (authed) => { if (authed && store.conversations.length === 0 && !store.loadingConversations) store.fetchConversations() })
 
 const displayConversations = computed(() => {

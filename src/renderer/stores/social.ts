@@ -72,6 +72,7 @@ export const useSocialStore = defineStore('social', () => {
 
   const totalUnread = computed(() =>
     conversations.value.reduce((sum, c) => sum + (c.isMuted ? 0 : (c.unreadCount || 0)), 0)
+    + pendingFriendRequests.value.length
   )
 
   const pendingRequestCount = computed(() =>
@@ -265,6 +266,34 @@ export const useSocialStore = defineStore('social', () => {
     messages.value = []
     messagePage.value = 1
     messageTotal.value = 0
+  }
+
+  /** 重置所有社交状态（退出登录时调用） */
+  function reset() {
+    conversations.value = []
+    activeConversationId.value = null
+    loadingConversations.value = false
+    messages.value = []
+    messagePage.value = 1
+    messageTotal.value = 0
+    loadingMessages.value = false
+    sendingMessage.value = false
+    searchResults.value = []
+    searchingUsers.value = false
+    searchedConversations.value = []
+    searchingConversations.value = false
+    contacts.value = null
+    loadingContacts.value = false
+    pendingFriendRequests.value = []
+    allReceivedRequests.value = []
+    sentFriendRequests.value = []
+    loadingFriendRequests.value = false
+    groupSearchResult.value = null
+    searchingGroup.value = false
+    groupJoinRequests.value = []
+    loadingJoinRequests.value = false
+    allGroupJoinRequests.value = []
+    loadingAllGroupJoinRequests.value = false
   }
 
   /** 本地更新会话列表排序（不发网络请求） */
@@ -571,7 +600,7 @@ export const useSocialStore = defineStore('social', () => {
     activeConversation, totalUnread,
     isSystemNotifyConversation, isBeanNotifyConversation,
     isNotificationConversation, notificationConversations,
-    fetchConversations, selectConversation, clearActiveConversation,
+    fetchConversations, selectConversation, clearActiveConversation, reset,
     // 消息
     messages, messagePage, messageTotal, loadingMessages, sendingMessage, hasMoreMessages,
     fetchMessages, loadMoreMessages, pollNewMessages, sendMessage,

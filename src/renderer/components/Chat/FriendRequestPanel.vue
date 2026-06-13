@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { UserPlus, UserCheck, UserX, Clock, Loader, Users } from 'lucide-vue-next'
 import { useSocialStore } from '@/stores/social'
 import { useEditorStore } from '@/stores/editor'
@@ -10,9 +10,17 @@ const store = useSocialStore()
 const editorStore = useEditorStore()
 const imgErrors = ref<Set<string>>(new Set())
 const activeTab = ref<'pending' | 'sent'>('pending')
+let pollTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
   store.fetchFriendRequests()
+  pollTimer = setInterval(() => {
+    store.fetchFriendRequests()
+  }, 10000)
+})
+
+onUnmounted(() => {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
 })
 
 function handleAccept(id: string) {

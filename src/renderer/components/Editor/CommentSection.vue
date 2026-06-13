@@ -671,6 +671,8 @@ defineExpose({ cancelReply })
 
 .comment-section {
   color: var(--color-text-primary);
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* ── Header ── */
@@ -708,6 +710,7 @@ defineExpose({ cancelReply })
 /* ── Comment list ── */
 .comment-list {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 0 24px 8px;
 }

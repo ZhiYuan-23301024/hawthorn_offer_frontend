@@ -112,6 +112,11 @@ const isOwner = computed(() => {
   return uid === authStore.user.id
 })
 
+const isAnonymousPost = computed(() => {
+  if (props.postType === 'resume') return resumeData.value?.isAnonymous ?? false
+  return postListItem.value?.isAnonymous ?? (postData.value as any)?.isAnonymous ?? false
+})
+
 const isQaPost = computed(() => (detail.value as any)?.postType === 'qa')
 const isReferralPost = computed(() => (postData.value as any)?.postType === 'referral' || postListItem.value?.postType === 'referral')
 const referralCode = computed(() => (postData.value as any)?.referralCode || postListItem.value?.referralCode || '')
@@ -424,9 +429,9 @@ function onVisibilityChange() {
       <div class="author-header">
         <div class="author-avatar"
               :style="{ backgroundColor: avatarColor(detailUserId) }"
-              @mouseenter="!resumeData?.isAnonymous && onAuthorMouseEnter($event, detailUserId)"
+              @mouseenter="!isAnonymousPost && onAuthorMouseEnter($event, detailUserId)"
               @mouseleave="onAuthorMouseLeave"
-              @click="!resumeData?.isAnonymous && onAuthorClick(detailUserId)">
+              @click="!isAnonymousPost && onAuthorClick(detailUserId)">
           <img v-if="authorAvatarUrl && !avatarImgError" :src="avatarUrl(authorAvatarUrl)" class="w-full h-full object-cover" @error="avatarImgError = true" />
           <span v-else class="avatar-fallback">{{ authorAvatar || authorName?.charAt(0) || '?' }}</span>
         </div>
@@ -437,7 +442,7 @@ function onVisibilityChange() {
           </div>
           <div class="author-meta">
             <span
-              v-if="!resumeData?.isAnonymous"
+              v-if="!isAnonymousPost"
               class="author-name"
               @mouseenter="onAuthorMouseEnter($event, detailUserId)"
               @mouseleave="onAuthorMouseLeave"
@@ -528,9 +533,9 @@ function onVisibilityChange() {
         <div
           class="author-avatar"
           :style="{ backgroundColor: avatarColor(detailUserId) }"
-          @mouseenter="!postListItem?.isAnonymous && onAuthorMouseEnter($event, detailUserId)"
+          @mouseenter="!isAnonymousPost && onAuthorMouseEnter($event, detailUserId)"
           @mouseleave="onAuthorMouseLeave"
-          @click="!postListItem?.isAnonymous && onAuthorClick(detailUserId)"
+          @click="!isAnonymousPost && onAuthorClick(detailUserId)"
         >
           <img
             v-if="authorAvatarUrl && !avatarImgError"
@@ -545,7 +550,7 @@ function onVisibilityChange() {
           </div>
           <div class="author-meta">
             <span
-              v-if="!postListItem?.isAnonymous"
+              v-if="!isAnonymousPost"
               class="author-name"
               @mouseenter="onAuthorMouseEnter($event, detailUserId)"
               @mouseleave="onAuthorMouseLeave"

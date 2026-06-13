@@ -3,6 +3,11 @@ import { computed, ref } from 'vue'
 import { apiGet, apiPost, apiPut, apiUpload, ApiResponse } from '@/api/http'
 import type { UserProfile, HeatmapPoint, ChsiVerificationStatus } from '@/types'
 import { usePostStore } from '@/stores/post'
+import { useSocialStore } from '@/stores/social'
+import { useEditorStore } from '@/stores/editor'
+import { useWorkspaceStore } from '@/stores/workspace'
+import { useSidebarStore } from '@/stores/sidebar'
+import { useCheckinStore } from '@/stores/checkin'
 
 interface LoginResponse {
   token: string
@@ -63,14 +68,14 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     localStorage.removeItem(AUTH_TOKEN_KEY)
     chsiVerification.value = null
-    // 清除帖子相关缓存，避免退出登录后残留上一用户的点赞和评论数据
+    // 清除所有 store 中的用户数据，避免退出登录后残留上一用户的状态
     localStorage.removeItem('hawthorn_post_liked_ids')
-    try {
-      const postStore = usePostStore()
-      postStore.clearLikedIds()
-      postStore.comments = []
-      postStore.currentDetail = null
-    } catch { /* store 可能尚未初始化，忽略 */ }
+    try { const postStore = usePostStore(); postStore.reset() } catch { /* store 可能尚未初始化 */ }
+    try { const socialStore = useSocialStore(); socialStore.reset() } catch { /* ignore */ }
+    try { const editorStore = useEditorStore(); editorStore.closeAllTabs() } catch { /* ignore */ }
+    try { const workspaceStore = useWorkspaceStore(); workspaceStore.reset() } catch { /* ignore */ }
+    try { const sidebarStore = useSidebarStore(); sidebarStore.reset() } catch { /* ignore */ }
+    try { const checkinStore = useCheckinStore(); checkinStore.reset() } catch { /* ignore */ }
   }
 
   async function login(payload: LoginPayload) {

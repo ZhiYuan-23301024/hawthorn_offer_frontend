@@ -465,6 +465,7 @@ export const usePostStore = defineStore('post', () => {
           promoText: rp.promoText || '',
           likeCount: rp.likeCount || 0,
           isLiked: rp.isLiked || false,
+          isAnonymous: rp.isAnonymous || false,
           deleted: rp.deleted || rp.isDeleted || false,
           createdAt: rp.createdAt,
           updatedAt: rp.updatedAt,
@@ -508,6 +509,41 @@ export const usePostStore = defineStore('post', () => {
     } catch { /* ignore */ }
   }
 
+  /** 重置所有帖子状态（退出登录时调用） */
+  function reset() {
+    activeTab.value = 'resume'
+    regularSubTab.value = 'hot'
+    resumeSubTab.value = 'recommended'
+    resumeKeyword.value = ''
+    regularKeyword.value = ''
+    sort.value = 'hot'
+    loading.value = false
+    loadingMore.value = false
+    resumePostList.value = []
+    resumePostTotal.value = 0
+    resumePostPage.value = 1
+    postList.value = []
+    postTotal.value = 0
+    postPage.value = 1
+    selectedId.value = null
+    selectedType.value = null
+    currentDetail.value = null
+    comments.value = []
+    loadingDetail.value = false
+    likedIds.value = new Set()
+    qaFilter.value = ''
+    myOwnSubTab.value = 'posts'
+    myComments.value = []
+    myLikes.value = []
+    myCommentsDisplayPage.value = 1
+    myLikesDisplayPage.value = 1
+    commentsLoaded.value = false
+    likesLoaded.value = false
+    try {
+      localStorage.removeItem(LIKED_IDS_KEY)
+    } catch { /* ignore */ }
+  }
+
   return {
     activeTab, regularSubTab, resumeSubTab, resumeKeyword, regularKeyword, keyword, sort, loading, loadingMore,
     resumePostList, resumePostTotal, resumePostPage,
@@ -521,6 +557,6 @@ export const usePostStore = defineStore('post', () => {
     fetchPurchasedResumePosts, fetchMyResumePosts,
     setTab, setRegularSubTab, setResumeSubTab, setKeyword, setSort, fetchComments,
     setMyOwnSubTab, fetchMyComments, fetchMyLikes, loadMoreMyOwn,
-    clearLikedIds
+    clearLikedIds, reset
   }
 })

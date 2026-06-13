@@ -588,7 +588,7 @@ watch(activeSection, () => {
 </script>
 
 <template>
-  <div class="h-full py-4 space-y-4 overflow-y-auto text-sm text-vscode-text" style="scrollbar-gutter: stable">
+  <div class="h-full px-6 py-4 space-y-4 overflow-y-auto text-sm text-vscode-text" style="scrollbar-gutter: stable">
     <div class="flex items-center justify-between">
       <h2 class="text-base font-semibold">账户与个人设置</h2>
       <button

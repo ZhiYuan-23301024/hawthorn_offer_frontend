@@ -57,7 +57,8 @@ function toggleExpand(userId: string) {
 
 async function handleSendRequest(userId: string, nickname: string) {
   try {
-    await store.sendFriendRequest(userId, requestMessage.value || undefined)
+    const message = requestMessage.value.trim() || '你好，我想加你为好友'
+    await store.sendFriendRequest(userId, message)
     alert(`已向 ${nickname} 发送好友申请`)
     const user = store.searchResults.find(u => u.id === userId)
     if (user) user.isContact = true

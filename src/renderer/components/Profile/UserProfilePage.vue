@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { UserPlus, Edit3, Eye, EyeOff, Loader, Heart, MessageSquare, FileText, ThumbsUp, MessageCircle, UserCheck , Bean } from 'lucide-vue-next'
+import { UserPlus, Edit3, Eye, EyeOff, Loader, Heart, MessageSquare, FileText, ThumbsUp, MessageCircle, UserCheck , Bean, LogIn } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorStore } from '@/stores/editor'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -16,6 +16,7 @@ import {
 import { getUserPosts } from '@/api/social'
 import PostDetail from '@/components/Editor/PostDetail.vue'
 import ChatView from '@/components/Chat/ChatView.vue'
+import AccountPanel from '@/plugins/builtin/components/AccountPanel.vue'
 
 const props = defineProps<{
   userId: string
@@ -104,7 +105,19 @@ onMounted(() => loadAll())
 
 watch(() => props.userId, () => { avatarImgError.value = false; loadAll() })
 
+function goToLogin() {
+  sidebarStore.setActiveItem('account')
+  workspaceStore.setActivePanel('account')
+  editorStore.openOrUpdateComponentTab('account:login', '登录 / 注册', AccountPanel, { activeSection: 'all' })
+}
+
 async function loadAll() {
+  // 未登录时跳过 API 请求，由模板显示登录提示
+  if (!authStore.isAuthenticated) {
+    loading.value = false
+    profile.value = null
+    return
+  }
   loading.value = true
   try {
     const [pRes, sRes, poRes, cRes, lRes] = await Promise.all([
@@ -156,10 +169,19 @@ function handleTabTitleClick() {
 }
 
 async function handleSendFriendRequest() {
-  if (!profile.value || !friendMessage.value.trim()) return
+  if (!profile.value) return
+  if (!authStore.isAuthenticated) {
+    showFriendDialog.value = false
+    if (confirm('请先登录后再添加好友，是否前往登录？')) {
+      sidebarStore.setActiveItem('account')
+      workspaceStore.setActivePanel('account')
+    }
+    return
+  }
   sendingRequest.value = true
   try {
-    await socialStore.sendFriendRequest(profile.value.id, friendMessage.value.trim())
+    const message = friendMessage.value.trim() || '你好，我想加你为好友'
+    await socialStore.sendFriendRequest(profile.value.id, message)
     alert(`已向 ${profile.value.nickname} 发送好友申请`)
     showFriendDialog.value = false
     friendMessage.value = ''
@@ -385,8 +407,17 @@ function openLikedPost(targetId: string, targetType: string) {
       </div>
     </template>
 
-    <div v-else class="flex items-center justify-center h-full text-sm text-vscode-text-secondary">
-      用户不存在
+    <div v-else-if="!authStore.isAuthenticated" class="flex flex-col items-center justify-center h-full gap-4">
+      <p class="text-sm" style="color: var(--color-text-secondary);">登录后即可查看用户主页</p>
+      <button
+        class="flex items-center gap-1.5 px-5 py-2.5 text-sm rounded-lg text-white transition-colors"
+        style="background-color: var(--color-primary);"
+        @click="goToLogin"
+        @mouseenter="(e: MouseEvent) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--color-primary-dark)' }"
+        @mouseleave="(e: MouseEvent) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--color-primary)' }"
+      >
+        <LogIn class="w-4 h-4" /> 登录
+      </button>
     </div>
 
     <!-- Friend Request Dialog -->
@@ -400,7 +431,7 @@ function openLikedPost(targetId: string, targetType: string) {
           <textarea v-model="friendMessage" class="w-full bg-vscode-active border border-vscode-border rounded px-3 py-2 text-sm text-vscode-text outline-none focus:border-primary resize-none" rows="3" placeholder="你好，我想加你为好友..."></textarea>
           <div class="flex gap-3 justify-end mt-4">
             <button class="px-4 py-2 border border-vscode-border text-vscode-text-secondary rounded-md text-sm hover:bg-vscode-active" @click="showFriendDialog = false">取消</button>
-            <button class="px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary-dark disabled:opacity-50" :disabled="!friendMessage.trim() || sendingRequest" @click="handleSendFriendRequest">
+            <button class="px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary-dark disabled:opacity-50" :disabled="sendingRequest" @click="handleSendFriendRequest">
               {{ sendingRequest ? '发送中...' : '发送申请' }}
             </button>
           </div>

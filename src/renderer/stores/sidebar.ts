@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { pluginManager } from '@/plugins/pluginManager'
 
 export const useSidebarStore = defineStore('sidebar', () => {
-  const activeItem = ref('chat')
+  const activeItem = ref('postBrowser')
 
   const items = computed(() => {
     const bottomIds = ['account']
@@ -34,9 +34,15 @@ export const useSidebarStore = defineStore('sidebar', () => {
     activeItem.value = itemId
   }
 
+  /** 重置侧边栏状态（退出登录时调用） */
+  function reset() {
+    activeItem.value = 'postBrowser'
+  }
+
   return {
     activeItem,
     items,
-    setActiveItem
+    setActiveItem,
+    reset
   }
 })

@@ -66,8 +66,8 @@ function onHideClick(e: Event) { e.stopPropagation(); handleToggleHide(e); close
       </div>
       <div class="flex items-center justify-between mt-0.5">
         <span class="text-sm truncate" style="color: var(--color-text-secondary);">{{ displayPreview || '暂无通知' }}</span>
-        <span v-if="conversation.unreadCount > 0" class="px-1.5 py-0.5 text-xs font-medium rounded-full min-w-[18px] text-center"
-          :style="isBeanNotify ? { backgroundColor: 'var(--color-cta-subtle)', color: 'var(--color-cta-dark)' } : { backgroundColor: 'var(--color-primary-subtle)', color: 'var(--color-primary-dark)' }">
+        <span v-if="conversation.unreadCount > 0" class="px-1.5 py-0.5 text-xs font-bold rounded-full min-w-[18px] text-center"
+          style="background-color: var(--color-danger); color: #fff;">
           {{ conversation.unreadCount > 99 ? '99+' : conversation.unreadCount }}</span>
       </div>
     </div>
@@ -101,7 +101,7 @@ function onHideClick(e: Event) { e.stopPropagation(); handleToggleHide(e); close
         </span>
         <div class="flex items-center gap-1 ml-1 flex-shrink-0">
           <button class="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-all" :class="conversation.isMuted ? 'opacity-100' : ''" :style="{ color: conversation.isMuted ? 'var(--color-warning)' : 'var(--color-text-tertiary)' }" title="切换免打扰" @click="handleToggleMute"><BellOff v-if="conversation.isMuted" class="w-3 h-3" /><Bell v-else class="w-3 h-3" /></button>
-          <span v-if="conversation.unreadCount > 0 && !conversation.isMuted" class="px-1.5 py-0.5 text-xs font-medium rounded-full min-w-[18px] text-center" style="background-color: var(--color-primary-subtle); color: var(--color-primary-dark);">{{ conversation.unreadCount > 99 ? '99+' : conversation.unreadCount }}</span>
+          <span v-if="conversation.unreadCount > 0 && !conversation.isMuted" class="px-1.5 py-0.5 text-xs font-bold rounded-full min-w-[18px] text-center" style="background-color: var(--color-danger); color: #fff;">{{ conversation.unreadCount > 99 ? '99+' : conversation.unreadCount }}</span>
           <span v-else-if="conversation.unreadCount > 0 && conversation.isMuted" class="w-2 h-2 rounded-full" style="background-color: var(--color-warning);"></span>
           <EyeOff v-if="conversation.isHidden" class="w-3 h-3 opacity-60" style="color: var(--color-text-tertiary);" />
         </div>

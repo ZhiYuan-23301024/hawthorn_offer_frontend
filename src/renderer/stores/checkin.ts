@@ -356,6 +356,15 @@ export const useCheckinStore = defineStore('checkin', () => {
     return availableTasks.value.filter(t => !installedTasks.value.find(it => it.id === t.id))
   }
 
+  /** 重置打卡状态（退出登录时调用） */
+  function reset() {
+    availableTasks.value = []
+    installedTasks.value = []
+    myPlans.value = []
+    isLoading.value = false
+    error.value = null
+  }
+
   return {
     availableTasks,
     installedTasks,
@@ -374,6 +383,7 @@ export const useCheckinStore = defineStore('checkin', () => {
     deletePlan,
     renamePlan,
     completeTask,
-    getUninstalledTasks
+    getUninstalledTasks,
+    reset
   }
 })

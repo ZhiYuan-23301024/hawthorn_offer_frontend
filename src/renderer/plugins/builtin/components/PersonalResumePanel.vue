@@ -322,7 +322,12 @@ async function removeResume() {
       await loadResumes('')
       notifySidebarRefresh()
     } else {
-      errorMessage.value = res.message || '删除失败'
+      const msg = res.message || ''
+      if (msg.includes('foreign key') || msg.includes('resume_posts')) {
+        window.alert('该简历已被发布为简历帖子，请先在"求职广场"中删除对应的帖子后再删除简历。')
+      } else {
+        errorMessage.value = msg || '删除失败'
+      }
     }
   } catch (error) {
     setError(error, '删除失败')

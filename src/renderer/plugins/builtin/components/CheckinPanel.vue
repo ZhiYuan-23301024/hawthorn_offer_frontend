@@ -24,7 +24,7 @@ const editingPlanId = ref<string | null>(null)
 
 async function loadData() {
   await checkinStore.fetchTasksFromAPI()
-  checkinStore.loadData()
+  await checkinStore.loadData()
 }
 
 function toggleInstall(task: CheckinTask, isInstalled: boolean) {

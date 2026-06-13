@@ -56,7 +56,7 @@ export const useCheckinStore = defineStore('checkin', () => {
       }))
       
       console.log(`[checkin.fetchTasks] 映射后 availableTasks 数量=${availableTasks.value.length}`)
-      syncInstalledStatus()
+      await syncInstalledStatus()
     } catch (err) {
       error.value = '获取任务列表失败，使用本地缓存'
       console.error('[checkin.fetchTasks] 请求失败，降级到本地缓存:', err)
@@ -66,7 +66,7 @@ export const useCheckinStore = defineStore('checkin', () => {
     }
   }
 
-  function loadLocalFallback() {
+  async function loadLocalFallback() {
     const fallbackTasks: CheckinTask[] = [
       {
         id: 'test-quiz-task',
@@ -168,19 +168,20 @@ export const useCheckinStore = defineStore('checkin', () => {
       }
     ]
     availableTasks.value = fallbackTasks
-    syncInstalledStatus()
+    await syncInstalledStatus()
   }
 
-  function syncInstalledStatus() {
-    const savedInstalled = localStorage.getItem('checkin_installedTasks')
-    if (savedInstalled) {
-      const installedIds = JSON.parse(savedInstalled)
+  async function syncInstalledStatus() {
+    try {
+      const installedIds: string[] = window.electronAPI
+        ? await window.electronAPI.loadInstalledTasks()
+        : JSON.parse(localStorage.getItem('checkin_installedTasks') || '[]')
+
       installedTasks.value = availableTasks.value.filter(t => installedIds.includes(t.id))
-    } else {
+    } catch {
       installedTasks.value = []
     }
     
-    // 从 TaskPluginLoader 获取已安装插件的 manifest，同步 params
     const loadedPlugins = taskPluginLoader.getAllPlugins()
     for (const plugin of loadedPlugins) {
       const task = installedTasks.value.find(t => t.id === plugin.manifest.id)
@@ -221,22 +222,42 @@ export const useCheckinStore = defineStore('checkin', () => {
     return { ...plan, nodes: [], edges: [] } as CheckinPlan
   }
 
-  function loadData() {
-    const savedPlans = localStorage.getItem('checkin_myPlans')
-    if (savedPlans) {
-      myPlans.value = JSON.parse(savedPlans).map((plan: any) => migratePlan(plan))
-    } else {
+  async function loadData() {
+    try {
+      const savedPlans: any[] = window.electronAPI
+        ? await window.electronAPI.loadPlans()
+        : JSON.parse(localStorage.getItem('checkin_myPlans') || '[]')
+
+      if (savedPlans && savedPlans.length > 0) {
+        myPlans.value = savedPlans.map((plan: any) => migratePlan(plan))
+      } else {
+        myPlans.value = []
+      }
+    } catch {
       myPlans.value = []
     }
   }
 
   function saveInstalledTasks() {
     const ids = installedTasks.value.map(t => t.id)
-    localStorage.setItem('checkin_installedTasks', JSON.stringify(ids))
+    if (window.electronAPI) {
+      window.electronAPI.saveInstalledTasks(ids).catch(err =>
+        console.error('[checkin] 保存已安装任务失败:', err)
+      )
+    } else {
+      localStorage.setItem('checkin_installedTasks', JSON.stringify(ids))
+    }
   }
 
   function saveMyPlans() {
-    localStorage.setItem('checkin_myPlans', JSON.stringify(myPlans.value))
+    if (window.electronAPI) {
+      const plainPlans = JSON.parse(JSON.stringify(myPlans.value))
+      window.electronAPI.savePlans(plainPlans).catch(err =>
+        console.error('[checkin] 保存计划失败:', err)
+      )
+    } else {
+      localStorage.setItem('checkin_myPlans', JSON.stringify(myPlans.value))
+    }
   }
 
   async function installTask(taskId: string) {

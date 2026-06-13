@@ -15,6 +15,14 @@ function getPluginsDir(): string {
   return dir
 }
 
+function getCheckinDir(): string {
+  const dir = join(app.getPath('userData'), 'checkin')
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true })
+  }
+  return dir
+}
+
 function getPluginsManifestPath(): string {
   return join(getPluginsDir(), 'plugins.json')
 }
@@ -174,6 +182,64 @@ ipcMain.handle('plugin:delete-manifest', async (_, pluginId: string) => {
   writePluginsManifest(manifest)
   console.log(`[Plugin] 插件清单已删除: ${pluginId}`)
   return true
+})
+
+// ===== 打卡计划 & 已安装任务 本地持久化 IPC handlers =====
+
+function getPlansPath(): string {
+  return join(getCheckinDir(), 'plans.json')
+}
+
+function getInstalledTasksPath(): string {
+  return join(getCheckinDir(), 'installed-tasks.json')
+}
+
+ipcMain.handle('checkin:save-plans', async (_, plans: any[]) => {
+  const filePath = getPlansPath()
+  writeFileSync(filePath, JSON.stringify(plans, null, 2), 'utf-8')
+  console.log(`[Checkin] 计划已保存: ${filePath}, 共 ${plans.length} 个`)
+  return true
+})
+
+ipcMain.handle('checkin:load-plans', async () => {
+  const filePath = getPlansPath()
+  if (!existsSync(filePath)) {
+    console.log('[Checkin] 计划文件不存在，返回 []')
+    return []
+  }
+  try {
+    const raw = readFileSync(filePath, 'utf-8')
+    const plans = JSON.parse(raw)
+    console.log(`[Checkin] 计划已加载: ${filePath}, 共 ${plans.length} 个`)
+    return plans
+  } catch (err) {
+    console.error('[Checkin] 计划文件读取失败:', err)
+    return []
+  }
+})
+
+ipcMain.handle('checkin:save-installed-tasks', async (_, ids: string[]) => {
+  const filePath = getInstalledTasksPath()
+  writeFileSync(filePath, JSON.stringify(ids, null, 2), 'utf-8')
+  console.log(`[Checkin] 已安装任务列表已保存: ${filePath}, 共 ${ids.length} 个`)
+  return true
+})
+
+ipcMain.handle('checkin:load-installed-tasks', async () => {
+  const filePath = getInstalledTasksPath()
+  if (!existsSync(filePath)) {
+    console.log('[Checkin] 已安装任务文件不存在，返回 []')
+    return []
+  }
+  try {
+    const raw = readFileSync(filePath, 'utf-8')
+    const ids = JSON.parse(raw)
+    console.log(`[Checkin] 已安装任务列表已加载: ${filePath}, 共 ${ids.length} 个`)
+    return ids
+  } catch (err) {
+    console.error('[Checkin] 已安装任务文件读取失败:', err)
+    return []
+  }
 })
 
 setupConsoleRedirect()

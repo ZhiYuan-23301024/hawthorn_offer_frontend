@@ -15,6 +15,10 @@ interface ElectronAPI {
   loadInstalledPlugins: () => Promise<any[]>
   savePluginManifest: (manifest: any) => Promise<boolean>
   deletePluginManifest: (pluginId: string) => Promise<boolean>
+  savePlans: (plans: any[]) => Promise<boolean>
+  loadPlans: () => Promise<any[]>
+  saveInstalledTasks: (ids: string[]) => Promise<boolean>
+  loadInstalledTasks: () => Promise<string[]>
 }
 
 declare global {

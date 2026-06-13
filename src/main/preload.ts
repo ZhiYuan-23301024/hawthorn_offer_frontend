@@ -8,5 +8,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deletePluginCode: (pluginId: string) => ipcRenderer.invoke('plugin:delete-code', pluginId),
   loadInstalledPlugins: (): Promise<any[]> => ipcRenderer.invoke('plugin:load-installed'),
   savePluginManifest: (manifest: any) => ipcRenderer.invoke('plugin:save-manifest', manifest),
-  deletePluginManifest: (pluginId: string) => ipcRenderer.invoke('plugin:delete-manifest', pluginId)
+  deletePluginManifest: (pluginId: string) => ipcRenderer.invoke('plugin:delete-manifest', pluginId),
+  savePlans: (plans: any[]) => ipcRenderer.invoke('checkin:save-plans', plans),
+  loadPlans: (): Promise<any[]> => ipcRenderer.invoke('checkin:load-plans'),
+  saveInstalledTasks: (ids: string[]) => ipcRenderer.invoke('checkin:save-installed-tasks', ids),
+  loadInstalledTasks: (): Promise<string[]> => ipcRenderer.invoke('checkin:load-installed-tasks')
 })

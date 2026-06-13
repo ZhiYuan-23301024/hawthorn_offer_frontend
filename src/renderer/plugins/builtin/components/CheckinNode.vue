@@ -80,7 +80,7 @@ function handleTargetHandleMouseDown(e: MouseEvent) {
     </div>
     
     <div v-if="node.completed" class="absolute bottom-1 right-1">
-      <Check class="w-4 h-4 text-vscode-success" />
+      <Check class="w-5 h-5 text-green-500 drop-shadow-lg" />
     </div>
     
     <div class="connection-handle absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-[10px] h-[10px] rounded-full bg-gray-400 hover:bg-vscode-active cursor-crosshair transition-colors" @mousedown="handleTargetHandleMouseDown"></div>

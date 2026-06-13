@@ -155,8 +155,15 @@ onUnmounted(() => {
       </div>
       
       <div class="flex items-center space-x-4">
-        <div class="flex items-center space-x-1">
-          <span class="text-sm text-vscode-text-secondary">{{ progress }}% 完成</span>
+        <div class="flex items-center space-x-2">
+          <span class="text-sm font-semibold text-vscode-text">{{ progress }}%</span>
+          <div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div 
+              class="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-500"
+              :style="{ width: `${progress}%` }"
+            ></div>
+          </div>
+          <span class="text-sm text-vscode-text-secondary">完成</span>
         </div>
         
         <div class="flex items-center space-x-2">
@@ -268,7 +275,7 @@ onUnmounted(() => {
                 :class="[
                   categoryStyles[node.category]?.bg || 'bg-gray-100',
                   categoryStyles[node.category]?.border || 'border-gray-400',
-                  node.completed ? 'ring-2 ring-vscode-success' : ''
+                  node.completed ? 'ring-2 ring-green-500 shadow-lg shadow-green-500/30' : ''
                 ]"
               >
                 <div class="flex items-center justify-between mb-2">
@@ -278,7 +285,7 @@ onUnmounted(() => {
                   </div>
                   <button
                     class="w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
-                    :class="node.completed ? 'bg-vscode-success' : 'bg-vscode-active'"
+                    :class="node.completed ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-vscode-active'"
                     @click.stop="toggleComplete(node)"
                   >
                     <CheckCircle v-if="node.completed" class="w-4 h-4 text-white" />

@@ -566,10 +566,10 @@ onUnmounted(() => {
     <Teleport to="body">
       <div
         v-if="showParamModal && selectedNodeForParams"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        class="fixed inset-0 z-50 flex items-center justify-center"
         @click.self="closeParamModal"
       >
-        <div class="bg-vscode-bg border border-vscode-border rounded-lg shadow-xl w-full max-w-md mx-4">
+        <div class="bg-[#F5F3F0] border border-vscode-border rounded-lg shadow-xl w-full max-w-md mx-4">
           <div class="flex items-center justify-between px-4 py-3 border-b border-vscode-border">
             <h3 class="text-sm font-semibold text-vscode-text">配置任务参数</h3>
             <button

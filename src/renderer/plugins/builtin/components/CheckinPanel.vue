@@ -425,8 +425,8 @@ onMounted(() => {
     </div>
   </div>
 
-  <div v-if="showCreatePlanModal" class="fixed inset-0 flex items-center justify-center z-50" style="background: rgba(36, 34, 32, 0.35);">
-    <div class="bg-vscode-sidebar rounded-lg p-4 w-96 shadow-xl">
+  <div v-if="showCreatePlanModal" class="fixed inset-0 flex items-center justify-center z-50">
+    <div class="bg-[#FBFAF9] rounded-lg p-4 w-96 shadow-xl">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-semibold text-vscode-text">新建打卡计划</h3>
         <button class="p-1 hover:bg-vscode-selected rounded transition-colors" @click="showCreatePlanModal = false">
@@ -495,8 +495,8 @@ onMounted(() => {
     </div>
   </div>
 
-  <div v-if="showAIGenerateModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-vscode-sidebar rounded-lg p-4 w-[480px] shadow-xl max-h-[80vh] overflow-y-auto">
+  <div v-if="showAIGenerateModal" class="fixed inset-0 flex items-center justify-center z-50">
+    <div class="bg-[#FBFAF9] rounded-lg p-4 w-[480px] shadow-xl max-h-[80vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-semibold text-vscode-text flex items-center">
           <Sparkles class="w-4 h-4 mr-1.5 text-vscode-warning" />

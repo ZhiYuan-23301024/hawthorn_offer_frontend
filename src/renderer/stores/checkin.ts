@@ -267,8 +267,7 @@ export const useCheckinStore = defineStore('checkin', () => {
       const installedIds = JSON.parse(savedInstalled)
       installedTasks.value = availableTasks.value.filter(t => installedIds.includes(t.id))
     } else {
-      installedTasks.value = availableTasks.value.slice(0, 4)
-      saveInstalledTasks()
+      installedTasks.value = []
     }
     
     // 从 TaskPluginLoader 获取已安装插件的 manifest，同步 params
@@ -317,30 +316,7 @@ export const useCheckinStore = defineStore('checkin', () => {
     if (savedPlans) {
       myPlans.value = JSON.parse(savedPlans).map((plan: any) => migratePlan(plan))
     } else {
-      myPlans.value = [
-        {
-          id: 'default',
-          name: '日常打卡',
-          description: '日常学习和生活打卡计划',
-          createdAt: new Date().toISOString().split('T')[0],
-          nodes: installedTasks.value.slice(0, 3).map((t, i) => ({
-            id: `node-${Date.now()}-${i}`,
-            taskId: t.id,
-            taskName: t.name,
-            category: t.category,
-            x: 100 + i * 200,
-            y: 150,
-            completed: false
-          })),
-          edges: installedTasks.value.slice(0, 3).map((_, i) => ({
-            id: `edge-${Date.now()}-${i}`,
-            sourceNodeId: `node-${Date.now()}-${i}`,
-            targetNodeId: `node-${Date.now()}-${i + 1}`,
-            type: 'main' as const
-          })).slice(0, 2)
-        }
-      ]
-      saveMyPlans()
+      myPlans.value = []
     }
   }
 

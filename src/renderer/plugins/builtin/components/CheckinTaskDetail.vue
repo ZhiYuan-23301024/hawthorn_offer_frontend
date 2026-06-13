@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { X, Download, Github, AlertCircle, Check, ExternalLink } from 'lucide-vue-next'
 import { useCheckinStore } from '@/stores/checkin'
 import type { CheckinTask } from '@/types/checkin'
@@ -13,7 +13,9 @@ const emit = defineEmits<{
 }>()
 
 const checkinStore = useCheckinStore()
-const isInstalled = ref(false)
+const isInstalled = computed(() => {
+  return checkinStore.installedTasks.some(t => t.id === props.task?.id)
+})
 
 const renderedReadme = computed(() => {
   if (!props.task?.readme) return ''
@@ -40,7 +42,6 @@ function toggleInstall() {
   } else {
     checkinStore.installTask(props.task.id)
   }
-  isInstalled.value = !isInstalled.value
 }
 
 function handleClose() {
@@ -53,11 +54,6 @@ function openSourceUrl() {
   }
 }
 
-onMounted(() => {
-  if (props.task) {
-    isInstalled.value = checkinStore.installedTasks.some(t => t.id === props.task?.id)
-  }
-})
 </script>
 
 <template>

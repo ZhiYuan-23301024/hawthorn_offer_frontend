@@ -110,6 +110,10 @@ export class PluginLoader implements PluginAPI {
     }
     const json = await response.json()
     console.log(`[PluginLoader.fetchManifest] 返回 JSON:`, JSON.stringify(json, null, 2))
+    if (json.code && json.code !== 200) {
+      console.error(`[PluginLoader.fetchManifest] 业务错误! code=${json.code}, message=${json.message}`)
+      throw new Error(`获取插件清单失败: ${json.message || '未知错误'}`)
+    }
     return json
   }
 
@@ -117,7 +121,8 @@ export class PluginLoader implements PluginAPI {
     const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/download`
     console.log(`[PluginLoader.downloadPlugin] >>> GET ${url}`)
     const response = await fetch(url)
-    console.log(`[PluginLoader.downloadPlugin] <<< status=${response.status}, ok=${response.ok}, contentType=${response.headers.get('content-type')}`)
+    const contentType = response.headers.get('content-type') || ''
+    console.log(`[PluginLoader.downloadPlugin] <<< status=${response.status}, ok=${response.ok}, contentType=${contentType}`)
     if (!response.ok) {
       const body = await response.text().catch(() => '(无法读取响应体)')
       console.error(`[PluginLoader.downloadPlugin] 请求失败! body=`, body)
@@ -125,6 +130,17 @@ export class PluginLoader implements PluginAPI {
     }
     const code = await response.text()
     console.log(`[PluginLoader.downloadPlugin] 返回代码长度=${code.length}, 前200字符:`, code.substring(0, 200))
+    if (contentType.includes('application/json') || (code.startsWith('{') && code.includes('"code"'))) {
+      try {
+        const errorJson = JSON.parse(code)
+        if (errorJson.code && errorJson.code !== 200) {
+          console.error(`[PluginLoader.downloadPlugin] 业务错误! code=${errorJson.code}, message=${errorJson.message}`)
+          throw new Error(`下载插件代码失败: ${errorJson.message || '未知错误'}`)
+        }
+      } catch (parseErr) {
+        // 不是有效的 JSON 错误响应，当作普通代码处理
+      }
+    }
     return code
   }
 

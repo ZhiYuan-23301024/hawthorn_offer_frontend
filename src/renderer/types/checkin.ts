@@ -21,7 +21,6 @@ export interface CheckinTask {
   latestVersion: string
   hasUpdate: boolean
   sourceUrl: string
-  readme: string
   params?: TaskParam[]
 }
 

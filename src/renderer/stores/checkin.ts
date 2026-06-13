@@ -52,7 +52,6 @@ export const useCheckinStore = defineStore('checkin', () => {
         latestVersion: plugin.version || '1.0.0',
         hasUpdate: false,
         sourceUrl: '',
-        readme: '',
         params: plugin.params || undefined
       }))
       
@@ -80,8 +79,7 @@ export const useCheckinStore = defineStore('checkin', () => {
         version: '1.0.0',
         latestVersion: '1.0.0',
         hasUpdate: false,
-        sourceUrl: '',
-        readme: '# 编程刷题测试软件\n\n刷刷题'
+        sourceUrl: ''
       },
       {
         id: '1',
@@ -94,8 +92,7 @@ export const useCheckinStore = defineStore('checkin', () => {
         version: '1.0.0',
         latestVersion: '1.1.0',
         hasUpdate: true,
-        sourceUrl: 'https://github.com/hawthorn/daily-code',
-        readme: '# 每日代码\n\n每天编写代码至少1小时，养成编程习惯。'
+        sourceUrl: 'https://github.com/hawthorn/daily-code'
       },
       {
         id: '2',
@@ -108,8 +105,7 @@ export const useCheckinStore = defineStore('checkin', () => {
         version: '2.0.0',
         latestVersion: '2.0.0',
         hasUpdate: false,
-        sourceUrl: 'https://github.com/hawthorn/daily-reading',
-        readme: '# 阅读学习\n\n每天阅读技术书籍或文章。'
+        sourceUrl: 'https://github.com/hawthorn/daily-reading'
       },
       {
         id: '3',
@@ -122,8 +118,7 @@ export const useCheckinStore = defineStore('checkin', () => {
         version: '1.5.0',
         latestVersion: '1.6.0',
         hasUpdate: true,
-        sourceUrl: 'https://github.com/hawthorn/fitness',
-        readme: '# 运动健身\n\n每天运动30分钟，保持身体健康。'
+        sourceUrl: 'https://github.com/hawthorn/fitness'
       },
       {
         id: '4',
@@ -136,8 +131,7 @@ export const useCheckinStore = defineStore('checkin', () => {
         version: '1.2.0',
         latestVersion: '1.2.0',
         hasUpdate: false,
-        sourceUrl: 'https://github.com/hawthorn/meditation',
-        readme: '# 冥想放松\n\n每天冥想15分钟，放松身心。'
+        sourceUrl: 'https://github.com/hawthorn/meditation'
       },
       {
         id: '5',
@@ -150,8 +144,7 @@ export const useCheckinStore = defineStore('checkin', () => {
         version: '2.1.0',
         latestVersion: '2.1.0',
         hasUpdate: false,
-        sourceUrl: 'https://github.com/hawthorn/early-morning',
-        readme: '# 早起打卡\n\n每天早上7点前起床。'
+        sourceUrl: 'https://github.com/hawthorn/early-morning'
       },
       {
         id: '6',
@@ -164,8 +157,7 @@ export const useCheckinStore = defineStore('checkin', () => {
         version: '1.8.0',
         latestVersion: '1.9.0',
         hasUpdate: true,
-        sourceUrl: 'https://github.com/hawthorn/early-sleep',
-        readme: '# 早睡打卡\n\n每天晚上11点前睡觉。'
+        sourceUrl: 'https://github.com/hawthorn/early-sleep'
       }
     ]
     availableTasks.value = fallbackTasks

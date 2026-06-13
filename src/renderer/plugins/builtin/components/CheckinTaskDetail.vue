@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { X, Download, Github, AlertCircle, Check, ExternalLink } from 'lucide-vue-next'
+import { X, Download, AlertCircle, Check } from 'lucide-vue-next'
 import { useCheckinStore } from '@/stores/checkin'
 import type { CheckinTask } from '@/types/checkin'
 
@@ -17,17 +17,29 @@ const isInstalled = computed(() => {
   return checkinStore.installedTasks.some(t => t.id === props.task?.id)
 })
 
-const renderedReadme = computed(() => {
-  if (!props.task?.readme) return ''
+const renderedDescription = computed(() => {
+  if (!props.task?.description) return ''
   
-  let html = props.task.readme
-    .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold text-vscode-text mt-4 mb-2">$1</h3>')
-    .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold text-vscode-text mt-6 mb-3">$1</h2>')
-    .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold text-vscode-text mt-8 mb-4">$1</h1>')
+  let html = props.task.description
+    // 先处理标题（保留换行符）
+    .replace(/^(#{1,3})\s+(.*)$/gim, (_, level, content) => {
+      const styles: Record<string, string> = {
+        '#': 'text-2xl font-bold text-vscode-text mt-8 mb-4',
+        '##': 'text-xl font-bold text-vscode-text mt-6 mb-3',
+        '###': 'text-lg font-semibold text-vscode-text mt-4 mb-2'
+      }
+      return `<h${level.length} class="${styles[level]}">${content}</h${level.length}>\n`
+    })
+    // 处理粗体和斜体
     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-vscode-text">$1</strong>')
     .replace(/\*(.*?)\*/g, '<em class="italic text-vscode-text">$1</em>')
-    .replace(/^\- (.*$)/gim, '<li class="ml-4 text-vscode-text-secondary">$1</li>')
-    .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 text-vscode-text-secondary">$1</li>')
+    // 处理行内代码
+    .replace(/`([^`]+)`/g, '<code class="bg-vscode-bg px-1.5 py-0.5 rounded text-vscode-info text-sm">$1</code>')
+    // 处理无序列表
+    .replace(/^\- (.*)$/gim, '<li class="ml-4 text-vscode-text-secondary">$1</li>')
+    // 处理有序列表
+    .replace(/^\d+\. (.*)$/gim, '<li class="ml-4 text-vscode-text-secondary">$1</li>')
+    // 最后处理段落和换行（必须放在最后）
     .replace(/\n\n/g, '</p><p class="text-vscode-text-secondary mb-2">')
     .replace(/\n/g, '<br>')
   
@@ -47,13 +59,6 @@ function toggleInstall() {
 function handleClose() {
   emit('close')
 }
-
-function openSourceUrl() {
-  if (props.task?.sourceUrl) {
-    window.open(props.task.sourceUrl, '_blank')
-  }
-}
-
 </script>
 
 <template>
@@ -67,14 +72,6 @@ function openSourceUrl() {
           <h1 class="text-lg font-bold text-vscode-text">{{ task.name }}</h1>
           <div class="flex items-center space-x-2">
             <span class="text-sm text-vscode-text-secondary">{{ task.category }}</span>
-            <span :class="[
-              task.difficulty === 'easy' ? 'bg-success' :
-              task.difficulty === 'medium' ? 'bg-warning' : 'bg-danger',
-              'w-2 h-2 rounded-full'
-            ]"></span>
-            <span class="text-xs text-vscode-text-secondary">
-              {{ task.difficulty === 'easy' ? '简单' : task.difficulty === 'medium' ? '中等' : '困难' }}
-            </span>
           </div>
         </div>
       </div>
@@ -109,36 +106,14 @@ function openSourceUrl() {
               <span class="text-sm text-vscode-text-secondary">下载量</span>
               <span class="text-sm text-vscode-text">{{ task.downloads.toLocaleString() }}</span>
             </div>
-            <div class="flex items-center justify-between">
-              <span class="text-sm text-vscode-text-secondary">难度</span>
-              <span class="text-sm text-vscode-text">
-                {{ task.difficulty === 'easy' ? '简单' : task.difficulty === 'medium' ? '中等' : '困难' }}
-              </span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-sm text-vscode-text-secondary">源项目</span>
-              <button
-                class="flex items-center text-sm text-vscode-info hover:text-vscode-icon-hover transition-colors"
-                @click="openSourceUrl"
-              >
-                <Github class="w-4 h-4 mr-1" />
-                <span>{{ task.sourceUrl.replace('https://github.com/', '') }}</span>
-                <ExternalLink class="w-3 h-3 ml-1" />
-              </button>
-            </div>
           </div>
         </div>
 
         <div class="bg-vscode-hover rounded-lg p-4">
           <h2 class="text-sm font-semibold text-vscode-text-secondary mb-3">描述</h2>
-          <p class="text-vscode-text">{{ task.description }}</p>
-        </div>
-
-        <div class="bg-vscode-hover rounded-lg p-4">
-          <h2 class="text-sm font-semibold text-vscode-text-secondary mb-3">README</h2>
           <div
             class="prose prose-sm max-w-none"
-            v-html="renderedReadme"
+            v-html="renderedDescription"
           ></div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { X, Download, AlertCircle, Check } from 'lucide-vue-next'
+import MarkdownIt from 'markdown-it'
 import { useCheckinStore } from '@/stores/checkin'
 import type { CheckinTask } from '@/types/checkin'
 
@@ -17,33 +18,19 @@ const isInstalled = computed(() => {
   return checkinStore.installedTasks.some(t => t.id === props.task?.id)
 })
 
+// 初始化 markdown-it，支持 HTML 和链接
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true
+})
+
+// 渲染后的 HTML
 const renderedDescription = computed(() => {
   if (!props.task?.description) return ''
-  
-  let html = props.task.description
-    // 先处理标题（保留换行符）
-    .replace(/^(#{1,3})\s+(.*)$/gim, (_, level, content) => {
-      const styles: Record<string, string> = {
-        '#': 'text-2xl font-bold text-vscode-text mt-8 mb-4',
-        '##': 'text-xl font-bold text-vscode-text mt-6 mb-3',
-        '###': 'text-lg font-semibold text-vscode-text mt-4 mb-2'
-      }
-      return `<h${level.length} class="${styles[level]}">${content}</h${level.length}>\n`
-    })
-    // 处理粗体和斜体
-    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-vscode-text">$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em class="italic text-vscode-text">$1</em>')
-    // 处理行内代码
-    .replace(/`([^`]+)`/g, '<code class="bg-vscode-bg px-1.5 py-0.5 rounded text-vscode-info text-sm">$1</code>')
-    // 处理无序列表
-    .replace(/^\- (.*)$/gim, '<li class="ml-4 text-vscode-text-secondary">$1</li>')
-    // 处理有序列表
-    .replace(/^\d+\. (.*)$/gim, '<li class="ml-4 text-vscode-text-secondary">$1</li>')
-    // 最后处理段落和换行（必须放在最后）
-    .replace(/\n\n/g, '</p><p class="text-vscode-text-secondary mb-2">')
-    .replace(/\n/g, '<br>')
-  
-  return `<p class="text-vscode-text-secondary mb-2">${html}</p>`
+  // 把字符串形式的 \n 转换成真正的换行符
+  const text = props.task.description.replace(/\\n/g, '\n')
+  return md.render(text)
 })
 
 function toggleInstall() {
@@ -112,7 +99,7 @@ function handleClose() {
         <div class="bg-vscode-hover rounded-lg p-4">
           <h2 class="text-sm font-semibold text-vscode-text-secondary mb-3">描述</h2>
           <div
-            class="prose prose-sm max-w-none"
+            class="prose prose-sm max-w-none text-vscode-text-secondary"
             v-html="renderedDescription"
           ></div>
         </div>

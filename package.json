@@ -19,6 +19,7 @@
     "electron": "^42.2.0",
     "lucide-vue-next": "^0.290.0",
     "mammoth": "^1.12.0",
+    "markdown-it": "^14.0.0",
     "pinia": "^2.1.0",
     "pinyin-pro": "^3.28.1",
     "vue": "^3.4.0",

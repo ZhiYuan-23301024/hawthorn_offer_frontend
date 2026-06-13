@@ -4,7 +4,6 @@ import { Search, Users, MessageSquare, Loader, X, ChevronRight, ChevronDown } fr
 import { useSocialStore } from '@/stores/social'
 import { useEditorStore } from '@/stores/editor'
 import { useAuthStore } from '@/stores/auth'
-import { pinyin } from 'pinyin-pro'
 import { API_BASE_URL } from '@/api/http'
 import { avatarColor } from '@/utils/format'
 import ChatView from './ChatView.vue'
@@ -13,6 +12,16 @@ function getAvatarUrl(path: string): string {
   if (!path) return ''
   if (path.startsWith('http')) return path
   return API_BASE_URL + path
+}
+
+// 获取首字母分组：英文直接取首字母，其余归 #
+function getFirstLetter(name: string): string {
+  if (!name) return '#'
+  const first = name.charAt(0)
+  // 英文字母直接返回大写
+  if (/[A-Za-z]/.test(first)) return first.toUpperCase()
+  // 中文返回 #（不进行拼音排序）
+  return '#'
 }
 
 const store = useSocialStore()
@@ -40,22 +49,6 @@ watch(() => (authStore.user as any)?.id, (newId, oldId) => {
     store.fetchContacts()
   }
 })
-
-// 获取首字母分组：中文用拼音首字母，英文直接取首字母，其余归 #
-function getFirstLetter(name: string): string {
-  if (!name) return '#'
-  const first = name.charAt(0)
-  // 英文字母直接返回大写
-  if (/[A-Za-z]/.test(first)) return first.toUpperCase()
-  // 中文用拼音首字母
-  if (/[一-龥]/.test(first)) {
-    const py = pinyin(first, { toneType: 'none', type: 'array' })
-    if (py.length > 0 && py[0].length > 0) {
-      return py[0].charAt(0).toUpperCase()
-    }
-  }
-  return '#'
-}
 
 // 过滤后的好友
 const filteredFriends = computed(() => {

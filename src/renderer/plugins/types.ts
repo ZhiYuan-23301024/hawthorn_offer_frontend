@@ -1,3 +1,14 @@
+export interface TaskParam {
+  name: string
+  key: string
+  type: 'number' | 'string' | 'select' | 'boolean'
+  default: unknown
+  options?: { label: string; value: unknown }[]
+  min?: number
+  max?: number
+  placeholder?: string
+}
+
 export interface PluginManifest {
   id: string
   name: string
@@ -8,6 +19,7 @@ export interface PluginManifest {
   dependencies: string[]
   entry: string
   configSchema?: object
+  params?: TaskParam[]
   createdAt: string
   updatedAt: string
 }

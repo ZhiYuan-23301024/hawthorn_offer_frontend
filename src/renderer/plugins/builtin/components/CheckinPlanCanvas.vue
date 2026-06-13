@@ -2,7 +2,10 @@
 import { Save, Undo, Redo, Maximize2, ZoomIn, ZoomOut, Trash2, ClipboardList } from 'lucide-vue-next';
 import CheckinNode from './CheckinNode.vue';
 import CheckinEdge from './CheckinEdge.vue';
-import type { PlanNode, PlanEdge } from '@/types/checkin';
+import TaskParamForm from './TaskParamForm.vue';
+import type { PlanNode, PlanEdge, CheckinTask } from '@/types/checkin';
+import { useCheckinStore } from '@/stores/checkin';
+const checkinStore = useCheckinStore();
 const props = defineProps<{
  nodes: PlanNode[];
  edges: PlanEdge[];
@@ -13,6 +16,8 @@ const emit = defineEmits<{
 }>();
 const canvasRef = ref<HTMLElement | null>(null);
 const svgRef = ref<SVGSVGElement | null>(null);
+const showParamModal = ref(false);
+const selectedNodeForParams = ref<PlanNode | null>(null);
 const canvasState = reactive({
  scale: 1,
  offsetX: 0,
@@ -100,6 +105,13 @@ function handleDrop(e: DragEvent) {
  const rect = canvasRef.value.getBoundingClientRect();
  const x = (e.clientX - rect.left - canvasState.offsetX) / canvasState.scale - 80;
  const y = (e.clientY - rect.top - canvasState.offsetY) / canvasState.scale - 36;
+ 
+ const task = checkinStore.installedTasks.find((t: CheckinTask) => t.id === taskData.taskId);
+ const defaultParams: Record<string, unknown> = {};
+ task?.params?.forEach((param) => {
+ defaultParams[param.key] = param.default;
+ });
+ 
  pushUndo();
  const newNode: PlanNode = {
  id: `node-${Date.now()}`,
@@ -109,6 +121,7 @@ function handleDrop(e: DragEvent) {
  x: Math.max(0, x),
  y: Math.max(0, y),
  completed: false,
+ params: defaultParams,
  };
  localNodes.value.push(newNode);
  emit('update', localNodes.value, localEdges.value);
@@ -116,6 +129,33 @@ function handleDrop(e: DragEvent) {
  catch (err) {
  console.error('Failed to parse dropped data:', err);
  }
+}
+function openParamModal() {
+ if (!canvasState.selectedNodeId)
+ return;
+ const node = localNodes.value.find(n => n.id === canvasState.selectedNodeId);
+ if (node) {
+ selectedNodeForParams.value = node;
+ showParamModal.value = true;
+ }
+}
+function closeParamModal() {
+ showParamModal.value = false;
+ selectedNodeForParams.value = null;
+}
+function saveParams(params: Record<string, unknown>) {
+ if (selectedNodeForParams.value) {
+ pushUndo();
+ selectedNodeForParams.value.params = params;
+ emit('update', localNodes.value, localEdges.value);
+ }
+ closeParamModal();
+}
+function getSelectedNodeTask(): CheckinTask | undefined {
+ if (!canvasState.selectedNodeId)
+ return undefined;
+ const node = localNodes.value.find(n => n.id === canvasState.selectedNodeId);
+ return checkinStore.installedTasks.find((t: CheckinTask) => t.id === node?.taskId);
 }
 function handleMouseDown(e: MouseEvent) {
  const target = e.target as HTMLElement;
@@ -362,6 +402,15 @@ onUnmounted(() => {
       <div class="flex items-center space-x-2">
         <button
           class="p-2 rounded hover:bg-vscode-selected transition-colors"
+          @click="openParamModal"
+          :class="{ 'opacity-50 cursor-not-allowed': !canvasState.selectedNodeId || !getSelectedNodeTask()?.params }"
+          :disabled="!canvasState.selectedNodeId || !getSelectedNodeTask()?.params"
+          title="配置参数"
+        >
+          <Settings class="w-4 h-4 text-vscode-text-secondary" />
+        </button>
+        <button
+          class="p-2 rounded hover:bg-vscode-selected transition-colors"
           @click="deleteSelected"
           :class="{ 'opacity-50 cursor-not-allowed': !canvasState.selectedNodeId && !canvasState.selectedEdgeId }"
           :disabled="!canvasState.selectedNodeId && !canvasState.selectedEdgeId"
@@ -506,6 +555,49 @@ onUnmounted(() => {
           <span class="w-3 h-3 rounded-full bg-success"></span>
           <span class="text-vscode-text">支线B (绿色虚线)</span>
         </button>
+      </div>
+    </Teleport>
+    
+    <Teleport to="body">
+      <div
+        v-if="showParamModal && selectedNodeForParams"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        @click.self="closeParamModal"
+      >
+        <div class="bg-vscode-bg border border-vscode-border rounded-lg shadow-xl w-full max-w-md mx-4">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-vscode-border">
+            <h3 class="text-sm font-semibold text-vscode-text">配置任务参数</h3>
+            <button
+              class="p-1 rounded hover:bg-vscode-selected transition-colors"
+              @click="closeParamModal"
+            >
+              <span class="text-vscode-text-secondary text-lg">&times;</span>
+            </button>
+          </div>
+          
+          <div class="p-4">
+            <TaskParamForm
+              :params="getSelectedNodeTask()?.params || []"
+              v-model="selectedNodeForParams.params"
+              @update:modelValue="saveParams"
+            />
+          </div>
+          
+          <div class="flex items-center justify-end space-x-2 px-4 py-3 border-t border-vscode-border">
+            <button
+              class="px-4 py-2 rounded hover:bg-vscode-selected text-vscode-text-secondary text-sm transition-colors"
+              @click="closeParamModal"
+            >
+              取消
+            </button>
+            <button
+              class="px-4 py-2 rounded bg-vscode-active hover:bg-vscode-hover text-vscode-icon-hover text-sm transition-colors"
+              @click="saveParams(selectedNodeForParams.params || {})"
+            >
+              确定
+            </button>
+          </div>
+        </div>
       </div>
     </Teleport>
   </div>

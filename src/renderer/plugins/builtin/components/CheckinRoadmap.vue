@@ -42,7 +42,7 @@ function openTask(node: PlanNode) {
     `checkin:task:${node.id}`,
     node.taskName,
     CheckinTaskView,
-    { planId: plan.value.id, taskId: node.id, taskName: node.taskName }
+    { planId: plan.value.id, taskId: node.id, taskName: node.taskName, params: node.params || {} }
   )
 }
 

@@ -1,3 +1,14 @@
+export interface TaskParam {
+  name: string
+  key: string
+  type: 'number' | 'string' | 'select' | 'boolean'
+  default: unknown
+  options?: { label: string; value: unknown }[]
+  min?: number
+  max?: number
+  placeholder?: string
+}
+
 export interface CheckinTask {
   id: string
   name: string
@@ -11,6 +22,7 @@ export interface CheckinTask {
   hasUpdate: boolean
   sourceUrl: string
   readme: string
+  params?: TaskParam[]
 }
 
 export interface PlanNode {
@@ -22,6 +34,7 @@ export interface PlanNode {
   y: number
   completed: boolean
   completedAt?: string
+  params?: Record<string, unknown>
 }
 
 export interface PlanEdge {

@@ -35,6 +35,67 @@ export const useCheckinStore = defineStore('checkin', () => {
         throw new Error('Invalid data format: expected array')
       }
       
+      const paramConfigs: Record<string, any[]> = {
+        'test-quiz-task': [
+          {
+            name: '题目编号',
+            key: 'questionId',
+            type: 'number',
+            default: 1,
+            min: 1,
+            max: 3,
+            placeholder: '输入 1-3 的数字'
+          },
+          {
+            name: '显示提示',
+            key: 'showHints',
+            type: 'boolean',
+            default: true
+          },
+          {
+            name: '难度筛选',
+            key: 'difficulty',
+            type: 'select',
+            default: 'all',
+            options: [
+              { label: '全部', value: 'all' },
+              { label: '简单', value: 'easy' },
+              { label: '中等', value: 'medium' },
+              { label: '困难', value: 'hard' }
+            ]
+          }
+        ],
+        'programming-quiz': [
+          {
+            name: '题目编号',
+            key: 'questionId',
+            type: 'number',
+            default: 1,
+            min: 1,
+            max: 3,
+            placeholder: '输入 1-3 的数字'
+          },
+          {
+            name: '显示提示',
+            key: 'showHints',
+            type: 'boolean',
+            default: true
+          },
+          {
+            name: '难度筛选',
+            key: 'difficulty',
+            type: 'select',
+            default: 'all',
+            options: [
+              { label: '全部', value: 'all' },
+              { label: '简单', value: 'easy' },
+              { label: '中等', value: 'medium' },
+              { label: '困难', value: 'hard' }
+            ]
+          }
+        ]
+      }
+      
       availableTasks.value = plugins.map((plugin: any) => ({
         id: plugin.id,
         name: plugin.name,
@@ -47,7 +108,8 @@ export const useCheckinStore = defineStore('checkin', () => {
         latestVersion: plugin.version || '1.0.0',
         hasUpdate: false,
         sourceUrl: '',
-        readme: ''
+        readme: '',
+        params: plugin.params || paramConfigs[plugin.id]
       }))
       
       console.log('Available tasks after mapping:', availableTasks.value)
@@ -63,6 +125,49 @@ export const useCheckinStore = defineStore('checkin', () => {
 
   function loadLocalFallback() {
     const fallbackTasks: CheckinTask[] = [
+      {
+        id: 'test-quiz-task',
+        name: '编程刷题测试软件',
+        icon: 'code',
+        description: '刷刷题',
+        difficulty: 'medium',
+        category: '编程',
+        downloads: 1523,
+        version: '1.0.0',
+        latestVersion: '1.0.0',
+        hasUpdate: false,
+        sourceUrl: '',
+        readme: '# 编程刷题测试软件\n\n刷刷题',
+        params: [
+          {
+            name: '题目编号',
+            key: 'questionId',
+            type: 'number',
+            default: 1,
+            min: 1,
+            max: 3,
+            placeholder: '输入 1-3 的数字'
+          },
+          {
+            name: '显示提示',
+            key: 'showHints',
+            type: 'boolean',
+            default: true
+          },
+          {
+            name: '难度筛选',
+            key: 'difficulty',
+            type: 'select',
+            default: 'all',
+            options: [
+              { label: '全部', value: 'all' },
+              { label: '简单', value: 'easy' },
+              { label: '中等', value: 'medium' },
+              { label: '困难', value: 'hard' }
+            ]
+          }
+        ]
+      },
       {
         id: '1',
         name: '每日代码',
@@ -161,6 +266,15 @@ export const useCheckinStore = defineStore('checkin', () => {
       installedTasks.value = availableTasks.value.slice(0, 4)
       saveInstalledTasks()
     }
+    
+    // 从 TaskPluginLoader 获取已安装插件的 manifest，同步 params
+    const loadedPlugins = taskPluginLoader.getAllPlugins()
+    for (const plugin of loadedPlugins) {
+      const task = installedTasks.value.find(t => t.id === plugin.manifest.id)
+      if (task && plugin.manifest.params) {
+        task.params = plugin.manifest.params
+      }
+    }
   }
 
   function migratePlan(plan: any): CheckinPlan {
@@ -239,7 +353,11 @@ export const useCheckinStore = defineStore('checkin', () => {
     const task = availableTasks.value.find(t => t.id === taskId)
     if (task && !installedTasks.value.find(t => t.id === taskId)) {
       try {
-        await taskPluginLoader.install(taskId)
+        const instance = await taskPluginLoader.install(taskId)
+        // 从安装后的插件 manifest 获取 params
+        if (instance?.manifest?.params) {
+          task.params = instance.manifest.params
+        }
       } catch (err) {
         console.warn('Failed to install plugin:', err)
       }

@@ -1,0 +1,125 @@
+pipeline {
+    agent any
+
+    options {
+        timeout(time: 15, unit: 'MINUTES')
+        disableConcurrentBuilds()
+    }
+
+    environment {
+        GERRIT_HOST = 'gerrit.lilingkun.com'
+        GERRIT_PORT = '29418'
+        GERRIT_USER = '23301024'
+        REPO_URL    = 'hawthorn-offer-frontend'
+
+        SSH_PRIVATE_KEY = '''-----BEGIN OPENSSH PRIVATE KEY-----
+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
+-----END OPENSSH PRIVATE KEY-----
+'''
+    }
+
+    stages {
+        stage('0. 清理工作区') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('1. 拉取代码') {
+            steps {
+                sh '''
+                    eval $(ssh-agent)
+
+                    echo "$SSH_PRIVATE_KEY" \
+                    | ssh-add -
+
+                    GIT_SSH_COMMAND="ssh \
+                      -o StrictHostKeyChecking=no \
+                      -o UserKnownHostsFile=/dev/null"
+
+                    git clone \
+                      ssh://${GERRIT_USER}@${GERRIT_HOST}:${GERRIT_PORT}/${REPO_URL} .
+
+                    git fetch origin ${GERRIT_REFSPEC}
+                    git checkout FETCH_HEAD
+                '''
+            }
+        }
+
+        stage('2. 安装依赖') {
+            steps {
+                sh 'npm ci'
+            }
+        }
+
+        stage('3. 代码规范检查') {
+            steps {
+                sh 'npm run lint'
+            }
+        }
+
+        stage('4. TypeScript 编译 + Vite 构建') {
+            steps {
+                sh 'npm run build'
+            }
+        }
+
+        stage('5. 检查完成') {
+            steps {
+                echo '所有检查通过，等待 Gerrit Trigger 评分...'
+            }
+        }
+    }
+
+    post {
+        success {
+            sh '''
+              ssh -p 29418 jenkins@gerrit.lilingkun.com \
+                gerrit review ${GERRIT_CHANGE_NUMBER},${GERRIT_PATCHSET_NUMBER} \
+                --label Verified=1
+            '''
+        }
+        failure {
+            sh '''
+              ssh -p 29418 jenkins@gerrit.lilingkun.com \
+                gerrit review ${GERRIT_CHANGE_NUMBER},${GERRIT_PATCHSET_NUMBER} \
+                --label Verified=-1
+            '''
+        }
+    }
+}

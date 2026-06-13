@@ -18,6 +18,7 @@ const canvasRef = ref<HTMLElement | null>(null);
 const svgRef = ref<SVGSVGElement | null>(null);
 const showParamModal = ref(false);
 const selectedNodeForParams = ref<PlanNode | null>(null);
+const backupParams = ref<Record<string, unknown> | undefined>(undefined);
 const canvasState = reactive({
  scale: 1,
  offsetX: 0,
@@ -131,25 +132,29 @@ function handleDrop(e: DragEvent) {
  }
 }
 function openParamModal() {
- if (!canvasState.selectedNodeId)
- return;
- const node = localNodes.value.find(n => n.id === canvasState.selectedNodeId);
- if (node) {
- selectedNodeForParams.value = node;
- showParamModal.value = true;
- }
+  if (!canvasState.selectedNodeId)
+    return;
+  const node = localNodes.value.find(n => n.id === canvasState.selectedNodeId);
+  if (node) {
+    selectedNodeForParams.value = node;
+    backupParams.value = JSON.parse(JSON.stringify(node.params || {}));
+    showParamModal.value = true;
+  }
 }
 function closeParamModal() {
- showParamModal.value = false;
- selectedNodeForParams.value = null;
+  if (selectedNodeForParams.value) {
+    selectedNodeForParams.value.params = backupParams.value;
+  }
+  showParamModal.value = false;
+  selectedNodeForParams.value = null;
 }
 function saveParams(params: Record<string, unknown>) {
- if (selectedNodeForParams.value) {
- pushUndo();
- selectedNodeForParams.value.params = params;
- emit('update', localNodes.value, localEdges.value);
- }
- closeParamModal();
+  if (selectedNodeForParams.value) {
+    pushUndo();
+    selectedNodeForParams.value.params = params;
+    backupParams.value = JSON.parse(JSON.stringify(params));
+    emit('update', localNodes.value, localEdges.value);
+  }
 }
 function getSelectedNodeTask(): CheckinTask | undefined {
  if (!canvasState.selectedNodeId)
@@ -579,7 +584,6 @@ onUnmounted(() => {
             <TaskParamForm
               :params="getSelectedNodeTask()?.params || []"
               v-model="selectedNodeForParams.params"
-              @update:modelValue="saveParams"
             />
           </div>
           
@@ -592,7 +596,7 @@ onUnmounted(() => {
             </button>
             <button
               class="px-4 py-2 rounded bg-vscode-active hover:bg-vscode-hover text-vscode-icon-hover text-sm transition-colors"
-              @click="saveParams(selectedNodeForParams.params || {})"
+              @click="saveParams(selectedNodeForParams.params || {}); closeParamModal()"
             >
               确定
             </button>

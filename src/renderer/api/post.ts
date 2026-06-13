@@ -45,6 +45,8 @@ export interface ResumePostListVO {
   likeCount: number
   isLiked: boolean
   deleted?: boolean
+  pastGrace?: boolean
+  graceRemainingDays?: number
   createdAt: string
   updatedAt: string
 }
@@ -69,6 +71,9 @@ export interface ResumePostDetail {
   hasPurchased: boolean
   isAnonymous?: boolean
   deleted?: boolean
+  pastGrace?: boolean
+  graceRemainingDays?: number
+  unavailableMessage?: string
   authorName: string
   authorAvatar: string
   authorAvatarUrl: string | null

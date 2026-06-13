@@ -36,7 +36,8 @@ const imgError = ref(false)
     @mouseenter="(e: MouseEvent) => { if (!isSelected && !resume.deleted) (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--color-surface-hover)' }"
     @mouseleave="(e: MouseEvent) => { if (!isSelected && !resume.deleted) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent' }"
   >
-    <span v-if="resume.deleted" class="absolute top-1.5 right-2 text-xs px-1.5 py-0.5 rounded" style="color: var(--color-danger); background-color: var(--color-danger-subtle);">已删除</span>
+    <span v-if="resume.deleted && resume.pastGrace" class="absolute top-1.5 right-2 text-xs px-1.5 py-0.5 rounded" style="color: var(--color-danger); background-color: var(--color-danger-subtle);">已删除</span>
+    <span v-else-if="resume.deleted && !resume.pastGrace" class="absolute top-1.5 right-2 text-xs px-1.5 py-0.5 rounded" style="color: var(--color-warning); background-color: var(--color-warning-subtle);">即将过期({{ resume.graceRemainingDays > 0 ? resume.graceRemainingDays : '不足1' }}天)</span>
     <div class="flex items-start gap-2.5">
       <div
         class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden"

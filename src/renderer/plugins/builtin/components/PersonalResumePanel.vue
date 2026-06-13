@@ -321,6 +321,8 @@ async function removeResume() {
       successMessage.value = '个人简历已删除'
       await loadResumes('')
       notifySidebarRefresh()
+    } else if (res.code === 409) {
+      errorMessage.value = res.message || '无法删除：存在关联的简历帖'
     } else {
       const msg = res.message || ''
       if (msg.includes('foreign key') || msg.includes('resume_posts')) {

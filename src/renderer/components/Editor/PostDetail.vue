@@ -261,7 +261,13 @@ function handleTipClick() {
 
 async function handlePurchase() {
   const price = resumeData.value?.price ?? 50
-  if (!confirm(`支付 🫘 ${price} 豆查看完整简历？`)) return
+  const msg = `支付 🫘 ${price} 豆查看完整简历？
+
+温馨提示：
+· 购买后7天内卖家不可删除此简历
+· 7天后卖家有权删除简历
+· 请购买后及时下载保存简历，保障自身权益`
+  if (!confirm(msg)) return
   purchasing.value = true
   purchaseError.value = ''
   try {
@@ -288,7 +294,13 @@ async function handleDelete() {
   if (!confirm(message)) return
   try {
     if (props.postType === 'resume') {
-      await postApi.deleteResumePost(props.postId)
+      const resp = await postApi.deleteResumePost(props.postId)
+      if (resp.code === 200 && resp.data && (resp.data as any).hardDeleted === false) {
+        alert('该简历帖已有用户购买，进入7天保护期。7天后将从数据库彻底删除，期间其他用户不可购买。')
+        // 刷新详情，显示已删除状态
+        postStore.selectPost(props.postId, props.postType)
+        return
+      }
       const sub = postStore.resumeSubTab
       if (sub === 'purchased') postStore.fetchPurchasedResumePosts()
       else if (sub === 'mine') postStore.fetchMyResumePosts()
@@ -438,7 +450,11 @@ function onVisibilityChange() {
         <div class="author-info">
           <div class="author-title-row">
             <span class="post-title">{{ titleOrName }}</span>
-            <span v-if="resumeData?.deleted" class="badge-deleted">已删除</span>
+            <span v-if="resumeData?.deleted && resumeData?.pastGrace" class="badge-deleted">已删除</span>
+            <span v-else-if="resumeData?.deleted && !resumeData?.pastGrace"
+                  class="badge-deleted" style="background-color: var(--color-warning-subtle); color: var(--color-warning);">
+              即将过期 ({{ (resumeData?.graceRemainingDays ?? 0) > 0 ? resumeData?.graceRemainingDays : '不足1' }}天)
+            </span>
           </div>
           <div class="author-meta">
             <span
@@ -455,14 +471,14 @@ function onVisibilityChange() {
         </div>
         <div class="author-actions">
           <span class="price-tag">{{ resumeData.price }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /></span>
-          <template v-if="!resumeData.deleted">
-            <button class="btn-action btn-tip" @click="handleTipClick">
+          <template v-if="!resumeData.deleted || (resumeData.deleted && !resumeData.pastGrace)">
+            <button v-if="!resumeData.deleted" class="btn-action btn-tip" @click="handleTipClick">
               <Coffee class="w-4 h-4" /> 打赏
             </button>
-            <button v-if="isOwner" class="btn-action btn-edit" @click="handleEdit">
+            <button v-if="isOwner && !resumeData.deleted" class="btn-action btn-edit" @click="handleEdit">
               <Edit3 class="w-4 h-4" /> 编辑
             </button>
-            <button v-if="isOwner" class="btn-action btn-delete" @click="handleDelete">
+            <button v-if="isOwner && !resumeData.deleted" class="btn-action btn-delete" @click="handleDelete">
               <Trash2 class="w-4 h-4" /> 删除
             </button>
             <button
@@ -485,10 +501,12 @@ function onVisibilityChange() {
       <!-- Resume content -->
       <div class="resume-section">
         <h3 class="section-label">
-          {{ resumeData.hasPurchased || isOwner ? '简历内容' : '简历预览（前200字）' }}
+          <template v-if="resumeData.pastGrace && !isOwner">简历已不可见</template>
+          <template v-else>{{ resumeData.hasPurchased || isOwner ? '简历内容' : '简历预览（前200字）' }}</template>
         </h3>
         <div class="resume-content-card">
-          <pre class="resume-content">{{ resumeData.content }}</pre>
+          <pre v-if="!resumeData.pastGrace || isOwner" class="resume-content">{{ resumeData.content }}</pre>
+          <pre v-else class="resume-content" style="color: var(--color-text-tertiary); font-style: italic;">{{ resumeData.unavailableMessage || '该简历帖已不可见' }}</pre>
         </div>
         <div v-if="!resumeData.deleted && !resumeData.hasPurchased && !isOwner" class="purchase-cta">
           <p class="purchase-msg"><Lock class="w-4 h-4 inline-block" /> 支付 {{ resumeData.price }} <Bean class="w-3.5 h-3.5 inline-block align-text-bottom" /> 豆查看完整简历</p>
@@ -497,8 +515,14 @@ function onVisibilityChange() {
             {{ purchasing ? '处理中...' : '支付解锁' }}
           </button>
         </div>
-        <div v-else-if="resumeData.hasPurchased && !isOwner" class="purchased-badge">
+        <div v-else-if="resumeData.hasPurchased && !isOwner && !resumeData.pastGrace && !resumeData.deleted" class="purchased-badge">
           <CheckCircle2 class="w-4 h-4 inline-block" /> 已购买，可查看完整内容
+        </div>
+        <div v-else-if="resumeData.hasPurchased && !isOwner && resumeData.deleted && !resumeData.pastGrace" class="purchased-badge" style="color: var(--color-warning); background-color: var(--color-warning-subtle);">
+          卖家已启动删除程序，{{ (resumeData.graceRemainingDays ?? 0) > 0 ? resumeData.graceRemainingDays : '不足1' }}天后该帖将删除，请及时保存简历
+        </div>
+        <div v-else-if="resumeData.pastGrace && !isOwner" class="purchased-badge" style="color: var(--color-text-tertiary);">
+          该简历帖已不可见
         </div>
       </div>
     </template>

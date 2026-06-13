@@ -1,5 +1,5 @@
 <script setup lang="ts">import { ref, reactive, watch, onMounted, onUnmounted } from 'vue';
-import { Save, Undo, Redo, Maximize2, ZoomIn, ZoomOut, Trash2, ClipboardList } from 'lucide-vue-next';
+import { Save, Undo, Redo, Maximize2, ZoomIn, ZoomOut, Trash2, ClipboardList, Settings } from 'lucide-vue-next';
 import CheckinNode from './CheckinNode.vue';
 import CheckinEdge from './CheckinEdge.vue';
 import TaskParamForm from './TaskParamForm.vue';

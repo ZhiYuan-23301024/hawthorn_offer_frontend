@@ -86,7 +86,9 @@
           "arch": ["x64"]
         }
       ],
-      "category": "Development"
+      "category": "Development",
+      "desktopName": "HawthornOffer",
+      "syncDesktopName": true
     }
   },
   "type": "module"

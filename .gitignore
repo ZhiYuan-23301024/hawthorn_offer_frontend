@@ -3,4 +3,13 @@ dist
 output
 package-lock.json
 release
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
 Users21774AppDataLocalnpm-cache

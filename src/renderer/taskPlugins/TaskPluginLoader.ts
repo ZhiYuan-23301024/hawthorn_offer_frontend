@@ -1,5 +1,12 @@
 import { ref, markRaw } from 'vue'
+import * as Vue from 'vue'
+import { loadModule } from 'vue3-sfc-loader'
+import { useCheckinStore } from '@/stores/checkin'
+import { useEditorStore } from '@/stores/editor'
 import type { PluginManifest, PluginInstance, PluginAPI } from '../plugins/types'
+
+const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+const API_BASE_URL = apiBase + '/api'
 
 declare global {
   interface Window {
@@ -99,7 +106,7 @@ export class PluginLoader implements PluginAPI {
   }
 
   private async fetchManifest(pluginId: string): Promise<PluginManifest> {
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/manifest`
+    const url = `${API_BASE_URL}/plugins/${pluginId}/manifest`
     console.log(`[PluginLoader.fetchManifest] >>> GET ${url}`)
     const response = await fetch(url)
     console.log(`[PluginLoader.fetchManifest] <<< status=${response.status}, ok=${response.ok}`)
@@ -118,7 +125,7 @@ export class PluginLoader implements PluginAPI {
   }
 
   private async downloadPlugin(pluginId: string): Promise<string> {
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/download`
+    const url = `${API_BASE_URL}/plugins/${pluginId}/download`
     console.log(`[PluginLoader.downloadPlugin] >>> GET ${url}`)
     const response = await fetch(url)
     const contentType = response.headers.get('content-type') || ''
@@ -146,24 +153,273 @@ export class PluginLoader implements PluginAPI {
 
   private async compileComponent(code: string): Promise<any> {
     console.log(`[PluginLoader.compileComponent] 开始编译, 代码长度=${code.length}`)
-    const blob = new Blob([code], { type: 'application/javascript' })
-    const url = URL.createObjectURL(blob)
-    try {
-      // @ts-ignore
-      const module = await import(/* @vite-ignore */ url)
-      console.log(`[PluginLoader.compileComponent] 编译成功, module keys=`, Object.keys(module))
-      return module.default || module
-    } catch (err) {
-      console.error(`[PluginLoader.compileComponent] 编译失败!`, err)
-      console.error(`[PluginLoader.compileComponent] 失败的代码前500字符:`, code.substring(0, 500))
-      throw err
-    } finally {
-      URL.revokeObjectURL(url)
+    
+    // 创建模块缓存，注入主应用的依赖
+    const moduleCache: Record<string, any> = {
+      vue: Vue,
+      'lucide-vue-next': await import('lucide-vue-next'),
+      '@/stores/checkin': { useCheckinStore },
+      '@/stores/editor': { useEditorStore },
     }
+    
+    // ===== 策略1: vue3-sfc-loader 编译 =====
+    try {
+      const component = await loadModule('plugin.vue', {
+        moduleCache,
+        async getFile(_filePath: string) {
+          return Promise.resolve(code)
+        },
+        addStyle(styleStr: string): Promise<void> {
+          const style = document.createElement('style')
+          style.textContent = styleStr
+          document.head.appendChild(style)
+          return Promise.resolve()
+        }
+      })
+      console.log(`[PluginLoader.compileComponent] 策略1成功: vue3-sfc-loader 直接编译`)
+      return component
+    } catch (err: any) {
+      console.warn(`[PluginLoader.compileComponent] 策略1失败: ${err.message}`)
+    }
+    
+    // ===== 策略2: 手动解析 SFC，动态编译模板 =====
+    console.log(`[PluginLoader.compileComponent] 尝试策略2: 手动解析 SFC + defineComponent`)
+    try {
+      const component = await this.compileSFCManually(code, moduleCache)
+      console.log(`[PluginLoader.compileComponent] 策略2成功: 手动 SFC 编译`)
+      return component
+    } catch (err: any) {
+      console.warn(`[PluginLoader.compileComponent] 策略2失败: ${err.message}`)
+    }
+    
+    // ===== 策略3: 作为普通 JS 模块加载 =====
+    const isVueSFC = code.trim().startsWith('<template') || code.trim().startsWith('<script')
+    if (!isVueSFC) {
+      console.log(`[PluginLoader.compileComponent] 尝试策略3: 普通 JS 模块加载`)
+      const blob = new Blob([code], { type: 'application/javascript' })
+      const url = URL.createObjectURL(blob)
+      try {
+        // @ts-ignore
+        const module = await import(/* @vite-ignore */ url)
+        console.log(`[PluginLoader.compileComponent] 策略3成功: 普通 JS 模块加载`)
+        return module.default || module
+      } catch (err) {
+        URL.revokeObjectURL(url)
+        throw err
+      }
+    }
+    
+    console.error(`[PluginLoader.compileComponent] 所有策略均失败!`)
+    console.error(`[PluginLoader.compileComponent] 失败代码前300字符:`, code.substring(0, 300))
+    throw new Error('无法编译插件代码')
+  }
+  
+  /**
+   * 手动解析 Vue SFC，提取 script setup 和 template，
+   * 使用 Vue 的 defineComponent + compile 自行组装组件。
+   * 比 vue3-sfc-loader 更宽容，适用于大型 SFC 文件。
+   */
+  private async compileSFCManually(code: string, moduleCache: Record<string, any>): Promise<any> {
+    // 1. 提取 script setup 内容
+    const scriptMatch = code.match(/<script[^>]*>([\s\S]*?)<\/script>/)
+    const scriptContent = scriptMatch?.[1]?.trim() || ''
+    
+    // 2. 提取 template 内容
+    const templateMatch = code.match(/<template>([\s\S]*?)<\/template>/)
+    const templateContent = templateMatch?.[1]?.trim() || '<div></div>'
+    
+    console.log(`[PluginLoader.compileSFC] script=${scriptContent.length} chars, template=${templateContent.length} chars`)
+    
+    // 3. 模板预处理：移除所有 v-model，替换为等效绑定
+    //    v-model:prop="expr" -> :prop + @update:prop
+    //    v-model="expr"      -> :value + @input
+    let preprocessedTemplate = templateContent
+      .replace(/v-model:(\w+)=["']([^"']*)["']/g, 
+        (_, prop, expr) => `:${prop}="${expr}" @update:${prop}="__vModelUpdate($event, (__v) => { ${expr} = __v })"`)
+      .replace(/v-model=(["'])([^"']*)\1(?!\s*:)/g,
+        (_, q, expr) => `:value=${q}${expr}${q} @input="__vModelUpdate($event, (__v) => { ${expr} = __v })"`)
+    
+    console.log(`[PluginLoader.compileSFC] 模板预处理完成, 长度: ${templateContent.length} -> ${preprocessedTemplate.length}`)
+    
+    // 4. 动态导入 @vue/compiler-dom 编译模板
+    let renderFn: any
+    try {
+      const compilerDom = await import('@vue/compiler-dom')
+      const compiled = compilerDom.compile(preprocessedTemplate, {
+        mode: 'module',
+        prefixIdentifiers: true,
+        hoistStatic: true,
+      })
+      console.log(`[PluginLoader.compileSFC] 模板编译成功`)
+      
+      // 创建 render 函数：编译输出需要再包装一下
+      const { createElementBlock, createElementVNode, openBlock, createVNode, toDisplayString,
+        renderList, Fragment, createCommentVNode, createTextVNode, resolveComponent,
+        withDirectives, vModelText, normalizeClass, vModelDynamic } = Vue as any
+      
+      // 准备 render 函数需要的运行时 helper
+      const renderHelpers: Record<string, any> = {
+        createElementBlock, createElementVNode, openBlock, createVNode,
+        toDisplayString, renderList, Fragment, createCommentVNode, createTextVNode,
+        resolveComponent, withDirectives, vModelText, normalizeClass, vModelDynamic,
+      }
+      
+      // 注入 __vModelUpdate helper: 模拟 v-model 行为
+      renderHelpers.__vModelUpdate = (event: Event, setter: (value: any) => void) => {
+        const target = event.target as any
+        if (target?.value !== undefined) {
+          setter(target.value)
+        } else if (target?.type === 'checkbox' || target?.type === 'radio') {
+          setter(target.checked)
+        }
+      }
+      
+      renderFn = new Function('__vue__', 
+        `return function render(_ctx, _cache) { const { ${Object.keys(renderHelpers).join(', ')} } = __vue__; ${compiled.code} }`
+      )(renderHelpers)
+    } catch (e: any) {
+      console.warn(`[PluginLoader.compileSFC] 模板编译失败: ${e.message}`, e)
+      // 回退：使用空 render
+      renderFn = new Function('return () => null')()
+    }
+    
+    // 4. 创建 setup 函数
+    // 将 script 中的 import 语句替换为从 moduleCache 获取
+    const processedScript = this.resolveImports(scriptContent, moduleCache)
+    console.log(`[PluginLoader.compileSFC] imports 已解析, 处理前=${scriptContent.length}, 处理后=${processedScript.length}`)
+    
+    // 5. 移除 TypeScript 语法，转换为纯 JS
+    let jsScript = this.stripTypeScript(processedScript)
+    console.log(`[PluginLoader.compileSFC] TypeScript 已剥离, 处理后=${jsScript.length}`)
+    
+    // 6. 用 Function 构造 setup 函数
+    const setupFn = new Function('__vue_imports__', `
+      const { ref, computed, onMounted, watch, reactive, toRefs, defineProps: dp, defineEmits, defineExpose, withDefaults } = __vue_imports__.vue;
+      const defineProps = dp;
+      ${jsScript.replace(/export\s+default\s+/g, 'return ')}
+    `)
+    
+    // 5. 使用 defineComponent 组装
+    const { defineComponent } = Vue as any
+    return defineComponent({
+      name: 'plugin',
+      props: {
+        planId: String,
+        taskId: String,
+        taskName: String,
+        params: Object,
+      },
+      setup(props: any) {
+        // 提供 mock defineProps/defineEmits，让插件脚本中的编译器宏能正常工作
+        const mockDefineProps = () => props
+        const mockDefineEmits = () => ({} as any)
+        const __vue_imports__ = {
+          vue: {
+            ...Vue,
+            defineProps: mockDefineProps,
+            defineEmits: mockDefineEmits,
+          },
+          ...moduleCache,
+        }
+        
+        try {
+          // 执行 setup 函数，获取返回值
+          const result = setupFn(__vue_imports__)
+          return result
+        } catch (e: any) {
+          console.error(`[PluginLoader.compileSFC] setup 执行失败:`, e)
+          return {}
+        }
+      },
+      render: renderFn,
+    })
+  }
+  
+  /**
+   * 解析 import 语句，将模块引用替换为从 moduleCache 获取的值
+   */
+  private resolveImports(script: string, moduleCache: Record<string, any>): string {
+    let result = script
+    
+    // 移除所有 import 语句（Top-level imports），因为我们通过 moduleCache 提供
+    result = result.replace(/^import\s+.*?from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
+    result = result.replace(/^import\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
+    result = result.replace(/^import\s*\{[^}]*\}\s*from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
+    result = result.replace(/^import\s+\*\s+as\s+\w+\s+from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
+    result = result.replace(/^import\s+\w+\s+from\s+['"][^'"]+['"]\s*;?\s*$/gm, '')
+    
+    // 返回处理后的脚本，外部通过 __vue_imports__ 提供所需依赖
+    return result.trim()
+  }
+  
+  /**
+   * 移除 TypeScript 类型语法，转换为纯 JavaScript。
+   * 处理：泛型参数、类型注解、as 断言等。
+   */
+  private stripTypeScript(script: string): string {
+    let result = script
+    
+    // 1. 移除函数调用中的泛型参数（处理嵌套泛型）:
+    //    defineProps<{ planId: string; params?: Record<string, unknown> }>() -> defineProps()
+    //    ref<'learn' | 'practice'>('learn') -> ref('learn')
+    result = result.replace(
+      /(defineProps|defineEmits|defineExpose|withDefaults|ref|reactive|computed|shallowRef|shallowReactive|toRef|toRefs|customRef)\s*<(?:[^<>]*|<[^<>]*>)*>(\s*\()/g,
+      '$1$2'
+    )
+    
+    // 2. 移除类型注解: variableName: type -> variableName
+    //    覆盖: : string, : 'learn' | 'practice', : Event, : string[] 等
+    result = result.replace(
+      /\b(\w+)\s*:\s*(?:'[^']*'|"[^"]*"|\w+(?:\[\])?)(\s*[|&]\s*(?:'[^']*'|"[^"]*"|\w+(?:\[\])?))*\s*(?=[=,);\n])/g,
+      '$1'
+    )
+    
+    // 3. 移除 as 类型断言: x as string -> x
+    result = result.replace(/\s+as\s+\w+/g, '')
+    
+    console.log(`[PluginLoader.stripTS] stripped 预览:`, result.substring(0, 600))
+    
+    return result
+  }
+  
+  // 替换模板字符串为普通字符串拼接（已废弃，保留备用）
+  private replaceTemplateLiterals(code: string): string {
+    console.log(`[PluginLoader.replaceTemplateLiterals] 开始替换模板字符串`)
+    let result = code
+    
+    // 匹配模板字符串: `xxx${expr}yyy`
+    // 使用简单的字符串替换，不处理复杂的嵌套情况
+    const templateRegex = /`([^`]*)\$\{([^}]+)\}([^`]*)`/g
+    
+    let match
+    let count = 0
+    while ((match = templateRegex.exec(code)) !== null) {
+      const [fullMatch, prefix, expr, suffix] = match
+      // 替换为字符串拼接: prefix + expr + suffix
+      const replacement = `'${prefix}' + ${expr} + '${suffix}'`
+      result = result.replace(fullMatch, replacement)
+      count++
+    }
+    
+    // 处理只有前缀和后缀没有表达式的模板字符串
+    const simpleTemplateRegex = /`([^`]+)`/g
+    while ((match = simpleTemplateRegex.exec(code)) !== null) {
+      const [fullMatch, content] = match
+      // 避免重复替换已经处理过的
+      if (fullMatch.includes('${')) continue
+      // 如果内容是纯文本，替换为普通字符串
+      if (!fullMatch.includes("'")) {
+        result = result.replace(fullMatch, `'${content}'`)
+        count++
+      }
+    }
+    
+    console.log(`[PluginLoader.replaceTemplateLiterals] 完成，替换了 ${count} 处`)
+    return result
   }
 
   private async reportInstall(pluginId: string): Promise<void> {
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/install`
+    const url = `${API_BASE_URL}/plugins/${pluginId}/install`
     console.log(`[PluginLoader.reportInstall] >>> POST ${url}`)
     try {
       const response = await fetch(url, {
@@ -194,7 +450,7 @@ export class PluginLoader implements PluginAPI {
     console.log(`[PluginLoader.uninstall] Step1: 从本地文件系统清除`)
     await this.removeFromLocal(pluginId)
     
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/plugins/${pluginId}/uninstall`
+    const url = `${API_BASE_URL}/plugins/${pluginId}/uninstall`
     console.log(`[PluginLoader.uninstall] Step2: 上报卸载 -> POST ${url}`)
     try {
       const response = await fetch(url, {

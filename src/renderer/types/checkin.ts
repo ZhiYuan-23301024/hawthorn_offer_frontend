@@ -33,6 +33,7 @@ export interface PlanNode {
   y: number
   completed: boolean
   completedAt?: string
+  expectedCompletionDate?: string
   params?: Record<string, unknown>
 }
 

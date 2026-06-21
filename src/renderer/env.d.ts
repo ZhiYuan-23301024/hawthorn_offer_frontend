@@ -6,6 +6,16 @@ declare module '*.vue' {
   export default component
 }
 
+declare module 'vue3-sfc-loader' {
+  export interface ModuleOptions {
+    moduleCache?: Record<string, any>
+    getFile(url: string): Promise<string>
+    addStyle?(textContent: string): Promise<void>
+    handleModule?(type: string, getContentData: () => Promise<string>, path: string, options: ModuleOptions): Promise<any>
+  }
+  export function loadModule(path: string, options?: ModuleOptions): Promise<any>
+}
+
 interface ElectronAPI {
   openFile: () => Promise<string | null>
   saveFile: (path: string, content: string) => Promise<boolean>
@@ -24,5 +34,6 @@ interface ElectronAPI {
 declare global {
   interface Window {
     electronAPI: ElectronAPI
+    __HAWTHORN_API_URL__: string
   }
 }

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
-import { CheckCircle, Circle, Play, Maximize2, ZoomIn, ZoomOut } from 'lucide-vue-next'
+import { CheckCircle, Circle, Play, Maximize2, ZoomIn, ZoomOut, Calendar } from 'lucide-vue-next'
 import { useCheckinStore } from '@/stores/checkin'
 import { useEditorStore } from '@/stores/editor'
+import { taskPluginLoader } from '@/taskPlugins/TaskPluginLoader'
 import CheckinTaskView from './CheckinTaskView.vue'
+import CheckinPluginError from './CheckinPluginError.vue'
 import type { CheckinPlan, PlanNode, PlanEdge } from '@/types/checkin'
 
 const props = defineProps<{
@@ -15,6 +17,19 @@ const editorStore = useEditorStore()
 
 const plan = ref<CheckinPlan | null>(null)
 const canvasRef = ref<HTMLElement | null>(null)
+
+// 深度监听 store 中 myPlans 的变化，任何节点状态变更都会触发刷新
+watch(
+  () => checkinStore.myPlans,
+  () => {
+    const found = checkinStore.myPlans.find(p => p.id === props.planId) || null
+    if (found) {
+      console.log(`[Roadmap.reactive] store 变更触发刷新! plan=${found.name}, nodes=`, found.nodes.map(n => ({ id: n.id, name: n.taskName, completed: n.completed })))
+    }
+    plan.value = found
+  },
+  { deep: true, immediate: true }
+)
 
 const canvasState = reactive({
   scale: 1,
@@ -31,18 +46,56 @@ const progress = computed(() => {
   return Math.round((completed / plan.value.nodes.length) * 100)
 })
 
-function loadPlan() {
-  plan.value = checkinStore.myPlans.find(p => p.id === props.planId) || null
+const editingDateNodeId = ref<string | null>(null)
+
+function startEditDate(nodeId: string, e: MouseEvent) {
+  e.stopPropagation()
+  editingDateNodeId.value = nodeId
+}
+
+function saveExpectedDate(nodeId: string, dateStr: string) {
+  if (!plan.value) return
+  checkinStore.setNodeExpectedDate(plan.value.id, nodeId, dateStr || null)
+  editingDateNodeId.value = null
 }
 
 function openTask(node: PlanNode) {
   if (!plan.value) return
-  
+
+  console.log(`[Roadmap.openTask] ====== 开始打开任务 ======`)
+  console.log(`[Roadmap.openTask] node.id=${node.id}, node.taskId=${node.taskId}, node.taskName=${node.taskName}`)
+  console.log(`[Roadmap.openTask] plan.id=${plan.value.id}`)
+
+  // 先检查 taskPluginLoader 中已加载的所有插件
+  const allPlugins = taskPluginLoader.getAllPlugins()
+  console.log(`[Roadmap.openTask] taskPluginLoader 中已加载的插件数量=${allPlugins.length}`)
+  console.log(`[Roadmap.openTask] 已加载的插件 ids=`, allPlugins.map(p => p.manifest.id))
+
+  // 尝试从 taskPluginLoader 获取动态插件组件
+  console.log(`[Roadmap.openTask] 调用 getPlugin(${node.taskId})`)
+  const pluginInstance = taskPluginLoader.getPlugin(node.taskId)
+  console.log(`[Roadmap.openTask] getPlugin 返回值:`, pluginInstance)
+
+  if (!pluginInstance) {
+    console.warn(`[Roadmap.openTask] 插件 ${node.taskId} 未找到，显示错误页面`)
+    // 插件未安装或加载失败，显示错误页面
+    editorStore.openComponentTab(
+      `checkin:task:${node.id}`,
+      node.taskName,
+      CheckinPluginError,
+      { planId: plan.value.id, taskId: node.taskId, taskName: node.taskName, pluginError: `插件 ${node.taskId} 未找到或加载失败` }
+    )
+    return
+  }
+
+  console.log(`[Roadmap.openTask] 插件 ${node.taskId} 找到，使用插件组件`)
+  console.log(`[Roadmap.openTask] ====== 打开任务完成 ======`)
+
   editorStore.openComponentTab(
     `checkin:task:${node.id}`,
     node.taskName,
-    CheckinTaskView,
-    { planId: plan.value.id, taskId: node.id, taskName: node.taskName, params: node.params || {} }
+    pluginInstance.component,
+    { planId: plan.value.id, taskId: node.taskId, taskName: node.taskName, instId: node.id, params: node.params || {} }
   )
 }
 
@@ -50,7 +103,6 @@ function toggleComplete(node: PlanNode) {
   if (!plan.value) return
   
   checkinStore.completeTask(plan.value.id, node.id)
-  loadPlan()
 }
 
 function getSourceNode(edge: PlanEdge) {
@@ -130,12 +182,10 @@ const categoryStyles: Record<string, { bg: string; border: string; dot: string }
 }
 
 watch(() => props.planId, () => {
-  loadPlan()
   resetZoom()
 })
 
 onMounted(() => {
-  loadPlan()
   window.addEventListener('mouseup', handleMouseUp)
   window.addEventListener('mousemove', handleMouseMove)
 })
@@ -283,14 +333,13 @@ onUnmounted(() => {
                     <component :is="categoryIcons[node.category] || Tag" class="w-4 h-4" style="color: var(--color-text-secondary);" />
                     <span class="font-medium text-sm text-vscode-text">{{ node.taskName }}</span>
                   </div>
-                  <button
-                    class="w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
+                  <div
+                    class="w-6 h-6 rounded-full flex items-center justify-center"
                     :class="node.completed ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-vscode-active'"
-                    @click.stop="toggleComplete(node)"
                   >
                     <CheckCircle v-if="node.completed" class="w-4 h-4 text-white" />
                     <Circle v-else class="w-4 h-4 text-vscode-icon-hover" />
-                  </button>
+                  </div>
                 </div>
                 
                 <div class="flex items-center justify-between">
@@ -306,8 +355,34 @@ onUnmounted(() => {
                     开始
                   </button>
                 </div>
-                
-                <div v-if="node.completed && node.completedAt" class="mt-2 text-xs text-vscode-text-secondary">
+
+                <!-- 预期完成日期 -->
+                <div class="mt-2 flex items-center space-x-1">
+                  <Calendar class="w-3 h-3 text-vscode-text-secondary" />
+                  <template v-if="editingDateNodeId === node.id">
+                    <input
+                      type="date"
+                      class="w-full text-xs bg-vscode-input-bg border border-vscode-border rounded px-1 py-0.5 text-vscode-text"
+                      :value="node.expectedCompletionDate || ''"
+                      @change="saveExpectedDate(node.id, ($event.target as HTMLInputElement).value)"
+                      @blur="editingDateNodeId = null"
+                      @keydown.escape="editingDateNodeId = null"
+                      @click.stop
+                      autofocus
+                    />
+                  </template>
+                  <template v-else>
+                    <span
+                      class="text-xs cursor-pointer hover:underline"
+                      :class="node.expectedCompletionDate ? 'text-vscode-text-secondary' : 'text-vscode-text-tertiary italic'"
+                      @click.stop="startEditDate(node.id, $event)"
+                    >
+                      {{ node.expectedCompletionDate ? new Date(node.expectedCompletionDate).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }) : '设置日期' }}
+                    </span>
+                  </template>
+                </div>
+
+                <div v-if="node.completed && node.completedAt" class="mt-1 text-xs text-vscode-text-secondary">
                   {{ new Date(node.completedAt).toLocaleString() }}
                 </div>
               </div>

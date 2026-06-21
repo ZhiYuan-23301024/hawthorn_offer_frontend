@@ -10,6 +10,11 @@ import './plugins/builtin/account'
 import './plugins/builtin/checkin'
 import './plugins/builtin/campusRecruitment'
 
+// API 地址：优先读 .env 的 VITE_API_BASE_URL，默认 localhost
+const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+window.__HAWTHORN_API_URL__ = apiBase + '/api'
+console.log('[App] API 地址:', window.__HAWTHORN_API_URL__)
+
 const app = createApp(App)
 const pinia = createPinia()
 

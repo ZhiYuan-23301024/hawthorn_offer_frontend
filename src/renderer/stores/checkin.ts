@@ -3,7 +3,8 @@ import { ref } from 'vue'
 import type { CheckinTask, CheckinPlan, PlanNode, PlanEdge, PlanTask, PlanShare } from '@/types/checkin'
 import { taskPluginLoader } from '@/taskPlugins/TaskPluginLoader'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
+const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+const API_BASE_URL = apiBase + '/api'
 
 export const useCheckinStore = defineStore('checkin', () => {
   const availableTasks = ref<CheckinTask[]>([])
@@ -197,6 +198,7 @@ export const useCheckinStore = defineStore('checkin', () => {
         y: 100 + Math.floor(i / 3) * 150,
         completed: t.completed || false,
         completedAt: t.completedAt,
+        expectedCompletionDate: (t as any).expectedCompletionDate,
       }))
       
       const edges: PlanEdge[] = []
@@ -276,7 +278,9 @@ export const useCheckinStore = defineStore('checkin', () => {
       }
     } catch (err) {
       console.error(`[checkin.installTask] 插件安装失败!`, err)
+      return  // 安装失败直接返回，不添加到已安装列表
     }
+    // 只有安装成功才添加到已安装列表
     installedTasks.value.push(task)
     saveInstalledTasks()
     console.log(`[checkin.installTask] installedTasks 现在共 ${installedTasks.value.length} 个`)
@@ -378,16 +382,33 @@ export const useCheckinStore = defineStore('checkin', () => {
     }
   }
 
-  function completeTask(planId: string, nodeId: string) {
+  function setNodeExpectedDate(planId: string, nodeId: string, date: string | null) {
     const plan = myPlans.value.find(p => p.id === planId)
-    if (plan) {
-      const node = plan.nodes.find(n => n.id === nodeId)
-      if (node) {
-        node.completed = !node.completed
-        node.completedAt = node.completed ? new Date().toISOString() : undefined
-        saveMyPlans()
-      }
+    if (!plan) return
+    const node = plan.nodes.find(n => n.id === nodeId)
+    if (!node) return
+    node.expectedCompletionDate = date || undefined
+    saveMyPlans()
+  }
+
+  function completeTask(planId: string, nodeId: string) {
+    console.log(`[checkin.completeTask] >>> planId=${planId}, nodeId=${nodeId}`)
+    const plan = myPlans.value.find(p => p.id === planId)
+    if (!plan) {
+      console.warn(`[checkin.completeTask] 未找到 plan! planId=${planId}, 现有 plans=`, myPlans.value.map(p => p.id))
+      return
     }
+    const node = plan.nodes.find(n => n.id === nodeId)
+    if (!node) {
+      console.warn(`[checkin.completeTask] 未找到 node! nodeId=${nodeId}, plan.nodes=`, plan.nodes.map(n => n.id))
+      return
+    }
+    console.log(`[checkin.completeTask] 找到节点: name=${node.taskName}, 当前 completed=${node.completed}`)
+    node.completed = !node.completed
+    node.completedAt = node.completed ? new Date().toISOString() : undefined
+    console.log(`[checkin.completeTask] 设置后: completed=${node.completed}, completedAt=${node.completedAt}`)
+    saveMyPlans()
+    console.log(`[checkin.completeTask] <<< saveMyPlans 完成`)
   }
 
   function getUninstalledTasks() {
@@ -598,6 +619,7 @@ export const useCheckinStore = defineStore('checkin', () => {
     deletePlan,
     renamePlan,
     completeTask,
+    setNodeExpectedDate,
     getUninstalledTasks,
     fetchPlansFromServer,
     uploadPlanToServer,

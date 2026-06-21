@@ -2,6 +2,7 @@
   "name": "hawthorn-offer-frontend",
   "version": "1.0.0",
   "description": "基于 Electron + Vue3 的多功能工作台前端应用",
+  "author": "Hawthorn Offer",
   "main": "dist/main/index.js",
   "scripts": {
     "dev": "vite",
@@ -12,23 +13,30 @@
     "clean": "node scripts/clean.mjs",
     "electron:dev": "electron .",
     "electron:build": "npm run build && electron-builder",
+    "electron:build:win": "npm run build && electron-builder --win",
+    "electron:build:mac": "npm run build && electron-builder --mac",
+    "electron:build:linux": "npm run build && electron-builder --linux",
+    "electron:build:all": "npm run build && electron-builder --win --mac --linux",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts",
     "format": "prettier --write ."
   },
   "dependencies": {
-    "electron": "^42.2.0",
+    "@vue/compiler-sfc": "^3.5.38",
+    "@vue/runtime-core": "^3.5.38",
     "lucide-vue-next": "^0.290.0",
     "mammoth": "^1.12.0",
     "markdown-it": "^14.0.0",
     "pinia": "^2.1.0",
     "pinyin-pro": "^3.28.1",
     "vue": "^3.4.0",
-    "vue-router": "^4.2.0"
+    "vue-router": "^4.2.0",
+    "vue3-sfc-loader": "^0.9.5"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@vitejs/plugin-vue": "^6.0.7",
     "autoprefixer": "^10.4.0",
+    "electron": "^42.2.0",
     "electron-builder": "^26.8.1",
     "eslint": "^8.0.0",
     "postcss": "^8.4.0",
@@ -38,14 +46,48 @@
     "vite": "^6.4.2"
   },
   "build": {
-    "appId": "com.example.hawthorn-offer",
+    "appId": "com.hawthorn.offer",
+    "productName": "HawthornOffer",
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**/*",
       "node_modules/**/*"
-    ]
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "HawthornOffer"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "category": "public.app-category.developer-tools"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ],
+      "category": "Development"
+    }
   },
   "type": "module"
 }

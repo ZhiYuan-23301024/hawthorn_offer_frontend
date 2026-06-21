@@ -46,7 +46,7 @@ jobs:
         run: npm ci
 
       - name: Build and package for ${{ matrix.platform }}
-        run: npm run electron:build:${{ matrix.platform }}
+        run: npm run build && npx electron-builder --${{ matrix.platform }} --publish never
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
 

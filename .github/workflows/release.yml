@@ -22,13 +22,13 @@ jobs:
         include:
           - os: windows-latest
             platform: win
-            artifact_pattern: '*.exe'
+            artifact_ext: exe
           - os: macos-latest
             platform: mac
-            artifact_pattern: '*.dmg'
+            artifact_ext: dmg
           - os: ubuntu-latest
             platform: linux
-            artifact_pattern: '*.AppImage'
+            artifact_ext: AppImage
 
     runs-on: ${{ matrix.os }}
 
@@ -48,12 +48,34 @@ jobs:
       - name: Build and package for ${{ matrix.platform }}
         run: npm run electron:build:${{ matrix.platform }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
 
-      - name: Upload artifacts
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.platform }}-build
-          path: release/${{ matrix.artifact_pattern }}
+          name: HawthornOffer-${{ matrix.platform }}
+          path: release/*.${{ matrix.artifact_ext }}
           if-no-files-found: error
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Display structure
+        run: ls -R artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          files: artifacts/**
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
